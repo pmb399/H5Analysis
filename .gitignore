@@ -1,0 +1,20 @@
+# Do not upload the bundled tar archive
+*.tar.gz
+
+*.DS_Store
+
+#Do not upload the egg-info directory
+**/*.egg-info/
+
+#Also don't want pycache or jupyter checkpoints
+**/__pycache__/
+**/.ipynb_checkpoints
+
+# Do not upload dist directory
+**/dist
+
+# Backup data
+*.backup
+
+# Local jupyter notebook
+REIXSAnalysis-local.ipynb
