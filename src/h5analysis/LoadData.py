@@ -24,6 +24,7 @@ from .util import COLORP
 from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction
 from .data_1d import loadSCAscans
 from .data_2d import loadMCAscans
+from .data_3d import loadSTACKscans
 from .mesh import loadMeshScans
 from .beamline_info import loadSCAbeamline, get_single_beamline_value, get_spreadsheet
 
@@ -935,7 +936,89 @@ class LoadHistogram(Load2d):
 
 #########################################################################################
 
+class ImageStackLoader():
+    def __init__(self):
+        self.data = list()
+        self.filename = list()
 
+    def load(self, file, stack, arg):
+        if self.data != []:
+            raise UserWarning("Can only load one movie at a time.")
+        else:
+            self.data.append(loadSTACKscans(file, stack, arg))
+            self.filename.append(file)
+
+    def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600):
+        def update(f=0):
+            r.data_source.data['image'] = [v.stack[f]]
+            r.data_source.data['x'] = [v.x_min]
+            r.data_source.data['y'] = [v.y_min]
+            r.data_source.data['dw'] = [v.x_max-v.x_min]
+            r.data_source.data['dh'] = [v.y_max-v.y_min]
+
+            push_notebook(handle=s)
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
+                           tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save")
+                p.x_range.range_padding = p.y_range.range_padding = 0
+
+                # must give a vector of image data for image parameter
+                color_mapper = LinearColorMapper(palette="Viridis256")
+
+                simage = ColumnDataSource(data=dict(image=[v.stack[0]], x=[v.x_min], y=[
+                                          v.y_min], dw=[v.x_max-v.x_min], dh=[v.y_max-v.y_min],))
+
+                r = p.image(image='image', source=simage, x='x', y='y',
+                            dw='dw', dh='dh', color_mapper=color_mapper, level="image")
+                p.grid.grid_line_width = 0.5
+
+                # Defining properties of color mapper
+                color_bar = ColorBar(color_mapper=color_mapper,
+                                     label_standoff=12,
+                                     location=(0, 0),
+                                     title='Counts')
+                p.add_layout(color_bar, 'right')
+
+                p.toolbar.logo = None
+
+                if title != None:
+                    p.title.text = str(title)
+                else:
+                    p.title.text = f'Image Movie for Scan {k}'
+                if xlabel != None:
+                    p.xaxis.axis_label = str(xlabel)
+                else:
+                    pass
+                if ylabel != None:
+                    p.yaxis.axis_label = str(ylabel)
+                else:
+                    pass
+
+                s = show(p, notebook_handle=True)
+                display(widgets.interact(update, f=(0, len(v.stack)-1)))
+
+    def get_data(self):
+        # Note that there is only one scan
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                return v.stack, v.data_scale, v.image_scale
+            
+    def export(self, filename):
+
+        raise Exception("Cannot export this data.")
+        stack, data_scale, image_scale = self.get_data()
+
+        np.savetxt(f"{filename}_stack", stack.reshape(stack.shape[0], -1), fmt="%.9g")
+        np.savetxt(f"{filename}_dataScale", data_scale, fmt="%.9g")
+        np.savetxt(f"{filename}_imageScale", image_scale, fmt="%.9g")
+
+        print(f"Successfully wrote 3d data to {filename}.txt")
+
+
+
+#########################################################################################
 class LoadBeamline(Load1d):
     def load(self, file, key, **kwargs):
         """

@@ -123,4 +123,11 @@ def get_REIXSconfig():
     dataDict['norm_by'] = None
     REIXSconfig["CCD"] = dataDict
 
+    dataDict = dict()
+    dataDict['type'] = 'STACK'
+    dataDict['STACK_path']  = 'Data/mcp_a_img'
+    dataDict['Data_scale'] = 'Data/mcpMCA_scale'
+    dataDict['Image_scale'] = None
+    REIXSconfig["STACK_MCP"] = dataDict
+
     return REIXSconfig

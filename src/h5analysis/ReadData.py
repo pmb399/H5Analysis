@@ -96,6 +96,19 @@ class REIXS:
                 else:
                     self.mca = mca
 
+            elif self.REIXSconfig[request]['type'] == 'STACK':
+                self.stack = np.array(f[f"{self.group}/{self.REIXSconfig[request]['STACK_path']}"])
+                if not isinstance(self.REIXSconfig[request]['Data_scale'],type(None)):
+                    self.data_scale = np.array(f[f"{self.group}/{self.REIXSconfig[request]['Data_scale']}"])
+                else:
+                    pts = np.shape(self.stack)[1]
+                    self.data_scale = np.array(range(0, pts), dtype=int)
+                if not isinstance(self.REIXSconfig[request]['Image_scale'],type(None)):
+                    self.image_scale = np.array(f[f"{self.group}/{self.REIXSconfig[request]['Image_scale']}"])
+                else:
+                    pts = np.shape(self.stack)[2]
+                    self.image_scale = np.array(range(0, pts), dtype=int)
+
             else:
                 raise UserWarning("Type not implemented.")
 
