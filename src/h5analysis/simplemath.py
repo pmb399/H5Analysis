@@ -163,23 +163,21 @@ def bin_data(x_data,y_data,binsize):
             Must be exponents of 2
     """
 
-    # Check if binsize is exponent of 2
-    if (np.log(binsize)/np.log(2)).is_integer():
-        pass
-    else:
-        raise ValueError("Bin size must be exponents of 2.")
-
     # Caluclate how many bins
     bins = len(x_data)/binsize
 
     # Split the data into the bins
-    x_splits = np.split(x_data,bins)
-    y_splits = np.split(y_data,bins)
+    try:
+        x_splits = np.split(x_data,bins)
+        y_splits = np.split(y_data,bins)
+    except Exception as e:
+        warnings.warn("Could not split specified quantity in equally split subarrays. Adjust the bin size.")
+        raise Exception(e)
 
     new_x = list()
     new_y = list()
 
-    # Calculate the mean for all x and y values, respecitively, in the bin
+    # Calculate the mean for all x and y values, respectively, in the bin
     for idx,val in enumerate(x_splits):
         new_x.append(np.mean(val))
         new_y.append(np.mean(y_splits[idx]))
