@@ -1,6 +1,7 @@
 # Scientific Modules
 import numpy as np
 import pandas as pd
+from scipy.interpolate import interp1d, interp2d
 
 # Plotting
 from bokeh.plotting import show, figure
@@ -908,3 +909,118 @@ def getBL(config, file, stream, *args):
 
 def getSpreadsheet(config, file,columns=None):
     return get_spreadsheet(config, file,columns)
+
+#########################################################################################
+#########################################################################################
+
+class Object1dMath(Load1d):
+        
+    def __init__(self):
+        self.DataObjectsAdd = list()
+        self.DataObjectsSubtract = list()
+
+        return Load1d.__init__(self)
+        
+    def add(self,obj,line,scan):
+        self.DataObjectsAdd.append(obj.data[line][scan])
+        
+    def subtract(self,obj,line,scan):
+        self.DataObjectsSubtract.append(obj.data[line][scan])
+        
+    def evaluate(self):
+        for i,item in enumerate(self.DataObjectsAdd):
+            if i ==0:
+                MASTER_x = item.x_stream
+                MASTER_y = item.y_stream
+                
+            else:
+                MASTER_y += interp1d(item.x_stream,item.y_stream,fill_value='extrapolate')(MASTER_x)
+        
+        for i,item in enumerate(self.DataObjectsSubtract):
+                MASTER_y -= interp1d(item.x_stream,item.y_stream,fill_value='extrapolate')(MASTER_x)
+
+        
+        class added_object:
+            def __init__(self):
+                pass
+        
+        data = dict()
+        data[0] = added_object()
+        data[0].x_stream = MASTER_x
+        data[0].y_stream = MASTER_y
+        data[0].scan = 'Misc'
+        data[0].legend = 'Addition/Subtraction'
+
+        self.x_stream.append('x-stream')
+        self.type.append('y-stream')
+        self.filename.append('Simple Math')
+        
+        self.data.append(data)
+
+#########################################################################################
+
+class Object2dMath(Load2d):
+        
+    def __init__(self):
+        self.DataObjectsAdd = list()
+        self.DataObjectsSubtract = list()
+
+        return Load2d.__init__(self)
+        
+    def add(self,obj,line,scan):
+        self.DataObjectsAdd.append(obj.data[line][scan])
+        
+    def subtract(self,obj,line,scan):
+        self.DataObjectsSubtract.append(obj.data[line][scan])
+        
+    def evaluate(self):
+        for i,item in enumerate(self.DataObjectsAdd):
+            if i ==0:
+                MASTER_x_stream = item.new_x
+                MASTER_y_stream = item.new_y
+                MASTER_detector = item.new_z
+                MASTER_xmin = item.xmin
+                MASTER_xmax = item.xmax
+                MASTER_ymin = item.ymin
+                MASTER_ymax = item.ymax
+                
+            else:
+                interp = interp2d(item.new_x,item.new_y,item.new_z)
+                new_z = interp(MASTER_x_stream,MASTER_y_stream)
+
+                MASTER_detector = np.add(MASTER_detector,new_z)
+        
+        for i,item in enumerate(self.DataObjectsSubtract):
+                interp = interp2d(item.new_x,item.new_y,item.new_z)
+                new_z = interp(MASTER_x_stream,MASTER_y_stream)
+
+                if i == 0:
+                    SUB_detector = new_z
+                else:
+                    SUB_detector = np.add(SUB_detector,new_z)
+
+        if len(self.DataObjectsSubtract)>0:
+            MASTER_detector = np.subtract(MASTER_detector,SUB_detector)
+        
+        class added_object:
+            def __init__(self):
+                pass
+        
+        data = dict()
+        data[0] = added_object()
+        data[0].new_x = MASTER_x_stream
+        data[0].new_y = MASTER_y_stream
+        data[0].new_z = MASTER_detector
+        data[0].xmin = MASTER_xmin
+        data[0].xmax = MASTER_xmax
+        data[0].ymin = MASTER_ymin
+        data[0].ymax = MASTER_ymax
+        data[0].scan = 'Misc'
+        data[0].legend = 'Addition/Subtraction'
+
+        self.x_stream.append('x-stream')
+        self.y_stream.append('y-stream')
+        self.detector.append('Detector')
+        self.filename.append('Simple Math')
+        
+        self.data.append(data)
