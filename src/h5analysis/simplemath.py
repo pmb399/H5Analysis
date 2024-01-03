@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
 from scipy.signal import savgol_filter
+import warnings
 
 def apply_offset(stream, offset=None, coffset=None):
     """Apply constant or polynomial offset to specified stream
@@ -94,6 +95,17 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
         ymax = grid_y[1]
         y_points = int(np.ceil((ymax-ymin)/grid_y[2])) + 1
 
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    # Limit matrix to 13107200 entries
+    elements = x_points*y_points
+    if elements > 13107200:
+        # Reduce matrix equally among all dimensions
+        norm = int(np.ceil(np.sqrt(elements/13107200)))
+        x_points = int(x_points/norm)
+        y_points = int(y_points/norm)
+        warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
+
     # Interpolate the data with given grid
     f = interp2d(x_data, y_data, np.transpose(detector))
 
@@ -119,6 +131,17 @@ def grid_data_mesh(x_data,y_data,z_data):
 
     xbin = len(xunique)
     ybin = len(yunique)
+
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    # Limit matrix to 13107200 entries
+    elements = xbin*ybin
+    if elements > 13107200:
+        # Reduce matrix equally among all dimensions
+        norm = int(np.ceil(np.sqrt(elements/13107200)))
+        xbin = int(xbin/norm)
+        ybin = int(ybin/norm)
+        warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
     new_z, xedge, yedge = np.histogram2d(x_data, y_data, bins=[xbin, ybin], range=[
                                             [xmin, xmax], [ymin, ymax]], weights=z_data)
