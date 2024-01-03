@@ -29,6 +29,7 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
+from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -57,6 +58,41 @@ class Load1d:
 
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(load_1d(config, file, x_stream, y_stream, *args, **kwargs))
+        self.x_stream.append(x_stream)
+        self.type.append(y_stream)
+        self.filename.append(file)
+
+    def add(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """
+        Add specified scans for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Adds all scans specified in *args.
+        """
+
+        # Append all REIXS scan objects to scan list in current object.
+        self.data.append(ScanAddition(config,
+            file, x_stream, y_stream, *args, **kwargs))
+        self.x_stream.append(x_stream)
+        self.type.append(y_stream)
+        self.filename.append(file)
+
+    def subtract(self, config, file, x_stream, y_stream, minuend, subtrahend, **kwargs):
+        """
+        Subtract specified scans for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Subtracts all scans from the first element. May add scans in first element by specifying list of scans as first *arg.
+
+        """
+
+        # Append all REIXS scan objects to scan list in current object.
+        self.data.append(ScanSubtraction(config,
+            file, x_stream, y_stream, minuend, subtrahend, **kwargs))
         self.x_stream.append(x_stream)
         self.type.append(y_stream)
         self.filename.append(file)
@@ -343,6 +379,44 @@ class Load2d:
         
         self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
         self.x_stream.append(x_stream)
+        self.detector.append(detector)
+        self.filename.append(file)
+
+    def add(self, config, file, x_stream, detector, *args, **kwargs):
+        """
+        Add specified images for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Adds all scans specified in *args.
+        """
+
+        self.data.append(ImageAddition(config,file, x_stream,
+                         detector, *args, **kwargs))
+        
+        self.x_stream.append(x_stream)
+        self.y_stream.append("Fix it")
+        self.detector.append(detector)
+        self.filename.append(file)
+
+    def subtract(self, config, file, x_stream, detector, *args, **kwargs):
+        """
+        Subtract specified images for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Subtracts all imnages from the first element.
+
+        """
+
+        # Append all REIXS scan objects to scan list in current object.
+        self.data.append(ImageSubtraction(config, file, x_stream,
+                         detector, *args, **kwargs))
+        
+        self.x_stream.append(x_stream)
+        self.y_stream.append("Fix it")
         self.detector.append(detector)
         self.filename.append(file)
 
