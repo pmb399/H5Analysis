@@ -1,32 +1,35 @@
 # Scientific Modules
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d, interp2d
 
 # Plotting
-from bokeh.io import push_notebook
 from bokeh.plotting import show, figure
 from bokeh.models import ColumnDataSource, HoverTool, LinearColorMapper, LogColorMapper, ColorBar, Span, Label
+from bokeh.io import push_notebook
+
+# Video Export
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.animation as animation
 
 # Utilities
 import os
 from collections import defaultdict
 import io
 import shutil
+from .util import COLORP
 
 # Widgets
 import ipywidgets as widgets
 from IPython.display import display
 from ipyfilechooser import FileChooser
 
-# Data Processing Functions
-from .util import COLORP
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction
-from .data_1d import loadSCAscans
-from .data_2d import loadMCAscans
-from .data_3d import loadSTACKscans
-from .mesh import loadMeshScans
-from .beamline_info import loadSCAbeamline, get_single_beamline_value, get_spreadsheet
+# Data processing functions
+from .data_1d import load_1d
+from .data_2d import load_2d
+from .histogram import load_histogram
+from .data_3d import load_3d
+from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
 #########################################################################################
@@ -47,111 +50,13 @@ class Load1d:
         self.plot_hlines = list()
         self.plot_labels = list()
 
-    def load(self, file, x_stream, y_stream, *args, **kwargs):
+    def load(self, config, file, x_stream, y_stream, *args, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
-
-        Parameters
-        ----------
-        basedir : string
-            Specifiy the absolute or relative path to experimental data.
-        file : string
-            Specify the file name (HDF5).
-        x_stream : string
-            Specifiy the data for the horizontal axis.
-            Use: "Mono Energy", "MCP Energy", "SDD Energy", "XEOL Energy", "Points", or any SCA scalar array.
-        y_stream : string
-            Specifiy the data for the vertical axis.
-            Use: "TEY", "TFY, "PFY", "iPFY", "XES", "rXES", "specPFY",
-                  "XRF", "rXRF", "XEOL", "rXEOL", "POY", "TOY", "EY", "Sample", "Mesh", "ET", or any SCA scalar array.
-        *args : int
-            Separate scan numbers with comma.
-        **kwargs: multiple, optional
-            Options:
-                norm : boolean
-                    Norm the spectra to [0,1].
-                    default: True
-                xoffset : list of tuples
-                    Offset the x-axis by applying a polynomial fit.
-                    default: None
-                xcoffset : float
-                    Offset x-axis by constant value.
-                    default : None 
-                yoffset : list of tuples
-                    Offset the y-axis by applying a polynomial fit.
-                    default : None 
-                ycoffset : float
-                    Offset y-axis by constant value.
-                    default : None
-                background : int or boolean
-                    Apply background selection for XEOL. 
-                    Select True when using with getXEOLback function or select background scan number.
-                    default : None
-                energyloss : boolean or float
-                    Convert emission energy to energy loss.
-                    Select True to extract incident mono energy from file or specify float manually.
-                    default : None
-                grid_x: list
-                    Grid data evenly on specified grid [low,high,step size]
-                    default: [None, None, None]
-                savgol : tupel
-                    Apply a Savitzky-Golay filter for smoothing, and optionally take derivatives.
-                    arg1 : savgol window length
-                    arg2 : savgol polynomial order
-                    arg 3: derivative order, optional
-                    default : None, 
-                binsize : int
-                    Bin data by reducing data points via averaging.
-                    Int must be exponent of 2.
-                    default : None
         """
-
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", True)
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(loadSCAscans(file, x_stream, y_stream, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.type.append(y_stream)
-        self.filename.append(file)
-
-    def add(self, file, x_stream, y_stream, *args, **kwargs):
-        """
-        Add specified scans for selected streams.
-
-        Parameters
-        ----------
-        See loader function.
-        Adds all scans specified in *args.
-        """
-
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", False)
-        kwargs.setdefault("avg", False)
 
         # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ScanAddition(
-            file, x_stream, y_stream, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.type.append(y_stream)
-        self.filename.append(file)
-
-    def subtract(self, file, x_stream, y_stream, *args, **kwargs):
-        """
-        Subtract specified scans for selected streams.
-
-        Parameters
-        ----------
-        See loader function.
-        Subtracts all scans from the first element. May add scans in first element by specifying list of scans as first *arg.
-
-        """
-
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", False)
-
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ScanSubtraction(
-            file, x_stream, y_stream, *args, **kwargs))
+        self.data.append(load_1d(config, file, x_stream, y_stream, *args, **kwargs))
         self.x_stream.append(x_stream)
         self.type.append(y_stream)
         self.filename.append(file)
@@ -229,7 +134,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, y_axis_type='linear'):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, y_axis_type='linear', **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -265,7 +170,7 @@ class Load1d:
 
         # Set up the bokeh plot
         p = figure(height=plot_height, width=plot_width,y_axis_type=y_axis_type,
-                   tools="pan,wheel_zoom,box_zoom,reset,crosshair,save")
+                   tools="pan,wheel_zoom,box_zoom,reset,crosshair,save", **kwargs)
         p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
                      line_width=linewidth, line_color='color', line_alpha=0.6,
                      hover_line_color='color', hover_line_alpha=1.0,
@@ -425,151 +330,21 @@ class Load2d:
         self.plot_hlines = list()
         self.plot_labels = list()
 
-    def load(self, file, x_stream, detector, *args, **kwargs):
+    def load(self, config, file, x_stream, detector, *args, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
-
-        Parameters
-        ----------
-        basedir : string
-            Specifiy the absolute or relative path to experimental data.
-        file : string
-            Specify the file name (either ASCII or HDF5).
-        x_stream : string
-            Specifiy the data for the horizontal axis.
-            Use: "Mono Energy" or any SCA scalar array.
-        y_stream : string
-            Specifiy the data for the vertical axis.
-            Use: "MCP Energy", "SDD Energy", "XEOL Energy"
-        detector : string
-            Use: "MCP", "SDD", or "XEOL".
-        *args : int
-            Specify one (1) scan to load.
-        **kwargs: multiple, optional
-            Options:
-                norm : boolean
-                    Norm the spectra to [0,1].
-                    default: True
-                xoffset : list of tuples
-                    Offset the x-axis by applying a polynomial fit.
-                    default: None
-                xcoffset : float
-                    Offset x-axis by constant value.
-                    default : None 
-                yoffset : list of tuples
-                    Offset the y-axis by applying a polynomial fit.
-                    default : None 
-                ycoffset : float
-                    Offset y-axis by constant value.
-                    default : None
-                background : int or boolean
-                    Apply background selection for XEOL. 
-                    Select True when using with getXEOLback function or select background scan number.
-                    default : None
-                energyloss : boolean or float
-                    Convert emission energy to energy loss.
-                    Select True to extract incident mono energy from file or specify float manually.
-                    default : None
-                grid_x: list
-                    Grid data evenly on specified grid [low,high,step size]
-                    default: [None, None, None]
-                grid_y: list
-                    Grid data evenly on specified grid [low,high,step size]
-                    default: [None, None, None]
         """
-
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", False)
-        kwargs.setdefault("xoffset", None)
-        kwargs.setdefault("xcoffset", None)
-        kwargs.setdefault("yoffset", None)
-        kwargs.setdefault("ycoffset", None)
-        kwargs.setdefault("background", None)
-        kwargs.setdefault("grid_x", [None, None, None])
-        kwargs.setdefault("grid_y", [None, None, None])
 
         # Ensure that only one scan is loaded.
         if len(args) != 1:
             raise TypeError("You may only select one scan at a time")
         if self.data != []:
             raise TypeError("You can only append one scan per object")
-        self.data.append(loadMCAscans(file, x_stream, detector, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.detector.append(detector)
-        self.filename.append(file)
-
-        #if kwargs['energyloss'] == True:
-        #    self.x_stream[-1] = "Energy loss (eV)"
-        #    self.y_stream[-1] = "Mono Energy (eV)"
-
-    def add(self, file, x_stream, detector, *args, **kwargs):
-        """
-        Add specified images for selected streams.
-
-        Parameters
-        ----------
-        See loader function.
-        Adds all scans specified in *args.
-        """
-
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", False)
-        kwargs.setdefault("xoffset", None)
-        kwargs.setdefault("xcoffset", None)
-        kwargs.setdefault("yoffset", None)
-        kwargs.setdefault("ycoffset", None)
-        kwargs.setdefault("background", None)
-        kwargs.setdefault("grid_x", [None, None, None])
-        kwargs.setdefault("grid_y", [None, None, None])
-        kwargs.setdefault("energyloss", False)
-
-        self.data.append(ImageAddition(file, x_stream,
-                         detector, *args, **kwargs))
         
+        self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
         self.x_stream.append(x_stream)
-        self.y_stream.append("Fix it")
         self.detector.append(detector)
         self.filename.append(file)
-
-        if kwargs['energyloss'] == True:
-            self.x_stream[-1] = "Energy loss (eV)"
-            self.y_stream[-1] = "Mono Energy (eV)"
-
-    def subtract(self, file, x_stream, detector, *args, **kwargs):
-        """
-        Subtract specified images for selected streams.
-
-        Parameters
-        ----------
-        See loader function.
-        Subtracts all imnages from the first element.
-
-        """
-    
-        # Set the defaults if not specified in **kwargs.
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", False)
-        kwargs.setdefault("xoffset", None)
-        kwargs.setdefault("xcoffset", None)
-        kwargs.setdefault("yoffset", None)
-        kwargs.setdefault("ycoffset", None)
-        kwargs.setdefault("background", None)
-        kwargs.setdefault("grid_x", [None, None, None])
-        kwargs.setdefault("grid_y", [None, None, None])
-        kwargs.setdefault("energyloss", False)
-
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ImageSubtraction(file, x_stream,
-                         detector, *args, **kwargs))
-        
-        self.x_stream.append(x_stream)
-        self.y_stream.append("Fix it")
-        self.detector.append(detector)
-        self.filename.append(file)
-
-        if kwargs['energyloss'] == True:
-            self.x_stream[-1] = "Energy loss (eV)"
-            self.y_stream[-1] = "Mono Energy (eV)"
 
     def xlim(self, lower, upper):
         """
@@ -634,7 +409,7 @@ class Load2d:
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
     def plot(self, title=None, kind='Image', xlabel=None, ylabel=None, plot_height=600, plot_width=600, 
-            vmin=None, vmax=None, colormap = "linear"):
+            vmin=None, vmax=None, colormap = "linear", **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -657,7 +432,7 @@ class Load2d:
 
                 # Create the figure
                 p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
-                           tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save")
+                           tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save", **kwargs)
                 p.x_range.range_padding = p.y_range.range_padding = 0
 
                 # Gridded scales now calculated directly during the MCA load and only need to be referenced here
@@ -736,7 +511,7 @@ class Load2d:
             if ylabel != None:
                 p.yaxis.axis_label = str(ylabel)
             else:
-                p.yaxis.axis_label = "ToDo" #f"{self.y_stream[i]}"
+                p.yaxis.axis_label = f'{self.detector[i]} Scale'
 
             p.toolbar.logo = None
 
@@ -865,19 +640,8 @@ class LoadHistogram(Load2d):
         # Use this so we can inherit from Load2d for plotting
         self.detector = self.z_stream
 
-    def load(self, file, x_stream, y_stream, z_stream, *args, **kwargs):
-
-        # Set the defaults if not specified in **kwargs.
-        kwargs.setdefault("norm", False)
-        kwargs.setdefault("xoffset", None)
-        kwargs.setdefault("xcoffset", None)
-        kwargs.setdefault("yoffset", None)
-        kwargs.setdefault("ycoffset", None)
-        #kwargs.setdefault("background", None)
-        #kwargs.setdefault("grid_x",[None, None, None])
-        #kwargs.setdefault("grid_y",[None, None, None])
-
-        self.data.append(loadMeshScans(file, x_stream,
+    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        self.data.append(load_histogram(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
         self.x_stream.append(x_stream)
         self.y_stream.append(y_stream)
@@ -935,20 +699,20 @@ class LoadHistogram(Load2d):
 
 
 #########################################################################################
-
-class ImageStackLoader():
+        
+class Load3d:
     def __init__(self):
         self.data = list()
         self.filename = list()
 
-    def load(self, file, stack, arg):
+    def load(self, config, file, stack, arg,**kwargs):
         if self.data != []:
             raise UserWarning("Can only load one movie at a time.")
         else:
-            self.data.append(loadSTACKscans(file, stack, arg))
+            self.data.append(load_3d(config, file, stack, arg, **kwargs))
             self.filename.append(file)
 
-    def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600):
+    def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, **kwargs):
         def update(f=0):
             r.data_source.data['image'] = [v.stack[f]]
             r.data_source.data['x'] = [v.x_min]
@@ -961,7 +725,7 @@ class ImageStackLoader():
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
-                           tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save")
+                           tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save",**kwargs)
                 p.x_range.range_padding = p.y_range.range_padding = 0
 
                 # must give a vector of image data for image parameter
@@ -986,7 +750,7 @@ class ImageStackLoader():
                 if title != None:
                     p.title.text = str(title)
                 else:
-                    p.title.text = f'Image Movie for Scan {k}'
+                    p.title.text = f'Image Stack Movie for Scan {k}'
                 if xlabel != None:
                     p.xaxis.axis_label = str(xlabel)
                 else:
@@ -999,28 +763,25 @@ class ImageStackLoader():
                 s = show(p, notebook_handle=True)
                 display(widgets.interact(update, f=(0, len(v.stack)-1)))
 
-    def get_data(self):
-        # Note that there is only one scan
+    def export(self,filename, interval=500, aspect=1, xlim=None, ylim=None, **kwargs):
         for i, val in enumerate(self.data):
             for k, v in val.items():
-                return v.stack, v.data_scale, v.image_scale
+                frames = list()
+                fig  = plt.figure(**kwargs)
+                if not isinstance(xlim,type(None)):
+                    plt.xlim(xlim)
+                if not isinstance(ylim,type(None)):
+                    plt.ylim(ylim)
+                for img in v.stack:
+                    frames.append([plt.imshow(img,animated=True,extent=[v.x_min,v.x_max,v.y_min,v.y_max],aspect=aspect)])
             
-    def export(self, filename):
-
-        raise Exception("Cannot export this data.")
-        stack, data_scale, image_scale = self.get_data()
-
-        np.savetxt(f"{filename}_stack", stack.reshape(stack.shape[0], -1), fmt="%.9g")
-        np.savetxt(f"{filename}_dataScale", data_scale, fmt="%.9g")
-        np.savetxt(f"{filename}_imageScale", image_scale, fmt="%.9g")
-
-        print(f"Successfully wrote 3d data to {filename}.txt")
-
-
+                ani = animation.ArtistAnimation(fig, frames, interval=interval, blit=True,
+                                repeat_delay=10000)
+                ani.save(filename+'.mp4')
 
 #########################################################################################
 class LoadBeamline(Load1d):
-    def load(self, file, key, **kwargs):
+    def load(self, config, file, key, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
 
@@ -1051,7 +812,7 @@ class LoadBeamline(Load1d):
         """
 
         # Append all REIXS scan objects to scan list in current object.
-        self.data.append(loadSCAbeamline(file, key, **kwargs))
+        self.data.append(load_beamline(config, file, key, **kwargs))
         self.type.append(key)
         self.x_stream.append('Scan Number')
         self.filename.append(file)
@@ -1063,8 +824,8 @@ class LoadBeamline(Load1d):
         raise UserWarning('Undefined')
 
 
-def getBL(file, stream, *args):
-    get_single_beamline_value(file, stream, *args)
+def getBL(config, file, stream, *args):
+    get_single_beamline_value(config, file, stream, *args)
 
-def get_spreadsheet(file,columns=None):
-    return get_spreadsheet(file,columns)
+def getSpreadsheet(config, file,columns=None):
+    return get_spreadsheet(config, file,columns)

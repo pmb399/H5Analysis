@@ -1,8 +1,6 @@
-# CLS REIXS Analysis
+# CLS H5Analysis
 
-This is a library to analyse, plot, and export REIXS beamline data. The package is meant to provide a framework to load data into jupyter and enable data interaction.
-
-Further [beamline information](https://reixs.lightsource.ca/) is available on the Website of the Canadian Light Source.
+This is a library to analyse, plot, and export HDF5 data. The package is meant to provide a framework to load data into jupyter and enable data interaction.
 
 ## Installation
 

@@ -1,121 +1,128 @@
-# Scientific Modules
-import numpy as np
 import pandas as pd
 import h5py
+import numpy as np
+from .util import check_key_in_dict
+from .readutil import detector_norm, stack_norm
 
-# Scan analysis utils
-from .readutil import mca_roi, detector_norm, subtract_background
-from .simplemath import apply_offset, grid_data2d
+class Data:
+    """Standard data class to store h5 files"""
 
-# Spec Config
-from .spec_config import get_REIXSconfig, get_h5key, get_h5scan
-
-# Utilities
-import os
-import warnings
-
-## Every scan will be an instance of a class ##
-
-#########################################################################################
-
-
-class REIXS:
-    """data object HDF5
-
-        Parameters
-        ----------
-        header_file : string
-            Give name of header file with extension
-    """
-
-    def __init__(self, file, scan):
+    def __init__(self,config,file,scan):
+        self.config = config
         self.file = file
-
-        # Read in parameter/variable config (either external from os.env or internal default)
-        self.REIXSconfig = get_REIXSconfig()
-        self.group = get_h5key(scan)
-
-        with h5py.File(file, 'r') as f:
-
-            # Populate a pandas dataframe with all SCA data
+        self.scan = scan
+        
+        # Makes all 1d data in specified folder(s) accessible
+        if self.config.sca_folders != list():
             self.sca_data = pd.DataFrame()
-            try:
-                for entry in f[f'{self.group}/{self.REIXSconfig["HDF5_sca_data"]}']:
-                    if len(f[f'{self.group}/{self.REIXSconfig["HDF5_sca_data"]}/{entry}'].shape) == 1 and len(f[f'{self.group}/{self.REIXSconfig["HDF5_sca_data"]}/{entry}']) == len(f[f'{self.group}/{self.REIXSconfig["HDF5_sca_data"]}/epoch']):
-                        self.sca_data[str(entry)] = np.array(
-                            f[f'{self.group}/{self.REIXSconfig["HDF5_sca_data"]}/{entry}'])
-            except Exception as e:
-                warnings.warn(
-                    f"Could not load SCAs from HDF5 container. {type(e)}: {e}")
+            sca_series = list()
+            sca_headers = list()
 
-    def Scan(self, request, roi, kwargs=dict()):
+            with h5py.File(file, 'r') as f:
 
-        # Try opening hdf5 container
-        with h5py.File(self.file, 'r') as f:
-                               
-            # Load data for the requested alias
+                # Populate a pandas dataframe with all SCA data
+                try:
+                    for path in self.config.sca_folders:
+                        p = config.get_path(scan,path)
+                        for entry in f[p]:
+                            if len(f[f'{p}/{entry}'].shape) == 1:
+                                sca_series.append(pd.Series(np.array(f[f'{p}/{entry}'])))
+                                sca_headers.append(str(entry))
+                                
+                    self.sca_data = pd.DataFrame(sca_series).transpose(copy=True)
+                    self.sca_data.columns = sca_headers
+                                
+                except Exception as e:
+                    raise Exception(e)
+                    
+    def Scan(self,requisition):
+        req_data = dict()
+        
+        if not isinstance(requisition,list):
+            requisition = [requisition]
+        
+        for req in requisition:
+            
+            # If an alias is defined, use config file
+            if check_key_in_dict(req,self.config.h5dict):
+                with h5py.File(self.file, 'r') as f:
+        
+                    req_attr = self.config.h5dict[req]
+            
+                    if req_attr['type'] == 'SCA':
+                        p = self.config.get_path(self.scan,req_attr['SCA_Path'])
+                        data = np.array(f[p])
+                        if not isinstance(req_attr['norm_by'],type(None)):
+                            p = self.config.get_path(self.scan,req_attr['norm_by'])
+                            norm_by = np.array(f[p])
+                            req_data[req] = np.true_divide(data,norm_by)
+                        else:
+                            req_data[req] = data
                             
-            if self.REIXSconfig[request]['type'] == 'SCA':
-                data = np.array(f[f"{self.group}/{self.REIXSconfig[request]['SCA_path']}"])
+                    elif req_attr['type'] == 'MCA':
+                        p = self.config.get_path(self.scan,req_attr['MCA_Path'])
+                        data = np.array(f[p])
+                        
+                        if not isinstance(req_attr['MCA_Scale'],type(None)):
+                            p = self.config.get_path(self.scan,req_attr['MCA_Scale'])
+                            scale = np.array(f[p])
+                            
+                            req_data[f"{req}_scale"] = scale
 
-                if not isinstance(self.REIXSconfig[request]['norm_by'],type(None)):
-                    norm_by = np.array(f[f"{self.group}/{self.REIXSconfig[request]['norm_by']}"])
-                    self.data = np.true_divide(data,norm_by)
-                else:
-                    self.data = data
+                        else:
+                            req_data[f"{req}_scale"] = np.arange(0,np.shape(data)[1])
+                            
+                        if not isinstance(req_attr['norm_by'],type(None)):
+                            p = self.config.get_path(self.scan,req_attr['norm_by'])
+                            norm_by = np.array(f[p])
+                            data = detector_norm(data, norm_by)
+                            
+                        req_data[f"{req}"] = data
+                        
+                    elif req_attr['type'] == 'STACK':
+                        p = self.config.get_path(self.scan,req_attr['STACK_Path'])
+                        data = np.array(f[p])
+                                              
+                        if not isinstance(req_attr['MCA_Scale'],type(None)):
+                            p = self.config.get_path(self.scan,req_attr['MCA_Scale'])
+                            scale = np.array(f[p])
+                            
+                            req_data[f"{req}_scale1"] = scale
 
-            elif self.REIXSconfig[request]['type'] == 'MCA':
-                mca = np.array(f[f"{self.group}/{self.REIXSconfig[request]['MCA_path']}"])
-                roi_scale = np.array(f[f"{self.group}/{self.REIXSconfig[request]['ROI_scale']}"])
+                        else:
+                            req_data[f"{req}_scale1"] = np.arange(0,np.shape(data)[1])
+                            
+                        if not isinstance(req_attr['STACK_Scale'],type(None)):
+                            p = self.config.get_path(self.scan,req_attr['STACK_Scale'])
+                            scale = np.array(f[p])
+                            
+                            req_data[f"{req}_scale2"] = scale
 
-                if 'background' in kwargs and kwargs['background'] != None:
-                    bg_group = get_h5key(kwargs['background'])
-                    bg = np.array(f[f"{bg_group}/{self.REIXSconfig[request]['MCA_path']}"])
-
-                    mca = subtract_background(mca,bg)
-
-                if not isinstance(self.REIXSconfig[request]['norm_by'],type(None)):
-                    norm_by = np.array(f[f"{self.group}/{self.REIXSconfig[request]['norm_by']}"])
-                    mca = detector_norm(mca, norm_by)
-                
-                self.data = mca_roi(mca,roi_scale,roi,self.REIXSconfig[request]['summation_axis'])
-
-            elif self.REIXSconfig[request]['type'] == 'IMG':
-                mca = np.array(f[f"{self.group}/{self.REIXSconfig[request]['MCA_path']}"])
-                self.data_scale = np.array(f[f"{self.group}/{self.REIXSconfig[request]['Data_scale']}"])
-
-                if 'background' in kwargs and kwargs['background'] != None:
-                    bg_group = get_h5key(kwargs['background'])
-                    bg = np.array(f[f"{bg_group}/{self.REIXSconfig[request]['MCA_path']}"])
-
-                    mca = subtract_background(mca,bg) 
-
-                if not isinstance(self.REIXSconfig[request]['norm_by'],type(None)):
-                    norm_by = np.array(f[f"{self.group}/{self.REIXSconfig[request]['norm_by']}"])
-                    self.mca = detector_norm(mca, norm_by)
-                else:
-                    self.mca = mca
-
-            elif self.REIXSconfig[request]['type'] == 'STACK':
-                self.stack = np.array(f[f"{self.group}/{self.REIXSconfig[request]['STACK_path']}"])
-                if not isinstance(self.REIXSconfig[request]['Data_scale'],type(None)):
-                    self.data_scale = np.array(f[f"{self.group}/{self.REIXSconfig[request]['Data_scale']}"])
-                else:
-                    pts = np.shape(self.stack)[1]
-                    self.data_scale = np.array(range(0, pts), dtype=int)
-                if not isinstance(self.REIXSconfig[request]['Image_scale'],type(None)):
-                    self.image_scale = np.array(f[f"{self.group}/{self.REIXSconfig[request]['Image_scale']}"])
-                else:
-                    pts = np.shape(self.stack)[2]
-                    self.image_scale = np.array(range(0, pts), dtype=int)
-
+                        else:
+                            req_data[f"{req}_scale2"] = np.arange(0,np.shape(data)[2])
+                            
+                        if not isinstance(req_attr['norm_by'],type(None)):
+                            p = self.config.get_path(self.scan,req_attr['norm_by'])
+                            norm_by = np.array(f[p])
+                            data = stack_norm(data, norm_by)
+                            
+                        
+                        req_data[f"{req}"] = data
+                        
+                    else:
+                        raise Exception("Undefined type.")
             else:
-                raise UserWarning("Type not implemented.")
-
+                # If no alias defined, try to get data from SCA folder
+                try:
+                    req_data[req] = self.sca_data[req].dropna().to_numpy()
+                except:
+                    raise Exception("Data stream undefined")
+                    
+        return req_data
 
 class ScanInfo:
 
-    def __init__(self,file, keys):
+    def __init__(self, config, file, keys):
         """Load one specific scan from specified data file
 
         Parameters
@@ -135,7 +142,7 @@ class ScanInfo:
                     info_dict[key] = dict()
                     for k in f.keys():
                         try:
-                            skey = int(get_h5scan(k))
+                            skey = int(config.get_h5scan(k))
                             try:
                                 info_dict[key][skey] = f[f'{k}/{key}'][()].decode("utf-8")
                             except AttributeError:

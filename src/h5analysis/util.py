@@ -1,80 +1,10 @@
-import re
-from itertools import groupby
-import pandas as pd
-import numpy as np
-from scipy.interpolate import interp1d
-from collections.abc import MutableMapping
 
 #########################################################################################
-
-
-def all_list_entries_equal(iterable):
-    """Checks if all entries in a list are equal"""
-    g = groupby(iterable)
-    return next(g, True) and not next(g, False)
-
-#########################################################################################
-
-
-def doesMatchPattern(string, patterns=[]):
-    """Checks if a string matches specific patterns"""
-    for p in patterns:
-
-        # skip empty patterns
-        if not p:
-            continue
-
-        if re.search(p, string, re.I):
-            return True
-
-    return False
-
-#########################################################################################
-
-
-def get_roi(roi):
-    """Gets the roi when ':' separated"""
-    try:
-        roi_low = float(roi.split(":")[0])
-        roi_high = float(roi.split(":")[1])
-    except:
-        roi_low = float(roi)
-        roi_high = float(roi)
-
-    return check_idx(roi_low, roi_high)
-
-#########################################################################################
-
-
-def check_idx(idx_low, idx_high):
-    """Check the index of an array. Add +1 to allow slicing."""
-    if idx_low == idx_high:
-        idx_high = idx_low+1
-
-    return idx_low, idx_high
-
-#########################################################################################
-
-
 def check_key_in_dict(key, dic):
     """Checks if a specific key is in a dictionary"""
     for k, v in dic.items():
         if key == k:
             return True
-
-#########################################################################################
-
-
-def flatten(d):
-    """Flattens a dictionary of dicts to one dictionary"""
-    items = []
-    for k, v in d.items():
-        if isinstance(v, MutableMapping):
-            items.extend(flatten(v).items())
-        else:
-            items.append((k, v))
-    return dict(items)
-
 #########################################################################################
 
 
@@ -83,7 +13,6 @@ def invert_dict(my_map):
 
 #########################################################################################
 # Palette for Bokeh Plots
-
 
 COLORP = ['#d60000', '#8c3bff', '#018700', '#00acc6', '#e6a500', '#ff7ed1', '#6b004f', '#573b00', '#005659', '#15e18c', '#0000dd', '#a17569', '#bcb6ff', '#bf03b8', '#645472', '#790000', '#0774d8', '#729a7c', '#ff7752', '#004b00', '#8e7b01', '#f2007b', '#8eba00', '#a57bb8', '#5901a3', '#e2afaf', '#a03a52', '#a1c8c8', '#9e4b00', '#546744', '#bac389', '#5e7b87',
           '#60383b', '#8287ff', '#380000', '#e252ff', '#2f5282', '#7ecaff', '#c4668e', '#008069', '#919eb6', '#cc7407', '#7e2a8e', '#00bda3', '#2db152', '#4d33ff', '#00e400', '#ff00cd', '#c85748', '#e49cff', '#1ca1ff', '#6e70aa', '#c89a69', '#77563b', '#03dae6', '#c1a3c3', '#ff6989', '#ba00fd', '#915280', '#9e0174', '#93a14f', '#364424', '#af6dff', '#596d00',
@@ -94,48 +23,3 @@ COLORP = ['#d60000', '#8c3bff', '#018700', '#00acc6', '#e6a500', '#ff7ed1', '#6b
           '#727790', '#6e0099', '#a0ba52', '#e16e31', '#c46970', '#6d5b95', '#a33b74', '#316200', '#87004f', '#335769', '#ba8c7c', '#1859ff', '#909101', '#2b8ad4', '#1626ff', '#21d3ff', '#a390af', '#8a6d4f', '#5d213d', '#db03b3', '#6e56ca', '#642821', '#ac7700', '#a3bff6', '#b58346', '#9738db', '#b15093', '#7242a3', '#878ed1', '#8970b1', '#6baf36', '#5979c8',
           '#c69eff', '#56831a', '#00d6a7', '#824638', '#11421c', '#59aa75', '#905b01', '#f64470', '#ff9703', '#e14231', '#ba91cf', '#34574d', '#f7807c', '#903400', '#b3cd00', '#2d9ed3', '#798a9e', '#50807c', '#c136d6', '#eb0552', '#b8ac7e', '#487031', '#839564', '#d89c89', '#0064a3', '#4b9077', '#8e6097', '#ff5238', '#a7423b', '#006e70', '#97833d', '#dbafc8']
 #########################################################################################
-
-
-def to_quanty(file):
-    """Manipulates data file such that it can be used as input for Quanty Fitting program.
-
-    Parameters
-    ----------
-    file : string
-        Specify path to exported file.
-
-    """
-    # Read the data file
-
-    df = pd.read_csv(file, header=1)
-    minimum = list()
-    maximum = list()
-    diff = list()
-    interpObj = list()
-    # Start interpolation process to common energy loss axis
-    for i, name in enumerate(df.columns):
-        if name.endswith('MCP Energy'):
-            minimum.append(df[name].min())
-            maximum.append(df[name].max())
-            diff.append(np.diff(df[name]).min())
-            # Interpolate all data
-            interpObj.append(interp1d(np.array(df[name]), np.array(
-                df.iloc[:, df.columns.get_loc(name)+1]), fill_value='extrapolate'))
-
-    # Calculate the number of points and generate linear space
-    numPoints = int(np.ceil((np.array(maximum).max() -
-                    np.array(minimum).min())/abs(np.array(diff).min())))
-    linspace = np.linspace(np.array(minimum).min(), np.array(
-        maximum).max(), numPoints, endpoint=True)
-
-    # Create new pandas data frame
-    dfint = pd.DataFrame(linspace)
-
-    # Evaluate all interp objects on new lin space
-    # and append to new data frame
-    for i, obj in enumerate(interpObj):
-        dfint[i+1] = obj(linspace)
-
-    # Convert data frame to numpy and export
-    npreturn = dfint.to_numpy()
-    np.savetxt(f"{file}_Quanty.txt", npreturn)

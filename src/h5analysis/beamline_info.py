@@ -5,7 +5,7 @@ from .simplemath import apply_offset
 from .util import invert_dict
 
 
-def loadSCAbeamline(file, key, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
+def load_beamline(config, file, key, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
     class beamline_object:
         def __init__(self):
             pass
@@ -13,7 +13,7 @@ def loadSCAbeamline(file, key, norm=False, xoffset=None, xcoffset=None, yoffset=
     data = dict()
     data[0] = beamline_object()
 
-    infoObj = ScanInfo(file,key)
+    infoObj = ScanInfo(config,file,key)
     info = infoObj.info_dict
     info_array = np.array(list(info[key].items()), dtype='float')
 
@@ -39,8 +39,8 @@ def loadSCAbeamline(file, key, norm=False, xoffset=None, xcoffset=None, yoffset=
     return data
 
 
-def get_single_beamline_value(file, keys, *args):
-    infoObj = ScanInfo(file, keys)
+def get_single_beamline_value(config, file, keys, *args):
+    infoObj = ScanInfo(config, file, keys)
     info = infoObj.info_dict
 
     if not isinstance(keys, list):
@@ -56,7 +56,7 @@ def get_single_beamline_value(file, keys, *args):
         print('====================')
 
 
-def get_spreadsheet(file, columns=None):
+def get_spreadsheet(config, file, columns=None):
     if columns == None:
         columns = dict()
 
@@ -74,6 +74,6 @@ def get_spreadsheet(file, columns=None):
         #columns['Comment'] = 'command'
         columns['Status'] = 'status'
 
-    infoObj = ScanInfo(file,list(columns.values()))
+    infoObj = ScanInfo(config, file,list(columns.values()))
     info = infoObj.info_dict
     return pd.DataFrame(info).rename(invert_dict(columns), axis=1)

@@ -67,88 +67,43 @@ def grid_data(x_stream, y_stream, grid):
 
     return new_x, new_y
 
-def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None, None,None],energyloss=False):
+def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None, None,None]):
     """Internal function to apply specified grid or ensure otherwise that axes are evenly spaced as this is required to plot an image."""
-    if energyloss == False:
-        # Do auto-grid if not specified otherwise
-        # Take step-size as smallest delta observed in data array
-        if grid_x == [None, None, None]:
-            xmin = x_data.min()
-            xmax = x_data.max()
-            x_points = int(
-                np.ceil((xmax-xmin)/np.abs(np.diff(x_data)).min())) + 1
+    # Do auto-grid if not specified otherwise
+    # Take step-size as smallest delta observed in data array
+    if grid_x == [None, None, None]:
+        xmin = x_data.min()
+        xmax = x_data.max()
+        x_points = int(
+            np.ceil((xmax-xmin)/np.abs(np.diff(x_data)).min())) + 1
 
-        else:
-            xmin = grid_x[0]
-            xmax = grid_x[1]
-            x_points = int(np.ceil((xmax-xmin)/grid_x[2])) + 1
-
-        # Same as above, now for second axis.
-        if grid_y == [None, None, None]:
-            ymin = y_data.min()
-            ymax = y_data.max()
-            y_points = int(
-                np.ceil((ymax-ymin)/np.abs(np.diff(y_data)).min())) + 1
-
-        else:
-            ymin = grid_y[0]
-            ymax = grid_y[1]
-            y_points = int(np.ceil((ymax-ymin)/grid_y[2])) + 1
-
-        # Interpolate the data with given grid
-        f = interp2d(x_data, y_data, np.transpose(detector))
-
-        new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
-        new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
-        # Interpolate image on evenly-spaced grid
-        new_z = f(new_x, new_y)
-
-        return xmin, xmax, ymin, ymax, new_x, new_y, new_z
-    
-    elif energyloss == True:
-        if grid_x == [None,None,None]:
-            xmin = x_data.min()
-            xmax = x_data.max()
-            x_points = int(np.ceil((xmax-xmin)/np.abs(np.diff(x_data)).min())) + 1
-        else:
-            xmin = grid_x[0]
-            xmax = grid_x[1]
-            x_points = int(np.ceil((xmax-xmin)/grid_x[2])) + 1
-
-        energy_loss_axes = list()
-
-        # Calculate the energy loss axis for each mono energy as the incident energy will change the axis.
-        for monoE in x_data:
-            energy_loss_axes.append(monoE-y_data)
-
-        # Determine the widest range where data is available on the rotated image.
-        if grid_y == [None,None,None]:
-            ymin = energy_loss_axes[-1][-1]
-            ymax = energy_loss_axes[0][0]
-            y_points = int(np.abs(np.ceil((ymax-ymin)/np.diff(energy_loss_axes[0]).min())))
-
-        else:
-            ymin = grid_y[0]
-            ymax = grid_y[1]
-            y_points = int(np.ceil((ymax-ymin)/grid_y[2])) + 1
-
-        # Generate new axis as per the rotated image above.
-        new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
-        new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
-
-        scatter_z = np.zeros((len(x_data),len(new_y)))
-
-        # Evaluate the detector image on the new common energy axis
-        for idx,val in enumerate(detector):
-            scatter_z[idx,:] = interp1d(energy_loss_axes[idx],val)(new_y)
-
-        f = interp2d(x_data,new_y,np.transpose(scatter_z))
-        new_z = f(new_x,new_y)
-
-        return xmin, xmax, ymin, ymax, new_x, new_y, new_z
     else:
-        raise ValueError('Could not determine if energyloss requested or not.')
+        xmin = grid_x[0]
+        xmax = grid_x[1]
+        x_points = int(np.ceil((xmax-xmin)/grid_x[2])) + 1
 
+    # Same as above, now for second axis.
+    if grid_y == [None, None, None]:
+        ymin = y_data.min()
+        ymax = y_data.max()
+        y_points = int(
+            np.ceil((ymax-ymin)/np.abs(np.diff(y_data)).min())) + 1
+
+    else:
+        ymin = grid_y[0]
+        ymax = grid_y[1]
+        y_points = int(np.ceil((ymax-ymin)/grid_y[2])) + 1
+
+    # Interpolate the data with given grid
+    f = interp2d(x_data, y_data, np.transpose(detector))
+
+    new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
+    new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
+    # Interpolate image on evenly-spaced grid
+    new_z = f(new_x, new_y)
+
+    return xmin, xmax, ymin, ymax, new_x, new_y, new_z
+    
 
 def grid_data_mesh(x_data,y_data,z_data):
     """Internal function to generate scatter histogram for 3 independent SCA streams."""

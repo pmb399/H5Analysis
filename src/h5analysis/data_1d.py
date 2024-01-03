@@ -1,66 +1,184 @@
-from .util import doesMatchPattern, check_key_in_dict, get_roi
-from .ReadData import REIXS
-from .spec_config import get_REIXSconfig
+from .ReadData import Data
+from .datautil import get_roi, get_indices, mca_roi, strip_roi,stack_roi
+from .util import check_key_in_dict
+from .parser import parse
 from .simplemath import apply_offset, grid_data, apply_savgol, bin_data
 import warnings
+
 import numpy as np
-from .parser import math_stream
-from shapely.geometry import Point, Polygon
+from numpy import log as ln
+from numpy import log10 as log
+from numpy import exp
+from numpy import max, min
 
-def loadSCAscans(file, x_stream, y_stream, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, energyloss=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}, background = None):
-    """Internal function to load and process data to 1d
-    
-        Parameters
-        ----------
-        See Load1d function.
-    """
+def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}):
 
-    def get_y_data(req, data, arg):
-
-        try:
-            strip_roi = req.split("[")[1].rstrip("]")
-            roi_low, roi_high = get_roi(strip_roi)
-            roi = (roi_low,roi_high)
-            req = req.split("[")[0]
-        except:
-            roi = None
-
-        if check_key_in_dict(req,REIXSConfig):
-            data[arg].Scan(req,roi,kwargs)
-            return data[arg].data
-        else:
-            try:
-                # Else, load from pandas SCA data frame
-                return np.array(data[arg].sca_data[req])
-            except:
-                raise UserWarning("Special Stream not defined.")
-            
-    def get_x_data(req, data, arg):
-        try:
-            if check_key_in_dict(req,REIXSConfig):
-                data[arg].Scan(req,None)
-                return np.array(data[arg].data)
-            else:
-                return np.array(data[arg].sca_data[req])
-        except Exception as e:
-           return np.array(range(0, len(data[arg].y_stream)), dtype=int)
-
-
-    # Add all data (REIXS objects) to dictionary
     data = dict()
-    
-    # Iterate over all scans requested in load call
+
     for arg in args:
-        data[arg] = REIXSobj = REIXS(file,arg)
+        reqs = list()
+        rois = dict()
+
+        data[arg] = Data(config,file,arg)
         data[arg].scan = arg
 
-        REIXSConfig = get_REIXSconfig()
+        contrib_x_stream = parse(x_stream)
+        contrib_y_stream = parse(y_stream)
 
-        kwargs = dict()
-        kwargs['background'] = background
-        data[arg].y_stream = math_stream(y_stream, data, arg, get_y_data)
-        data[arg].x_stream = math_stream(x_stream, data, arg, get_x_data)
+        reqs, rois = strip_roi(contrib_x_stream,'x',reqs, rois)
+        reqs, rois = strip_roi(contrib_y_stream,'y',reqs, rois)
+
+        all_data = data[arg].Scan(reqs)
+
+        x_stream_convert = x_stream
+        for i,x in enumerate(contrib_x_stream):
+
+            # Check if x component has ROI
+            if check_key_in_dict(x,rois['x']):
+                # Check that dim(x) = 1
+                try:
+                    if len(np.shape(all_data[rois['x'][x]['req']])) == 1: 
+                        # Check that we only have 1 ROI x-stream
+                        if len(contrib_x_stream) != 1:
+                            raise Exception('Only one ROI x-stream supported.')
+                        if isinstance(rois['x'][x]['roi'],tuple):
+                            # Will reduce dim to 0
+                            dim_x = 0
+                            # Get indices
+                            xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[rois['x'][x]['req']])
+                        else:
+                            raise Exception("Error in specified ROI")
+                    else:
+                        raise Exception("Inappropriate dimensions for x-stream")
+                except:
+                    raise Exception('x-stream undefined.')
+            
+            # If x component has no ROI
+            else:
+                try:
+                    if len(np.shape(all_data[x])) == 1:
+                        # len(contrix_x_stream) requirement above implicitly verifies that
+                        # we can only have multiple x components if dim=1
+                        dim_x = 1
+
+                        # Add data to locals
+                        locals()[f"s{arg}_val{i}_x"] = all_data[x]
+                        x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
+                    else:
+                        raise Exception('x-stream dimensions unsupported')
+                except:
+                    raise Exception('x-stream undefined.')
+
+        if not (dim_x==0 or dim_x == 1):
+            raise Exception('Error defining x-stream')
+        if dim_x == 1:
+            data[arg].x_stream = eval(x_stream_convert)
+
+        y_stream_convert = y_stream
+        for i,y in enumerate(contrib_y_stream):
+            if check_key_in_dict(y,rois['y']):
+                try:
+                    # Check that dim(y) = 2
+                    if len(np.shape(all_data[rois['y'][y]['req']])) == 2:
+                        if isinstance(rois['y'][y]['roi'],tuple):
+                            if dim_x == 1:
+                                # Get indices and reduce data
+                                ylow,yhigh = get_indices(rois['y'][y]['roi'],all_data[f"{rois['y'][y]['req']}_scale"])
+                                y_data = mca_roi(all_data[rois['y'][y]['req']],ylow,yhigh,1,scale=all_data[f"{rois['y'][y]['req']}_scale"])
+                                # Add data to locals
+                                locals()[f"s{arg}_val{i}_y"] = y_data
+                                y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                            else:
+                                raise Exception('x and y have incompatible dimensions')
+                        else:
+                            raise Exception("Error in specified ROI")
+                    elif len(np.shape(all_data[rois['y'][y]['req']])) == 3:
+                        if isinstance(rois['y'][y]['roi'],dict):
+                            idxLow1,idxHigh1 = get_indices(rois['y'][y]['roi']['roi_list'][0],all_data[f"{rois['y'][y]['req']}_scale1"])
+                            idxLow2,idxHigh2 = get_indices(rois['y'][y]['roi']['roi_list'][1],all_data[f"{rois['y'][y]['req']}_scale2"])
+
+                            if dim_x == 1:
+                                y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['y'][y]['roi']['roi_axes'],scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                                if len(np.shape(y_data)) == 1:
+                                    # Add data to locals
+                                    locals()[f"s{arg}_val{i}_y"] = y_data
+                                    y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                                else:
+                                    raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+
+                            elif dim_x == 0:
+                                if not isinstance(xlow,type(None)) and not isinstance(xhigh,type(None)):
+                                    if xlow > xhigh:
+                                        warnings.warn("xlow>xhigh.\nEither select a single value or [None:None] to integrate over all.\nThis most likely happens because the chosen x-stream is not monotonic.")
+
+                                # Add first axis 0 of x-stream to integration
+                                integration_axes = tuple([0] + list(rois['y'][y]['roi']['roi_axes']))
+                                all_axes = {0,1,2}
+                                x_axis_raw = all_axes-set(integration_axes)
+
+                                if not len(list(x_axis_raw)) == 1:
+                                    raise Exception('Error determining proper integration axes')
+                                else:
+                                    x_axis = list(x_axis_raw)[0]
+                                    if x_axis == 1:
+                                        data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow1:idxHigh1]
+                                    elif x_axis == 2:
+                                        data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow2:idxHigh2]
+                                    else:
+                                        raise Exception("Wrong axis defined.")
+                                    y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                                    # Add data to locals
+                                    locals()[f"s{arg}_val{i}_y"] = y_data
+                                    y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                            else:
+                                raise Exception("Incompatible dimensions for chosen x- and y-stream.")
+
+                        else:
+                            raise Exception("Error in specified ROI")
+                    else:
+                        raise Exception("Inappropriate dimensions for y-stream")
+                except:
+                    raise Exception('y-stream undefined.')
+                
+            else:
+                try:
+                    if len(np.shape(all_data[y])) == 1:
+                        if dim_x == 1:
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_y"] = all_data[y]
+                            y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                        else:
+                            raise Exception("x and y have incompatible dimensions")
+                    elif len(np.shape(all_data[y])) == 2:
+                        if dim_x == 0:
+                            data[arg].x_stream = all_data[f"{y}_scale"]
+                            y_data = mca_roi(all_data[y],xlow,xhigh,0,scale=all_data[f"{y}_scale"])
+
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_y"] = y_data
+                            y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+
+                        elif dim_x == 1:
+                            y_data = mca_roi(all_data[y],None,None,1,ind_axis=data[arg].x_stream)
+
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_y"] = y_data
+                            y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+
+                        else:
+                            raise Exception("x and y have incompatible dimensions")
+                    else:
+                        raise Exception('Improper dimensions of y-stream')
+
+                except:
+                    raise Exception('y-stream undefined.')
         
+        try:
+            data[arg].y_stream = eval(y_stream_convert)
+        except:
+            raise Exception("Error determining y stream.")
+        
+
         # Get legend items
         try:
             data[arg].legend = legend_items[arg]
@@ -108,14 +226,5 @@ def loadSCAscans(file, x_stream, y_stream, *args, norm=True, xoffset=None, xcoff
                     data[arg].y_stream.max()
             else:
                 raise TypeError("Savgol smoothing arguments incorrect.")
-
-        # Transforms RIXS to energy loss scale if incident energy is given
-        if energyloss != None:
-            # If True, use value from mono to transform to energy loss, else use manual float input
-            if energyloss == True:
-                data[arg].Scan('Mono Energy',None)
-                data[arg].x_stream = np.average(data[arg].data)-data[arg].x_stream
-            else:
-                data[arg].x_stream = energyloss-data[arg].x_stream
 
     return data
