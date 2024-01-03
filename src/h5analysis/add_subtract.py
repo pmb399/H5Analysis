@@ -2,7 +2,8 @@ import numpy as np
 from scipy.interpolate import interp1d, interp2d
 from .data_1d import load_1d
 from .data_2d import load_2d
-from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data
+from .histogram import load_histogram
+from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data, grid_data_mesh
 from .readutil import detector_norm
 import warnings
 
@@ -282,5 +283,53 @@ def ImageSubtraction(config, file, x_stream, detector, minuend, subtrahend, norm
     # Normalize data to [0,1]
     if norm == True:
         data[0].new_z =  data[0].new_z / data[0].new_z.max()
+
+    return data
+
+def HistogramAddition(config,file, x_stream, y_stream, z_stream, *args, norm=False):
+
+    # Define generic object in which all data will be stored
+    class added_object:
+        def __init__(self):
+            pass
+
+    # Ensure we only add a unique scan once
+    for i in args:
+        if args.count(i) > 1:
+            raise ValueError("Cannot add the same scan to itself")
+        
+    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+
+    # Iterate over all loaded scans
+    x_data = list()
+    y_data = list()
+    z_data = list()
+    for i, (k, v) in enumerate(ScanData.items()):
+        x_data.append(v.x_data)
+        y_data.append(v.y_data)
+        z_data.append(v.z_data)
+
+    all_x = np.concatenate(tuple(x_data))
+    all_y = np.concatenate(tuple(y_data))
+    all_z = np.concatenate(tuple(z_data))
+    
+    xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(all_x,all_y,all_z)
+
+    data = dict()
+    data[0] = added_object()
+    data[0].xmin = xmin
+    data[0].xmax = xmax
+    data[0].ymin = ymin
+    data[0].ymax = ymax
+    data[0].xedge = xedge
+    data[0].yedge = yedge
+    data[0].new_z = new_z
+    data[0].zmin = zmin
+    data[0].zmax = zmax
+
+    if norm == True:
+        data[0].new_z =  data[0].new_z / data[0].new_z.max()
+        data[0].zmin = zmin / zmax
+        data[0].zmax = 1
 
     return data

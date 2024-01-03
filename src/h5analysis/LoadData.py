@@ -29,7 +29,7 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction
+from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction, HistogramAddition
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -722,8 +722,13 @@ class LoadHistogram(Load2d):
         self.z_stream.append(z_stream)
         self.filename.append(file)
 
-    def add(self):
-        raise UserWarning("Functionality not yet implemented.")
+    def add(self, config, file, x_stream, y_stream, z_stream, *args, norm=False):
+        self.data.append(HistogramAddition(config, file, x_stream,
+                         y_stream, z_stream, *args, norm=norm))
+        self.x_stream.append(x_stream)
+        self.y_stream.append(y_stream)
+        self.z_stream.append(z_stream)
+        self.filename.append(file)
     
     def subtract(self):
         raise UserWarning("Functionality not yet implemented.")
