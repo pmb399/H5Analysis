@@ -44,7 +44,7 @@ All data loaders require a proper configuration variable which is beamline/data 
 ```
 config = h5Config()
 
-config.key("SCAN_{scan2:03d}",'scan2')
+config.key("SCAN_{scan:03d}",'scan')
 config.sca_folder('Data')
 
 config.sca('Mono Energy','Data/beam')
