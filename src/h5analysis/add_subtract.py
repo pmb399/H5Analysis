@@ -326,6 +326,9 @@ def HistogramAddition(config,file, x_stream, y_stream, z_stream, *args, norm=Fal
     data[0].new_z = new_z
     data[0].zmin = zmin
     data[0].zmax = zmax
+    data[0].x_data = all_x
+    data[0].y_data = all_y
+    data[0].z_data = all_z
 
     if norm == True:
         data[0].new_z =  data[0].new_z / data[0].new_z.max()

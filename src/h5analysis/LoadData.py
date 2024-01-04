@@ -32,6 +32,7 @@ from .histogram import load_histogram
 from .data_3d import load_3d
 from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction, HistogramAddition
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
+from .simplemath import grid_data_mesh
 
 #########################################################################################
 #########################################################################################
@@ -1006,6 +1007,10 @@ class Object2dMath(Load2d):
         self.DataObjectsSubtract.append(obj.data[line][scan])
         
     def evaluate(self):
+
+        if self.data != []:
+            raise UserWarning("Can only load one scan at a time.")
+
         for i,item in enumerate(self.DataObjectsAdd):
             if i ==0:
                 MASTER_x_stream = item.new_x
@@ -1047,6 +1052,67 @@ class Object2dMath(Load2d):
         data[0].xmax = MASTER_xmax
         data[0].ymin = MASTER_ymin
         data[0].ymax = MASTER_ymax
+        data[0].scan = 'Misc'
+        data[0].legend = 'Addition/Subtraction'
+
+        self.x_stream.append('x-stream')
+        self.y_stream.append('y-stream')
+        self.detector.append('Detector')
+        self.filename.append('Simple Math')
+        
+        self.data.append(data)
+
+#########################################################################################
+
+class ObjectHistMath(LoadHistogram):
+        
+    def __init__(self):
+        self.DataObjectsAdd = list()
+
+        return LoadHistogram.__init__(self)
+        
+    def add(self,obj,line,scan):
+        self.DataObjectsAdd.append(obj.data[line][scan])
+        
+    def evaluate(self):
+
+        if self.data != []:
+            raise UserWarning("Can only load one scan at a time.")
+
+        # Iterate over all loaded scans
+        x_data = list()
+        y_data = list()
+        z_data = list()
+
+        for i,item in enumerate(self.DataObjectsAdd):
+            x_data.append(item.x_data)
+            y_data.append(item.y_data)
+            z_data.append(item.z_data)
+                
+        all_x = np.concatenate(tuple(x_data))
+        all_y = np.concatenate(tuple(y_data))
+        all_z = np.concatenate(tuple(z_data))
+        
+        xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(all_x,all_y,all_z)
+
+        class added_object:
+            def __init__(self):
+                pass
+
+        data = dict()
+        data[0] = added_object()
+        data[0].xmin = xmin
+        data[0].xmax = xmax
+        data[0].ymin = ymin
+        data[0].ymax = ymax
+        data[0].xedge = xedge
+        data[0].yedge = yedge
+        data[0].new_z = new_z
+        data[0].zmin = zmin
+        data[0].zmax = zmax
+        data[0].x_data = all_x
+        data[0].y_data = all_y
+        data[0].z_data = all_z
         data[0].scan = 'Misc'
         data[0].legend = 'Addition/Subtraction'
 
