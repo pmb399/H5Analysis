@@ -1,11 +1,23 @@
+# Import re search module
 import re
 
 def parse(formula):
     """Internal function to apply math operations as requested on input string
+
+        Parameters
+        ----------
+        formula: string
+
+        Returns
+        -------
+        constituents: list
+            all specified data streams
     """
+
     # Split the user input string at all mathematical operations
     # Allow "( ) * / + -" as math
 
+    # Split string for specified pattern
     constituents = list()
     pattern = '[\(+\-*^/\)]'
     split_expr = re.split(pattern, formula)
@@ -22,7 +34,7 @@ def parse(formula):
                 if string in math_expressions:
                     pass
 
-                else:
+                else: # String is a data stream
                     constituents.append(string)
 
     return constituents
