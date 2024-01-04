@@ -1,6 +1,6 @@
 from .ReadData import Data
 from .parser import parse
-from .datautil import get_roi, get_indices, mca_roi, strip_roi
+from .datautil import get_roi, get_indices, mca_roi, strip_roi, stack_roi
 from .util import check_key_in_dict
 from .simplemath import grid_data_mesh, apply_offset
 
@@ -47,8 +47,18 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
                     else:
                         raise Exception('Error in specified ROI')
                 elif len(np.shape(all_data[rois['x'][x]['req']])) == 3:
-                    if isinstance(rois['x'][x]['roi'],list):
-                        raise Exception("Not implemented")
+                    if isinstance(rois['x'][x]['roi'],dict):
+                        idxLow1,idxHigh1 = get_indices(rois['x'][x]['roi']['roi_list'][0],all_data[f"{rois['x'][x]['req']}_scale1"])
+                        idxLow2,idxHigh2 = get_indices(rois['x'][x]['roi']['roi_list'][1],all_data[f"{rois['x'][x]['req']}_scale2"])
+
+                        x_data = stack_roi(all_data[f"{rois['x'][x]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['x'][x]['roi']['roi_axes'],scale1=all_data[f"{rois['x'][x]['req']}_scale1"],scale2=all_data[f"{rois['x'][x]['req']}_scale2"])
+                        if len(np.shape(x_data)) == 1:
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_x"] = x_data
+                            x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
+                        else:
+                            raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+                        
                     else:
                         raise Exception("Error in specified ROI")
                 else:
@@ -73,8 +83,20 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
                     else:
                         raise Exception("Error in specified ROI")
                 elif len(np.shape(all_data[rois['y'][y]['req']])) == 3:
-                    if isinstance(rois['y'][y]['roi'],list):
-                        raise Exception("Not implemented")
+                    if isinstance(rois['y'][y]['roi'],dict):
+
+                        if isinstance(rois['x'][x]['roi'],dict):
+                            idxLow1,idxHigh1 = get_indices(rois['y'][y]['roi']['roi_list'][0],all_data[f"{rois['y'][y]['req']}_scale1"])
+                            idxLow2,idxHigh2 = get_indices(rois['y'][y]['roi']['roi_list'][1],all_data[f"{rois['y'][y]['req']}_scale2"])
+
+                            y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['y'][y]['roi']['roi_axes'],scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                            if len(np.shape(y_data)) == 1:
+                                # Add data to locals
+                                locals()[f"s{arg}_val{i}_y"] = y_data
+                                y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                            else:
+                                raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+
                     else:
                         raise Exception("Error in specified ROI")
                 else:
@@ -99,8 +121,18 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
                     else:
                         raise Exception("Error in specified ROI")
                 elif len(np.shape(all_data[rois['z'][z]['req']])) == 3:
-                    if isinstance(rois['z'][z]['roi'],list):
-                        raise Exception("Not implemented")
+                    if isinstance(rois['z'][z]['roi'],dict):
+                        idxLow1,idxHigh1 = get_indices(rois['z'][z]['roi']['roi_list'][0],all_data[f"{rois['z'][z]['req']}_scale1"])
+                        idxLow2,idxHigh2 = get_indices(rois['z'][z]['roi']['roi_list'][1],all_data[f"{rois['z'][z]['req']}_scale2"])
+
+                        z_data = stack_roi(all_data[f"{rois['z'][z]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['z'][z]['roi']['roi_axes'],scale1=all_data[f"{rois['z'][z]['req']}_scale1"],scale2=all_data[f"{rois['z'][z]['req']}_scale2"])
+                        if len(np.shape(z_data)) == 1:
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_z"] = z_data
+                            z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
+                        else:
+                            raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+
                     else:
                         raise Exception("Error in specified ROI")
                 else:
