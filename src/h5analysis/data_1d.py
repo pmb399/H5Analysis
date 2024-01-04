@@ -1,36 +1,95 @@
-from .ReadData import Data
-from .datautil import get_roi, get_indices, mca_roi, strip_roi,stack_roi
-from .util import check_key_in_dict
-from .parser import parse
-from .simplemath import apply_offset, grid_data, apply_savgol, bin_data
-import warnings
-
+# Scientific modules and functions
 import numpy as np
 from numpy import log as ln
 from numpy import log10 as log
 from numpy import exp
 from numpy import max, min
 
-def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}):
+# Data utility
+from .ReadData import Data
+from .datautil import get_roi, get_indices, mca_roi, strip_roi,stack_roi
 
+# Utilities
+from .util import check_key_in_dict
+
+# Data parser
+from .parser import parse
+
+# Simple math OPs
+from .simplemath import apply_offset, grid_data, apply_savgol, bin_data
+
+# Warnings
+import warnings
+
+def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}):
+    """ Internal function to load 1d data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias
+        y_stream: string
+            key name or alias
+        *args: ints
+            scan numbers, comma separated
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+    
+    """
+
+    # Store all data in data dict
     data = dict()
 
+    # Iterate over all scans
     for arg in args:
+
+        # reqs: Store names of the requested data streams
+        # rois: rois[stream][reqs]['req'/'roi']
         reqs = list()
         rois = dict()
 
+        # Create h5 Data object
         data[arg] = Data(config,file,arg)
         data[arg].scan = arg
 
+        # Analyse x-stream and y-stream requests with parser
+        # Get lists of requisitions
         contrib_x_stream = parse(x_stream)
         contrib_y_stream = parse(y_stream)
 
+        # Strip the requsitions and sort reqs and rois
         reqs, rois = strip_roi(contrib_x_stream,'x',reqs, rois)
         reqs, rois = strip_roi(contrib_y_stream,'y',reqs, rois)
 
+        # Get the data for all reqs
         all_data = data[arg].Scan(reqs)
 
+        # Set up an x_stream_convert in which we will replace the strings with local data variables
+        # and evaluate the expression later
         x_stream_convert = x_stream
+
+        # Work through all contributions of x-stream
         for i,x in enumerate(contrib_x_stream):
 
             # Check if x component has ROI
@@ -38,7 +97,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                 # Check that dim(x) = 1
                 try:
                     if len(np.shape(all_data[rois['x'][x]['req']])) == 1: 
-                        # Check that we only have 1 ROI x-stream
+                        # Check that we only have 1 ROI x-stream to reduce to dim 0
                         if len(contrib_x_stream) != 1:
                             raise Exception('Only one ROI x-stream supported.')
                         if isinstance(rois['x'][x]['roi'],tuple):
@@ -69,17 +128,26 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                 except:
                     raise Exception('x-stream undefined.')
 
+        # Check proper dimensions for x-stream
         if not (dim_x==0 or dim_x == 1):
             raise Exception('Error defining x-stream')
+        
+        # If dim_x == 1, can evaluate expression
         if dim_x == 1:
             data[arg].x_stream = eval(x_stream_convert)
 
+        # Set up an y_stream_convert in which we will replace the strings with local data variables
+        # and evaluate the expression later
         y_stream_convert = y_stream
+
+        # Work through options for y stream
         for i,y in enumerate(contrib_y_stream):
+            # Check if requisition has ROIs
             if check_key_in_dict(y,rois['y']):
                 try:
                     # Check that dim(y) = 2
                     if len(np.shape(all_data[rois['y'][y]['req']])) == 2:
+                        # Check that ROI is appropriate
                         if isinstance(rois['y'][y]['roi'],tuple):
                             if dim_x == 1:
                                 # Get indices and reduce data
@@ -92,20 +160,26 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                 raise Exception('x and y have incompatible dimensions')
                         else:
                             raise Exception("Error in specified ROI")
+                        
+                    # Check that dim(y) = 3
                     elif len(np.shape(all_data[rois['y'][y]['req']])) == 3:
+                        # Check that ROI is appropriate
                         if isinstance(rois['y'][y]['roi'],dict):
                             idxLow1,idxHigh1 = get_indices(rois['y'][y]['roi']['roi_list'][0],all_data[f"{rois['y'][y]['req']}_scale1"])
                             idxLow2,idxHigh2 = get_indices(rois['y'][y]['roi']['roi_list'][1],all_data[f"{rois['y'][y]['req']}_scale2"])
 
+                            # Reduce STACK data twice if dim_x == 1
                             if dim_x == 1:
                                 y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['y'][y]['roi']['roi_axes'],scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                                # Ensure we reduced to 1d data
                                 if len(np.shape(y_data)) == 1:
                                     # Add data to locals
                                     locals()[f"s{arg}_val{i}_y"] = y_data
                                     y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
                                 else:
                                     raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
-
+                                
+                            # Reduce STACK data once if dim_x == 0
                             elif dim_x == 0:
                                 if not isinstance(xlow,type(None)) and not isinstance(xhigh,type(None)):
                                     if xlow > xhigh:
@@ -114,22 +188,30 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                 # Add first axis 0 of x-stream to integration
                                 integration_axes = tuple([0] + list(rois['y'][y]['roi']['roi_axes']))
                                 all_axes = {0,1,2}
-                                x_axis_raw = all_axes-set(integration_axes)
+                                x_axis_raw = all_axes-set(integration_axes) # get new x-stream
 
+                                # Need to have exactly one scale as new x-stream
                                 if not len(list(x_axis_raw)) == 1:
                                     raise Exception('Error determining proper integration axes')
                                 else:
-                                    x_axis = list(x_axis_raw)[0]
+                                    # Get number of new x-axis
+                                    x_axis = list(x_axis_raw)[0] # convert to single element (from set to list, then slice)
                                     if x_axis == 1:
                                         data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow1:idxHigh1]
                                     elif x_axis == 2:
                                         data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow2:idxHigh2]
                                     else:
                                         raise Exception("Wrong axis defined.")
-                                    y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
-                                    # Add data to locals
-                                    locals()[f"s{arg}_val{i}_y"] = y_data
-                                    y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                                    
+                                    # Reduce data
+                                    if len(np.shape(y_data)) == 1:
+                                        y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                                        # Add data to locals
+                                        locals()[f"s{arg}_val{i}_y"] = y_data
+                                        y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+                                    else:
+                                        raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+                                    
                             else:
                                 raise Exception("Incompatible dimensions for chosen x- and y-stream.")
 
@@ -140,25 +222,35 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                 except:
                     raise Exception('y-stream undefined.')
                 
+            # No ROI is specified
             else:
                 try:
+                    # stream is 1d
                     if len(np.shape(all_data[y])) == 1:
+                        # Ensure we have 1d/1d (x/y) streams
                         if dim_x == 1:
                             # Add data to locals
                             locals()[f"s{arg}_val{i}_y"] = all_data[y]
                             y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
                         else:
                             raise Exception("x and y have incompatible dimensions")
+                        
+                    # Stream is 2d
                     elif len(np.shape(all_data[y])) == 2:
+                        # Either dim_x is zero, need to define x-stream with scale
                         if dim_x == 0:
                             data[arg].x_stream = all_data[f"{y}_scale"]
+                            # Apply ROI based off x-indices
                             y_data = mca_roi(all_data[y],xlow,xhigh,0,scale=all_data[f"{y}_scale"])
 
                             # Add data to locals
                             locals()[f"s{arg}_val{i}_y"] = y_data
                             y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
 
+                        # Dimension of x is 1
+                        # Reduce the MCA over entire scale range
                         elif dim_x == 1:
+                            # Reduce with boundaries None,None for entire range
                             y_data = mca_roi(all_data[y],None,None,1,ind_axis=data[arg].x_stream)
 
                             # Add data to locals
