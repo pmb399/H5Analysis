@@ -63,6 +63,12 @@ class Load1d:
         self.type.append(y_stream)
         self.filename.append(file)
 
+    def loadObj(self,obj,line):
+        self.data.append(obj.data[line])
+        self.x_stream.append(obj.x_stream[line])
+        self.type.append(obj.type[line])
+        self.filename.append(obj.filename[line])
+
     def add(self, config, file, x_stream, y_stream, *args, **kwargs):
         """
         Add specified scans for selected streams.
@@ -393,6 +399,12 @@ class Load2d:
         Adds all scans specified in *args.
         """
 
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+
         self.data.append(ImageAddition(config,file, x_stream,
                          detector, *args, **kwargs))
         
@@ -411,6 +423,12 @@ class Load2d:
         Subtracts all imnages from the first element.
 
         """
+
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
 
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ImageSubtraction(config, file, x_stream,
@@ -716,6 +734,13 @@ class LoadHistogram(Load2d):
         self.detector = self.z_stream
 
     def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
         self.data.append(load_histogram(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
         self.x_stream.append(x_stream)
@@ -724,6 +749,13 @@ class LoadHistogram(Load2d):
         self.filename.append(file)
 
     def add(self, config, file, x_stream, y_stream, z_stream, *args, norm=False):
+
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
         self.data.append(HistogramAddition(config, file, x_stream,
                          y_stream, z_stream, *args, norm=norm))
         self.x_stream.append(x_stream)
