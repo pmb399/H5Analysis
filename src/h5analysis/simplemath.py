@@ -1,6 +1,9 @@
+# Scientific modules
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
 from scipy.signal import savgol_filter
+
+# Warnings
 import warnings
 
 def apply_offset(stream, offset=None, coffset=None):
@@ -14,6 +17,11 @@ def apply_offset(stream, offset=None, coffset=None):
             List all tuples with shift values (is,should)
         cofset : float
             Shift by constant
+
+        Returns
+        -------
+        stream: numpy array
+            offset array
     """
 
     # Do the polynomial fitting with deg = len(list)-1
@@ -51,8 +59,16 @@ def grid_data(x_stream, y_stream, grid):
             Specify the y data to act on
         grid : list, len 3
             Specify start value, end value, and delta
+
+        Returns
+        -------
+        new_x: numpy array
+            equally spaced x scale 
+        new_y: numpy array
+            y data interpolated on new scale
     """
 
+    # Get min/max values
     xmin = grid[0]
     xmax = grid[1]
 
@@ -69,7 +85,30 @@ def grid_data(x_stream, y_stream, grid):
     return new_x, new_y
 
 def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None, None,None]):
-    """Internal function to apply specified grid or ensure otherwise that axes are evenly spaced as this is required to plot an image."""
+    """Internal function to apply specified grid or ensure otherwise that axes are evenly spaced as this is required to plot an image.
+    
+        Parameters
+        ----------
+        x_data: numpy array
+        y_data: numpy array
+        detector: numpy array
+        kwargs:
+            grid_x: list
+                [start,stop,delta]
+            grid_y: list
+                [start,stop,delta]
+
+        Returns
+        -------
+        xmin: float
+        xmax: float
+        ymin: float
+        ymax: float
+        new_x: numpy array
+        new_y: numpy array
+        new_z: numpy array
+    """
+
     # Do auto-grid if not specified otherwise
     # Take step-size as smallest delta observed in data array
     if grid_x == [None, None, None]:
@@ -111,14 +150,39 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
 
     new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
     new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
-    # Interpolate image on evenly-spaced grid
+
+    # Evaluate image on evenly-spaced grid
     new_z = f(new_x, new_y)
 
     return xmin, xmax, ymin, ymax, new_x, new_y, new_z
     
 
 def grid_data_mesh(x_data,y_data,z_data):
-    """Internal function to generate scatter histogram for 3 independent SCA streams."""
+    """Internal function to generate scatter histogram for 3 independent SCA streams.
+    
+        Parameters
+        ----------
+        x_data: numpy array
+        y_data: numpy array
+        z_data: numpy array
+    
+        Returns
+        -------
+        xmin: float
+        xmax: float
+        ymin: float
+        ymax: float
+        xedge: numpy array
+            xedges as returned from numpy histogram2d
+        yedge: numpy array
+            yedges as returned from numpy histogram2d
+        new_z: numpy array
+            2d matrix data
+        zmin: float
+        zmax: float
+    """
+
+    # Get the min/max data
     xmin = x_data.min()
     xmax = x_data.max()
     ymin = y_data.min()
@@ -126,9 +190,12 @@ def grid_data_mesh(x_data,y_data,z_data):
     zmin = z_data.min()
     zmax = z_data.max()
 
+    # Sort out the unique values on scales
+    # Need this to generate histogram bins
     xunique = np.unique(x_data)
     yunique = np.unique(y_data)
 
+    # Determine the number of bins
     xbin = len(xunique)
     ybin = len(yunique)
 
@@ -143,8 +210,11 @@ def grid_data_mesh(x_data,y_data,z_data):
         ybin = int(ybin/norm)
         warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
+    # Calculate histogram
     new_z, xedge, yedge = np.histogram2d(x_data, y_data, bins=[xbin, ybin], range=[
                                             [xmin, xmax], [ymin, ymax]], weights=z_data)
+    
+    # Need to transpose data, to maintain compatibility with regular matrix notation
     new_z = np.transpose(new_z)
 
     return xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax
@@ -161,6 +231,13 @@ def bin_data(x_data,y_data,binsize):
         binsize : int
             Specify how many data points to combine
             Must be exponents of 2
+
+        Returns
+        -------
+        new_x: numpy array
+            Mean of the data in bins
+        new_y: numpy array
+            y-values for the bins
     """
 
     # Caluclate how many bins
@@ -184,7 +261,6 @@ def bin_data(x_data,y_data,binsize):
 
     return np.array(new_x), np.array(new_y)
 
-# New way for smoothing and taking derivatives
 def apply_savgol(x,y,window,polyorder,deriv):
     """Appply smoothing and take derivatives
     
@@ -195,16 +271,23 @@ def apply_savgol(x,y,window,polyorder,deriv):
         y : array
             y data
         window : int
-            Length of the moving window in the Savitzgy-Golay filter
+            Length of the moving window for the Savitzgy-Golay filter
         polyorder : int
             Order of the fitted polynomial
         deriv : int
             Order of the derivative
             Choose "0" if only smoothing requested
+
+        Returns
+        -------
+        new_x: numpy array
+        smooth_y: numpy array
     """
+
     xmin = x.min()
     xmax = x.max()
-    # Caluclate minimum distance between data points to grid evenly spaced
+
+    # Caluclate minimum distance between data points to evaluate on evenly spaced grid
     x_diff = np.abs(np.diff(x)).min()
     new_x, new_y  = grid_data(x,y,[xmin,xmax,x_diff])
 
