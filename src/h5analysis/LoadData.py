@@ -113,6 +113,66 @@ class Load1d:
         self.type.append(obj.type[line])
         self.filename.append(obj.filename[line])
 
+    def background(self,config, file, x_stream, y_stream, arg, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        y_stream: string
+            h5 key or alias of 1d, 2d, or 3d stream
+        arg: int
+            scan
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+        """
+
+        # Get the background data
+        background = load_1d(config, file, x_stream, y_stream, arg, **kwargs)
+        
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                # Interpolate the x data onto the background
+                new_x = background[arg].x_stream
+                int_y = interp1d(v.x_stream,v.y_stream,fill_value='extrapolate')(new_x)
+
+                # Remove data
+                new_y = np.subtract(int_y,background[arg].y_stream)
+
+                # Overwrite streams in object
+                v.x_stream = new_x
+                v.y_stream = new_y
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
+
+
     def add(self, config, file, x_stream, y_stream, *args, **kwargs):
         """
         Add specified scans for selected streams.
@@ -463,6 +523,67 @@ class Load2d:
         self.y_stream.append('Scale')
         self.detector.append(detector)
         self.filename.append(file)
+
+    def background(self,config, file, x_stream, detector, arg, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        detector: string
+            alias of the MCA detector
+        arg: int
+            scan
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+        """
+
+        # Get the background data
+        background = load_2d(config, file, x_stream, detector, arg, **kwargs)
+        
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                # Interpolate the x,y data onto the background
+                new_x = background[arg].new_x
+                new_y = background[arg].new_y
+                int_z = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
+
+                # Remove data
+                new_z = np.subtract(int_z,background[arg].new_z)
+
+                # Overwrite streams in object
+                v.new_x = new_x
+                v.new_y = new_y
+                v.new_z = new_z
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
     def add(self, config, file, x_stream, detector, *args, **kwargs):
         """
