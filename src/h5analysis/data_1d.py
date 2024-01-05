@@ -259,6 +259,19 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
 
                         else:
                             raise Exception("x and y have incompatible dimensions")
+                        
+                    # Stream is 3d - apply automatic reduction
+                    elif len(np.shape(all_data[y])) == 3:
+                        # Only unambiguous if dim_x == 1 
+                        if dim_x == 1:
+                            y_data = stack_roi(all_data[y],None,None,None,None,None,None,(1,2),scale1=all_data[f"{y}_scale1"],scale2=all_data[f"{y}_scale2"])
+
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_y"] = y_data
+                            y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
+
+                        else:
+                            raise Exception('Request ambiguous.')
                     else:
                         raise Exception('Improper dimensions of y-stream')
 
