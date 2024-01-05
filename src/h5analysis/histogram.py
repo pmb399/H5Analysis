@@ -1,166 +1,111 @@
-from .ReadData import Data
-from .parser import parse
-from .datautil import get_roi, get_indices, mca_roi, strip_roi, stack_roi
-from .util import check_key_in_dict
-from .simplemath import grid_data_mesh, apply_offset
-
+# Scientific modules
 import numpy as np
+
+# Data reader
+from .ReadData import Data
+
+# Data parser
+from .parser import parse
 from numpy import log as ln
 from numpy import log10 as log
 from numpy import exp
 from numpy import max, min
 
+# Utilities
+from .datautil import get_roi, get_indices, mca_roi, strip_roi, stack_roi
+from .util import check_key_in_dict
+
+# Simple math OPs
+from .simplemath import grid_data_mesh, apply_offset
 
 def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
-    """Internal function to generate scatter plots for (x,y,z) SCA data"""
+    """ Internal function to generate scatter plots for (x,y,z) SCA data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias
+        y_stream: string
+            key name or alias
+        z_stream: string
+            key name or alias
+        *args: ints
+            scan numbers, comma separated
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+
+        Returns
+        -------
+        data: dict
+        """
 
     # Generate dictionary to store data
     data = dict()
+
+    # Iterate over all scans
     for arg in args:
+
+        # reqs: Store names of the requested data streams
+        # rois: rois[stream][reqs]['req'/'roi']
         reqs = list()
         rois = dict()
 
-        # Load scans to dict
+        # Create h5 Data object
         data[arg] = Data(config,file,arg)
         data[arg].scan = arg
 
+        # Analyse stream requests with parser
+        # Get lists of requisitions
         contrib_x_stream = parse(x_stream)
         contrib_y_stream = parse(y_stream)
         contrib_z_stream = parse(z_stream)
 
+        # Strip the requsitions and sort reqs and rois
         reqs, rois = strip_roi(contrib_x_stream,'x', reqs, rois)
         reqs, rois = strip_roi(contrib_y_stream,'y', reqs, rois)
         reqs, rois = strip_roi(contrib_z_stream,'z', reqs, rois)
 
+        # Get the data for all reqs
         all_data = data[arg].Scan(reqs)
 
-        # x stream
+        # Set up a stream_convert in which we will replace the strings with local data variables
+        # and evaluate the expression later
         x_stream_convert = x_stream
-        for i,x in enumerate(contrib_x_stream):
-            if check_key_in_dict(x,rois['x']):
-                if len(np.shape(all_data[rois['x'][x]['req']])) == 2:
-                    if isinstance(rois['x'][x]['roi'],tuple):
-                        xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[f"{rois['x'][x]['req']}_scale"])
-                        x_data = mca_roi(all_data[rois['x'][x]['req']],xlow,xhigh,1,scale=all_data[f"{rois['x'][x]['req']}_scale"])
-                        locals()[f"s{arg}_val{i}_x"] = x_data
-                        x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
-                    else:
-                        raise Exception('Error in specified ROI')
-                elif len(np.shape(all_data[rois['x'][x]['req']])) == 3:
-                    if isinstance(rois['x'][x]['roi'],dict):
-                        idxLow1,idxHigh1 = get_indices(rois['x'][x]['roi']['roi_list'][0],all_data[f"{rois['x'][x]['req']}_scale1"])
-                        idxLow2,idxHigh2 = get_indices(rois['x'][x]['roi']['roi_list'][1],all_data[f"{rois['x'][x]['req']}_scale2"])
-
-                        x_data = stack_roi(all_data[f"{rois['x'][x]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['x'][x]['roi']['roi_axes'],scale1=all_data[f"{rois['x'][x]['req']}_scale1"],scale2=all_data[f"{rois['x'][x]['req']}_scale2"])
-                        if len(np.shape(x_data)) == 1:
-                            # Add data to locals
-                            locals()[f"s{arg}_val{i}_x"] = x_data
-                            x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
-                        else:
-                            raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
-                        
-                    else:
-                        raise Exception("Error in specified ROI")
-                else:
-                    raise Exception("Wrong x dimensions")
-            else:
-                if len(np.shape(all_data[x])) == 1:
-                    locals()[f"s{arg}_val{i}_x"] = all_data[x]
-                    x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
-                else:
-                    raise Exception("Wrong input dimension")
-                
-        # y stream
         y_stream_convert = y_stream
-        for i,y in enumerate(contrib_y_stream):
-            if check_key_in_dict(y,rois['y']):
-                if len(np.shape(all_data[rois['y'][y]['req']])) == 2:
-                    if isinstance(rois['y'][y]['roi'],tuple):
-                        ylow,yhigh = get_indices(rois['y'][y]['roi'],all_data[f"{rois['y'][y]['req']}_scale"])
-                        y_data = mca_roi(all_data[rois['y'][y]['req']],ylow,yhigh,1,scale=all_data[f"{rois['y'][y]['req']}_scale"])
-                        locals()[f"s{arg}_val{i}_y"] = y_data
-                        y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
-                    else:
-                        raise Exception("Error in specified ROI")
-                elif len(np.shape(all_data[rois['y'][y]['req']])) == 3:
-                    if isinstance(rois['y'][y]['roi'],dict):
-
-                        if isinstance(rois['x'][x]['roi'],dict):
-                            idxLow1,idxHigh1 = get_indices(rois['y'][y]['roi']['roi_list'][0],all_data[f"{rois['y'][y]['req']}_scale1"])
-                            idxLow2,idxHigh2 = get_indices(rois['y'][y]['roi']['roi_list'][1],all_data[f"{rois['y'][y]['req']}_scale2"])
-
-                            y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['y'][y]['roi']['roi_axes'],scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
-                            if len(np.shape(y_data)) == 1:
-                                # Add data to locals
-                                locals()[f"s{arg}_val{i}_y"] = y_data
-                                y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
-                            else:
-                                raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
-
-                    else:
-                        raise Exception("Error in specified ROI")
-                else:
-                    raise Exception("Wrong y dimensions")
-            else:
-                if len(np.shape(all_data[y])) == 1:
-                    locals()[f"s{arg}_val{i}_y"] = all_data[y]
-                    y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
-                else:
-                    raise Exception("Wrong input dimension")
-                
-        # z stream
         z_stream_convert = z_stream
-        for i,z in enumerate(contrib_z_stream):
-            if check_key_in_dict(z,rois['z']):
-                if len(np.shape(all_data[rois['z'][z]['req']])) == 2:
-                    if isinstance(rois['z'][z]['roi'],tuple):
-                        zlow,zhigh = get_indices(rois['z'][z]['roi'],all_data[f"{rois['z'][z]['req']}_scale"])
-                        z_data = mca_roi(all_data[rois['z'][z]['req']],zlow,zhigh,1,scale=all_data[f"{rois['z'][z]['req']}_scale"])
-                        locals()[f"s{arg}_val{i}_z"] = z_data
-                        z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
-                    else:
-                        raise Exception("Error in specified ROI")
-                elif len(np.shape(all_data[rois['z'][z]['req']])) == 3:
-                    if isinstance(rois['z'][z]['roi'],dict):
-                        idxLow1,idxHigh1 = get_indices(rois['z'][z]['roi']['roi_list'][0],all_data[f"{rois['z'][z]['req']}_scale1"])
-                        idxLow2,idxHigh2 = get_indices(rois['z'][z]['roi']['roi_list'][1],all_data[f"{rois['z'][z]['req']}_scale2"])
 
-                        z_data = stack_roi(all_data[f"{rois['z'][z]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['z'][z]['roi']['roi_axes'],scale1=all_data[f"{rois['z'][z]['req']}_scale1"],scale2=all_data[f"{rois['z'][z]['req']}_scale2"])
-                        if len(np.shape(z_data)) == 1:
-                            # Add data to locals
-                            locals()[f"s{arg}_val{i}_z"] = z_data
-                            z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
-                        else:
-                            raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+        # Get the 1d data
+        data[arg].x_data = get_hist_stream(contrib_x_stream,x_stream_convert,'x',arg,rois,all_data)
+        data[arg].y_data = get_hist_stream(contrib_y_stream,y_stream_convert,'y',arg,rois,all_data)
+        data[arg].z_data = get_hist_stream(contrib_z_stream,z_stream_convert,'z',arg,rois,all_data)
 
-                    else:
-                        raise Exception("Error in specified ROI")
-                else:
-                    raise Exception("Wrong z dimensions")
-            else:
-                if len(np.shape(all_data[z])) == 1:
-                    locals()[f"s{arg}_val{i}_z"] = all_data[z]
-                    z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
-                else:
-                    raise Exception("Wrong input dimension")
-
-
-        # Assign the calculated result to the x_stream of the object in data dict
-        data[arg].x_data = eval(x_stream_convert)
+        # Apply offsets
         data[arg].x_data = apply_offset(data[arg].x_data, xoffset, xcoffset)
-
-        # Assign the calculated result to the y_stream of the object in data dict
-        data[arg].y_data = eval(y_stream_convert)
         data[arg].y_data = apply_offset(data[arg].y_data, yoffset, ycoffset)
-
-        # Assign the calculated result to the z_stream of the object in data dict
-        data[arg].z_data = eval(z_stream_convert)
 
         # Normalize if requested
         if norm == True:
             data[arg].z_data = np.interp(
                 data[arg].z_data, (data[arg].z_data.min(), data[arg].z_data.max()), (0, 1))
 
+        # Do some error checking to ensure matching dimensions
+        if len(data[arg].x_data) != len(data[arg].y_data) or len(data[arg].y_data) != len(data[arg].z_data):
+            raise Exception("Error in x-y-z stream lengths.")
+
+        # Calculate the 2d histogram
         xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(data[arg].x_data,data[arg].y_data,data[arg].z_data)
         data[arg].xmin = xmin
         data[arg].xmax = xmax
@@ -173,3 +118,96 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
         data[arg].zmax = zmax
 
     return data
+
+def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
+    """ Get and evaluate each stream requests
+    
+        Parameters
+        ----------
+        contrib_stream: list
+            all contributions to stream
+        convert: string
+            stream convert, copy
+        stream: string
+            name of the string
+        arg: int
+            current scan
+        rois: dict
+        all_data: dict
+        
+        Returns
+        -------
+        data: numpy array
+            evaluated
+    
+    """
+
+    for i,contrib in enumerate(contrib_stream):
+        # Check if component has ROI
+        if check_key_in_dict(contrib,rois[stream]):
+             # Check that dim = 2
+            if len(np.shape(all_data[rois[stream][contrib]['req']])) == 2:
+                # Check correct ROI type
+                if isinstance(rois[stream][contrib]['roi'],tuple):
+                    # Get indices and reduce data
+                    low,high = get_indices(rois[stream][contrib]['roi'],all_data[f"{rois[stream][contrib]['req']}_scale"])
+                    data = mca_roi(all_data[rois[stream][contrib]['req']],low,high,1,scale=all_data[f"{rois[stream][contrib]['req']}_scale"])
+
+                    # Add data to locals
+                    locals()[f"s{arg}_val{i}_{stream}"] = data
+                    convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
+                else:
+                    raise Exception('Error in specified ROI')
+
+             # Check that dim = 3
+            elif len(np.shape(all_data[rois[stream][contrib]['req']])) == 3:
+                # Check correct ROI type
+                if isinstance(rois[stream][contrib]['roi'],dict):
+                    # Get indices and reduce data
+                    idxLow1,idxHigh1 = get_indices(rois[stream][contrib]['roi']['roi_list'][0],all_data[f"{rois[stream][contrib]['req']}_scale1"])
+                    idxLow2,idxHigh2 = get_indices(rois[stream][contrib]['roi']['roi_list'][1],all_data[f"{rois[stream][contrib]['req']}_scale2"])
+
+                    data = stack_roi(all_data[f"{rois[stream][contrib]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois[stream][contrib]['roi']['roi_axes'],scale1=all_data[f"{rois[stream][contrib]['req']}_scale1"],scale2=all_data[f"{rois[stream][contrib]['req']}_scale2"])
+
+                    # Check correct data dimensions of reduced data
+                    if len(np.shape(data)) == 1:
+                        # Add data to locals
+                        locals()[f"s{arg}_val{i}_{stream}"] = data
+                        convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
+                    else:
+                        raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+
+                else:
+                    raise Exception("Error in specified ROI")
+            else:
+                raise Exception(f"Wrong {stream} dimensions")
+
+        # No ROI is specified
+        else:
+            # Check correct data dimensions
+            if len(np.shape(all_data[contrib])) == 1:
+                # Add data to locals
+                locals()[f"s{arg}_val{i}_{stream}"] = all_data[contrib]
+                convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
+
+            # Reduce among all scale dimensions if dim=2 or dim=3
+            elif len(np.shape(all_data[contrib])) == 2:
+                # Apply automatic reduction
+                data = mca_roi(all_data[contrib],None,None,1,scale=all_data[f"{contrib}_scale"])
+
+                # Add data to locals
+                locals()[f"s{arg}_val{i}_{stream}"] = data
+                convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
+
+            elif len(np.shape(all_data[contrib])) == 3:
+                # Apply automatic reduction
+                data = stack_roi(all_data[contrib],None,None,None,None,None,None,(1,2),scale1=all_data[f"{contrib}_scale1"],scale2=all_data[f"{contrib}_scale2"])
+
+                # Add data to locals
+                locals()[f"s{arg}_val{i}_{stream}"] = data
+                convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
+
+            else:
+                raise Exception("Wrong input dimension")
+                
+    return eval(convert)
