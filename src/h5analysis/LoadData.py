@@ -56,6 +56,38 @@ class Load1d:
     def load(self, config, file, x_stream, y_stream, *args, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        y_stream: string
+            h5 key or alias of 1d, 2d, or 3d stream
+        *args: ints
+            scans, comma separated
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
         """
 
         # Append all REIXS scan objects to scan list in current object.
@@ -65,6 +97,17 @@ class Load1d:
         self.filename.append(file)
 
     def loadObj(self,obj,line):
+        """
+        Loads data previously specified in a loader
+
+        Parameters
+        ----------
+        obj: object
+            name of the Loader object
+        line: int
+            Number of the load, add, subtract line (start indexing with 0)
+        """
+
         self.data.append(obj.data[line])
         self.x_stream.append(obj.x_stream[line])
         self.type.append(obj.type[line])
@@ -95,7 +138,6 @@ class Load1d:
         ----------
         See loader function.
         Subtracts all scans from the first element. May add scans in first element by specifying list of scans as first *arg.
-
         """
 
         # Append all REIXS scan objects to scan list in current object.
@@ -178,7 +220,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, y_axis_type='linear', **kwargs):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -190,6 +232,8 @@ class Load1d:
         ylabel : string, optional
         plot_height : int, optional
         plot_width : int, optional
+        kwargs
+            all bokeh figure key-word arguments
         """
 
         # Organize all data assosciated with object in sorted dictionary.
@@ -213,7 +257,7 @@ class Load1d:
         source = ColumnDataSource(plot_data)
 
         # Set up the bokeh plot
-        p = figure(height=plot_height, width=plot_width,y_axis_type=y_axis_type,
+        p = figure(height=plot_height, width=plot_width,
                    tools="pan,wheel_zoom,box_zoom,reset,crosshair,save", **kwargs)
         p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
                      line_width=linewidth, line_color='color', line_alpha=0.6,
@@ -377,6 +421,35 @@ class Load2d:
     def load(self, config, file, x_stream, detector, *args, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            filename
+        x_stream: string
+            h5 sca key or alias of the x-stream
+        detector: string
+            alias of the MCA detector
+        arg: int
+            scan number
+        kwargs
+            norm: boolean, None
+            xoffset: list of tuples
+                fitted offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list of tuples
+                fitted offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid equally spaced in x with [start, stop, delta]
+            grid_y: list
+                grid equally spaced in y with [start, stop, delta]
+            norm_by: string
+                norm MCA by defined h5 key or SCA alias
         """
 
         # Ensure that only one scan is loaded.
@@ -387,6 +460,7 @@ class Load2d:
         
         self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
         self.x_stream.append(x_stream)
+        self.y_stream.append('Scale')
         self.detector.append(detector)
         self.filename.append(file)
 
@@ -410,7 +484,7 @@ class Load2d:
                          detector, *args, **kwargs))
         
         self.x_stream.append(x_stream)
-        self.y_stream.append("Fix it")
+        self.y_stream.append("Scale")
         self.detector.append(detector)
         self.filename.append(file)
 
@@ -436,7 +510,7 @@ class Load2d:
                          detector, *args, **kwargs))
         
         self.x_stream.append(x_stream)
-        self.y_stream.append("Fix it")
+        self.y_stream.append("Scale")
         self.detector.append(detector)
         self.filename.append(file)
 
@@ -519,6 +593,8 @@ class Load2d:
         vmax : float, optional
         colormap : string
             Use: "linear" or "log"
+        kwargs
+            all bokeh figure key-word arguments
         """
         # Iterate over the one (1) scan in object - this is for legacy reason and shall be removed in the future.
         for i, val in enumerate(self.data):
@@ -735,6 +811,35 @@ class LoadHistogram(Load2d):
         self.detector = self.z_stream
 
     def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Load (x,y,z) stream data to histogram
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias
+        y_stream: string
+            key name or alias
+        z_stream: string
+            key name or alias
+        args: int
+            scan number
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+        """
         
         # Ensure that only one scan is loaded.
         if len(args) != 1:
@@ -750,6 +855,14 @@ class LoadHistogram(Load2d):
         self.filename.append(file)
 
     def add(self, config, file, x_stream, y_stream, z_stream, *args, norm=False):
+        """
+        Add specified histograms for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Adds all scans specified in *args.
+        """
 
         # Ensure that only one scan is loaded.
         if len(args) != 1:
@@ -773,6 +886,20 @@ class LoadHistogram(Load2d):
         super().plot(*args, **kwargs)
 
     def get_data(self):
+        """Make data available in memory as exported to file.
+
+        Returns
+        -------
+        f : string.IO object
+            Motor and Detector Scales. Pandas Data Series.
+            1) Rewind memory with f.seek(0)
+            2) Load with pandas.read_csv(f,skiprows=3)
+        g : string.IO object
+            Actual gridded detector image.
+            1) Rewind memory with g.seek(0)
+            2) Load with numpy.genfromtxt(g,skip_header=4)
+        """
+
         f = io.StringIO()
         g = io.StringIO()
         for i, val in enumerate(self.data):
@@ -797,7 +924,13 @@ class LoadHistogram(Load2d):
         return f, g
 
     def export(self, filename):
+        """
+        Export and write data to specified file.
 
+        Parameters
+        ----------
+        filename : string
+        """
         f, g, = self.get_data()
 
         with open(f"{filename}.txt_scale", "a") as scales:
@@ -819,6 +952,36 @@ class Load3d:
         self.filename = list()
 
     def load(self, config, file, stack, arg,**kwargs):
+        """ Shows a 3d stack of images interactively
+
+            Parameters
+            ----------
+            config: dict
+                h5 configuration
+            file: string
+                filename
+            stack: string
+                alias of an image STACK
+            args: int
+                scan number
+            kwargs
+                xoffset: list of tuples
+                    fitted offset (x-stream)
+                xcoffset: float
+                    constant offset (x-stream)
+                yoffset: list of tuples
+                    fitted offset (y-stream)
+                ycoffset: float
+                    constant offset (y-stream)
+                grid_x: list
+                    grid equally spaced in x with [start, stop, delta]
+                grid_y: list
+                    grid equally spaced in y with [start, stop, delta]
+                norm_by: string
+                    norm MCA by defined h5 key or SCA alias
+        """
+
+        # Ensure we only load 1
         if self.data != []:
             raise UserWarning("Can only load one movie at a time.")
         else:
@@ -826,7 +989,22 @@ class Load3d:
             self.filename.append(file)
 
     def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, **kwargs):
+        """
+        Plot all data assosciated with class instance/object.
+
+        Parameters
+        ----------
+        title : string, optional
+        xlabel : string, optional
+        ylabel : string, optional
+        plot_height : int, optional
+        plot_width : int, optional
+        kwargs
+            all bokeh figure key-word arguments
+        """
+
         def update(f=0):
+            """Update stack to next image on slider move"""
             r.data_source.data['image'] = [v.stack[f]]
             r.data_source.data['x'] = [v.x_min]
             r.data_source.data['y'] = [v.y_min]
@@ -877,6 +1055,21 @@ class Load3d:
                 display(widgets.interact(update, f=(0, len(v.stack)-1)))
 
     def export(self,filename, interval=500, aspect=1, xlim=None, ylim=None, **kwargs):
+        """ Export Stack image as movie
+
+            Parameters
+            ----------
+            filename: string
+            interval: int
+                duration of each frame in ms
+            aspect: float
+                aspect ratio
+            xlim: None, tuple
+            ylim: None, tuple
+            kwargs
+                all matplotlib figure key-word arguments
+        """
+
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 frames = list()
@@ -938,187 +1131,37 @@ class LoadBeamline(Load1d):
 
 
 def getBL(config, file, stream, *args):
+    """Load beamline meta data.
+
+        Parameters
+        ----------
+        config: dict,
+            h5 data configuration
+        file: string
+            file name
+        keys: string, list
+            path to the meta data of interest
+        args: int
+            scan numbers, comma separated
+    """
     get_single_beamline_value(config, file, stream, *args)
 
 def getSpreadsheet(config, file,columns=None):
+    """Generate spreadsheet with meta data from h5 file.
+
+        Parameters
+        ----------
+        config: dict,
+            h5 data configuration
+        file: string
+            file name
+        columns: dict
+            Specify column header and h5 data path to meta datam i.e.
+                columns = dict()
+                columns['Sample Stage horz'] = 'Endstation/Motors/ssh
+                ...
+    """
     return get_spreadsheet(config, file,columns)
 
 #########################################################################################
 #########################################################################################
-
-class Object1dMath(Load1d):
-        
-    def __init__(self):
-        self.DataObjectsAdd = list()
-        self.DataObjectsSubtract = list()
-
-        return Load1d.__init__(self)
-        
-    def add(self,obj,line,scan):
-        self.DataObjectsAdd.append(obj.data[line][scan])
-        
-    def subtract(self,obj,line,scan):
-        self.DataObjectsSubtract.append(obj.data[line][scan])
-        
-    def evaluate(self):
-        for i,item in enumerate(self.DataObjectsAdd):
-            if i ==0:
-                MASTER_x = item.x_stream
-                MASTER_y = item.y_stream
-                
-            else:
-                MASTER_y += interp1d(item.x_stream,item.y_stream,fill_value='extrapolate')(MASTER_x)
-        
-        for i,item in enumerate(self.DataObjectsSubtract):
-                MASTER_y -= interp1d(item.x_stream,item.y_stream,fill_value='extrapolate')(MASTER_x)
-
-        
-        class added_object:
-            def __init__(self):
-                pass
-        
-        data = dict()
-        data[0] = added_object()
-        data[0].x_stream = MASTER_x
-        data[0].y_stream = MASTER_y
-        data[0].scan = 'Misc'
-        data[0].legend = 'Addition/Subtraction'
-
-        self.x_stream.append('x-stream')
-        self.type.append('y-stream')
-        self.filename.append('Simple Math')
-        
-        self.data.append(data)
-
-#########################################################################################
-
-class Object2dMath(Load2d):
-        
-    def __init__(self):
-        self.DataObjectsAdd = list()
-        self.DataObjectsSubtract = list()
-
-        return Load2d.__init__(self)
-        
-    def add(self,obj,line,scan):
-        self.DataObjectsAdd.append(obj.data[line][scan])
-        
-    def subtract(self,obj,line,scan):
-        self.DataObjectsSubtract.append(obj.data[line][scan])
-        
-    def evaluate(self):
-
-        if self.data != []:
-            raise UserWarning("Can only load one scan at a time.")
-
-        for i,item in enumerate(self.DataObjectsAdd):
-            if i ==0:
-                MASTER_x_stream = item.new_x
-                MASTER_y_stream = item.new_y
-                MASTER_detector = item.new_z
-                MASTER_xmin = item.xmin
-                MASTER_xmax = item.xmax
-                MASTER_ymin = item.ymin
-                MASTER_ymax = item.ymax
-                
-            else:
-                interp = interp2d(item.new_x,item.new_y,item.new_z)
-                new_z = interp(MASTER_x_stream,MASTER_y_stream)
-
-                MASTER_detector = np.add(MASTER_detector,new_z)
-        
-        for i,item in enumerate(self.DataObjectsSubtract):
-                interp = interp2d(item.new_x,item.new_y,item.new_z)
-                new_z = interp(MASTER_x_stream,MASTER_y_stream)
-
-                if i == 0:
-                    SUB_detector = new_z
-                else:
-                    SUB_detector = np.add(SUB_detector,new_z)
-
-        if len(self.DataObjectsSubtract)>0:
-            MASTER_detector = np.subtract(MASTER_detector,SUB_detector)
-        
-        class added_object:
-            def __init__(self):
-                pass
-        
-        data = dict()
-        data[0] = added_object()
-        data[0].new_x = MASTER_x_stream
-        data[0].new_y = MASTER_y_stream
-        data[0].new_z = MASTER_detector
-        data[0].xmin = MASTER_xmin
-        data[0].xmax = MASTER_xmax
-        data[0].ymin = MASTER_ymin
-        data[0].ymax = MASTER_ymax
-        data[0].scan = 'Misc'
-        data[0].legend = 'Addition/Subtraction'
-
-        self.x_stream.append('x-stream')
-        self.y_stream.append('y-stream')
-        self.detector.append('Detector')
-        self.filename.append('Simple Math')
-        
-        self.data.append(data)
-
-#########################################################################################
-
-class ObjectHistMath(LoadHistogram):
-        
-    def __init__(self):
-        self.DataObjectsAdd = list()
-
-        return LoadHistogram.__init__(self)
-        
-    def add(self,obj,line,scan):
-        self.DataObjectsAdd.append(obj.data[line][scan])
-        
-    def evaluate(self):
-
-        if self.data != []:
-            raise UserWarning("Can only load one scan at a time.")
-
-        # Iterate over all loaded scans
-        x_data = list()
-        y_data = list()
-        z_data = list()
-
-        for i,item in enumerate(self.DataObjectsAdd):
-            x_data.append(item.x_data)
-            y_data.append(item.y_data)
-            z_data.append(item.z_data)
-                
-        all_x = np.concatenate(tuple(x_data))
-        all_y = np.concatenate(tuple(y_data))
-        all_z = np.concatenate(tuple(z_data))
-        
-        xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(all_x,all_y,all_z)
-
-        class added_object:
-            def __init__(self):
-                pass
-
-        data = dict()
-        data[0] = added_object()
-        data[0].xmin = xmin
-        data[0].xmax = xmax
-        data[0].ymin = ymin
-        data[0].ymax = ymax
-        data[0].xedge = xedge
-        data[0].yedge = yedge
-        data[0].new_z = new_z
-        data[0].zmin = zmin
-        data[0].zmax = zmax
-        data[0].x_data = all_x
-        data[0].y_data = all_y
-        data[0].z_data = all_z
-        data[0].scan = 'Misc'
-        data[0].legend = 'Addition/Subtraction'
-
-        self.x_stream.append('x-stream')
-        self.y_stream.append('y-stream')
-        self.detector.append('Detector')
-        self.filename.append('Simple Math')
-        
-        self.data.append(data)
