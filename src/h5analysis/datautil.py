@@ -179,8 +179,12 @@ def get_roi(roi):
 
             # Assume only one value, use as upper and lower limit   
             else:
-                roi_low = float(roi)
-                roi_high = float(roi)
+                if roi == 'None':
+                    roi_low = None
+                    roi_high = None
+                else:
+                    roi_low = float(roi)
+                    roi_high = float(roi)
                 
             return (roi_low, roi_high)
         
