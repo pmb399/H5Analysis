@@ -133,25 +133,29 @@ class Data:
                     
                 # If no alias defined, try to get data from SCA folder(s)
                 else:
-                    # Check if any SCA folder paths are specified
-                    # Makes all 1d data in specified folder(s) accessible
-                    if self.config.sca_folders != list():
-                            for path in self.config.sca_folders:
-                                has_data = False
-                                # Get the full h5 group path
-                                p = self.config.get_path(self.scan,path)
-                                try:
-                                    req_data[req] = np.array(f[f'{p}/{req}'])
-                                    has_data = True
-                                except:
-                                    pass
+                    # In case no data stream but only ROI is given (for "None" ROIs)
+                    if req != '':
+                        # Check if any SCA folder paths are specified
+                        # Makes all 1d data in specified folder(s) accessible
+                        if self.config.sca_folders != list():
+                                for path in self.config.sca_folders:
+                                    has_data = False
+                                    # Get the full h5 group path
+                                    p = self.config.get_path(self.scan,path)
+                                    try:
+                                        req_data[req] = np.array(f[f'{p}/{req}'])
+                                        has_data = True
+                                    except:
+                                        pass
 
-                            if has_data == False:
-                                raise Exception("Data stream undefined")
+                                if has_data == False:
+                                    raise Exception("Data stream undefined")
 
+                        else:
+                            raise Exception("Data stream undefined")
                     else:
-                        raise Exception("Data stream undefined")
-
+                        # Define fake array when no stream is given and req is empty string
+                        req_data[req] = [0]
                     
         return req_data
 
