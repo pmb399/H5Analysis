@@ -28,38 +28,7 @@ class Data:
         self.config = config
         self.file = file
         self.scan = scan
-        
-        # Check if any SCA folder paths are specified
-        # Makes all 1d data in specified folder(s) accessible
-        if self.config.sca_folders != list():
 
-            # Create sca_data pd.DataFrame
-            self.sca_data = pd.DataFrame()
-            sca_series = list()
-            sca_headers = list()
-
-            with h5py.File(file, 'r') as f:
-                # Populate a pandas dataframe with all SCA data
-                try:
-                    for path in self.config.sca_folders:
-                        # Get the full h5 group path
-                        p = config.get_path(scan,path)
-
-                        # Iterate over all entries in group
-                        for entry in f[p]:
-                            # Only regard 1d data
-                            if len(f[f'{p}/{entry}'].shape) == 1:
-                                # Append to pandas series
-                                sca_series.append(pd.Series(np.array(f[f'{p}/{entry}'])))
-                                sca_headers.append(str(entry))
-                                
-                    # Convert pandas series to dataframe and assign header names as per the key in h5
-                    self.sca_data = pd.DataFrame(sca_series).transpose(copy=True)
-                    self.sca_data.columns = sca_headers
-                                
-                except Exception as e:
-                    raise Exception(e)
-                    
     def Scan(self,requisition):
         """ Load data affiliated with specific requisition
 
@@ -81,15 +50,15 @@ class Data:
         if not isinstance(requisition,list):
             requisition = [requisition]
         
-        # Iterate over all requests
-        for req in requisition:
-            # If an alias is defined, use config file
-            # Check whether we can find an alias
-            if check_key_in_dict(req,self.config.h5dict):
+        # open h5 file
+        with h5py.File(self.file, 'r') as f:
 
-                # open h5 file
-                with h5py.File(self.file, 'r') as f:
-        
+            # Iterate over all requests
+            for req in requisition:
+                # If an alias is defined, use config file
+                # Check whether we can find an alias
+                if check_key_in_dict(req,self.config.h5dict):
+            
                     # Get all attributes for specified req
                     req_attr = self.config.h5dict[req]
             
@@ -161,12 +130,28 @@ class Data:
                         
                     else:
                         raise Exception("Undefined type.")
-            else:
+                    
                 # If no alias defined, try to get data from SCA folder(s)
-                try:
-                    req_data[req] = self.sca_data[req].dropna().to_numpy()
-                except:
-                    raise Exception("Data stream undefined")
+                else:
+                    # Check if any SCA folder paths are specified
+                    # Makes all 1d data in specified folder(s) accessible
+                    if self.config.sca_folders != list():
+                            for path in self.config.sca_folders:
+                                has_data = False
+                                # Get the full h5 group path
+                                p = self.config.get_path(self.scan,path)
+                                try:
+                                    req_data[req] = np.array(f[f'{p}/{req}'])
+                                    has_data = True
+                                except:
+                                    pass
+
+                            if has_data == False:
+                                raise Exception("Data stream undefined")
+
+                    else:
+                        raise Exception("Data stream undefined")
+
                     
         return req_data
 
