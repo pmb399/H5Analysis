@@ -1055,7 +1055,6 @@ class LoadHistogram(Load2d):
 class Load3d:
     def __init__(self):
         self.data = list()
-        self.filename = list()
 
     def load(self, config, file, stack, arg,**kwargs):
         """ Shows a 3d stack of images interactively
@@ -1092,7 +1091,6 @@ class Load3d:
             raise UserWarning("Can only load one movie at a time.")
         else:
             self.data.append(load_3d(config, file, stack, arg, **kwargs))
-            self.filename.append(file)
 
     def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, **kwargs):
         """
