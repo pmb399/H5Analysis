@@ -106,11 +106,11 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                             # Get indices
                             xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[rois['x'][x]['req']])
                         else:
-                            raise Exception("Error in specified ROI")
+                            raise Exception(f"Error in specified ROI {rois['x'][x]['roi']} for {x}")
                     else:
-                        raise Exception("Inappropriate dimensions for x-stream")
+                        raise Exception(f"Inappropriate dimensions for x-stream ({x})")
                 except:
-                    raise Exception('x-stream undefined.')
+                    raise Exception(f'x-stream undefined ({x}).')
             
             # If x component has no ROI
             else:
@@ -124,9 +124,9 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                         locals()[f"s{arg}_val{i}_x"] = all_data[x]
                         x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
                     else:
-                        raise Exception('x-stream dimensions unsupported')
+                        raise Exception(f'x-stream dimensions unsupported ({x})')
                 except:
-                    raise Exception('x-stream undefined.')
+                    raise Exception(f'x-stream undefined ({x}).')
 
         # Check proper dimensions for x-stream
         if not (dim_x==0 or dim_x == 1):
@@ -159,7 +159,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                             else:
                                 raise Exception('x and y have incompatible dimensions')
                         else:
-                            raise Exception("Error in specified ROI")
+                            raise Exception(f"Error in specified ROI {rois['y'][y]['roi']} for {y}")
                         
                     # Check that dim(y) = 3
                     elif len(np.shape(all_data[rois['y'][y]['req']])) == 3:
@@ -177,7 +177,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                     locals()[f"s{arg}_val{i}_y"] = y_data
                                     y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
                                 else:
-                                    raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+                                    raise Exception(f'Data dimensionality of {y} incompatible with loader. Check integration axes.')
                                 
                             # Reduce STACK data once if dim_x == 0
                             elif dim_x == 0:
@@ -210,17 +210,17 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                         locals()[f"s{arg}_val{i}_y"] = y_data
                                         y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
                                     else:
-                                        raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+                                        raise Exception(f'Data dimensionality of {y} incompatible with loader. Check integration axes.')
                                     
                             else:
                                 raise Exception("Incompatible dimensions for chosen x- and y-stream.")
 
                         else:
-                            raise Exception("Error in specified ROI")
+                            raise Exception(f"Error in specified ROI {rois['y'][y]['roi']['roi_list']} for {y}")
                     else:
-                        raise Exception("Inappropriate dimensions for y-stream")
+                        raise Exception(f"Inappropriate dimensions for y-stream ({y})")
                 except:
-                    raise Exception('y-stream undefined.')
+                    raise Exception(f'y-stream undefined ({y}).')
                 
             # No ROI is specified
             else:
@@ -271,12 +271,12 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                             y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
 
                         else:
-                            raise Exception('Request ambiguous.')
+                            raise Exception(f'Request ambiguous ({y}).')
                     else:
-                        raise Exception('Improper dimensions of y-stream')
+                        raise Exception(f'Improper dimensions of y-stream {y}')
 
                 except:
-                    raise Exception('y-stream undefined.')
+                    raise Exception(f'y-stream undefined ({y}).')
         
         try:
             data[arg].y_stream = eval(y_stream_convert)

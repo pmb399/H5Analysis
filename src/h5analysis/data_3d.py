@@ -101,18 +101,18 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
                     s_stream_convert = s_stream_convert.replace(s,f"s{arg}_val{i}_s")
 
                 else:
-                    raise Exception("Error in defined ROI")
+                    raise Exception(f"Error in defined ROI {rois['s'][s]['roi']['roi_list']} for {s}")
 
             else:
-                raise Exception("Cannot perform math on defined stream")
+                raise Exception(f"Cannot perform math on defined stream {s}")
             
         else:
             if len(np.shape(all_data[s])) == 3:
                 if not check_key_in_dict(s,config.h5dict):
-                    raise Exception("Data Stream must be configured via config dict.")
+                    raise Exception(f"Data Stream {s} must be configured via config dict.")
                 
                 if not config.h5dict[s]['type'] == "STACK":
-                    raise Exception("Need to specify an image stack")
+                    raise Exception(f"Need to specify an image stack. Error caused by: {s}")
                 
                 if has_stack == False:
                     # Apply offset
@@ -135,7 +135,7 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
                 s_stream_convert = s_stream_convert.replace(s,f"s{arg}_val{i}_s")
 
             else:
-                raise Exception('Data dimension unsupported.')
+                raise Exception(f'Data dimension of {s} unsupported.')
             
     if has_stack == False:
         raise Exception("No stack specified.")

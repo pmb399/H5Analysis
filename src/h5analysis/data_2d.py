@@ -102,10 +102,10 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                         dim = 0
                         xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[rois['x'][x]['req']])
                     else:
-                        raise Exception('Error in specified ROI')
+                        raise Exception(f"Error in specified ROI {rois['x'][x]['roi']} for {x}")
 
                 else:
-                    raise Exception("Wrong x dimensions")
+                    raise Exception(f"Wrong x dimensions for {x}")
             
             # If x component has no ROI
             else:
@@ -118,7 +118,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                     locals()[f"s{arg}_val{i}_x"] = all_data[x]
                     x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
                 else:
-                    raise Exception("Wrong input dimension")
+                    raise Exception(f"Wrong input dimension: {x}")
 
         # Check proper dimensions for x-stream
         if not (dim==0 or dim == 1):
@@ -161,7 +161,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 all_axes = {1,2}
                                 y_axis_raw = all_axes - set(integration_axes)
                                 if not len(list(y_axis_raw)) == 1: # Can only have exactly one axis as per dimensionality requirements
-                                    raise Exception('Error determining proper integration axes')
+                                    raise Exception(f'Error determining proper integration axes ({z})')
                                 else:
                                     y_axis = list(y_axis_raw)[0] # convert to single element (from set to list, then slice)
 
@@ -171,7 +171,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                     elif y_axis == 2:
                                         data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
                                     else:
-                                        raise Exception("Wrong axis defined.")
+                                        raise Exception(f"Wrong axis defined ({z}).")
                                     
                             elif len(np.shape(z_data)) == 1:
                                 # This is only to perform additional math operations
@@ -179,7 +179,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                             else:
-                                raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+                                raise Exception(f'Data dimensionality incompatible with loader ({z}). Check integration axes.')
                             
                         # Reduce STACK once along independent axis if dim(x) == 0
                         elif dim == 0:
@@ -213,13 +213,13 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                             else:
-                                raise Exception('Stack ROI inproper shape.')
+                                raise Exception(f'Stack ROI ({z}) inproper shape.')
 
                         else:
-                            raise Exception('Input dimension wrong')
+                            raise Exception(f'Input dimension wrong ({z})')
 
                     else:
-                        raise Exception("Error in specified ROI")
+                        raise Exception(f"Error in specified ROI {rois['z'][z]['roi']} for {z}")
                 
                 # This is only to perform additional math operations
                 elif len(np.shape(all_data[rois['z'][z]['req']])) == 2:
@@ -234,10 +234,10 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                             z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                         else:
-                            raise Exception("Error in specified ROI.")
+                            raise Exception(f"Error in specified ROI {rois['z'][z]['roi']} for {z}")
 
                 else:
-                    raise Exception("Wrong z dimensions")
+                    raise Exception(f"Wrong z dimensions ({z})")
                 
             # There are no ROI specified
             else:
@@ -256,7 +256,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                     z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                 else:
-                    raise Exception("Wrong input dimension")
+                    raise Exception(f"Wrong input dimension {z}")
 
         # Apply x offset
         data[arg].x_data = apply_offset(data[arg].x_data, xoffset, xcoffset)

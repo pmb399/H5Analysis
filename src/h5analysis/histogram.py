@@ -157,7 +157,7 @@ def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
                     locals()[f"s{arg}_val{i}_{stream}"] = data
                     convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
                 else:
-                    raise Exception('Error in specified ROI')
+                    raise Exception(f"Error in specified ROI {rois[stream][contrib]['roi']} for {contrib}")
 
              # Check that dim = 3
             elif len(np.shape(all_data[rois[stream][contrib]['req']])) == 3:
@@ -175,10 +175,10 @@ def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
                         locals()[f"s{arg}_val{i}_{stream}"] = data
                         convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
                     else:
-                        raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
+                        raise Exception(f'Data dimensionality ({contrib}) incompatible with loader. Check integration axes.')
 
                 else:
-                    raise Exception("Error in specified ROI")
+                    raise Exception(f"Error in specified ROI {rois[stream][contrib]['roi']['roi_list']} for {contrib}")
             else:
                 raise Exception(f"Wrong {stream} dimensions")
 
@@ -208,6 +208,6 @@ def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
                 convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
 
             else:
-                raise Exception("Wrong input dimension")
+                raise Exception(f"Wrong input dimension {contrib}")
                 
     return eval(convert)
