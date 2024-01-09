@@ -1,5 +1,9 @@
 # Scientific modules
 import numpy as np
+from numpy import log as ln
+from numpy import log10 as log
+from numpy import exp
+from numpy import max, min
 
 # Data reader
 from .ReadData import Data
@@ -100,22 +104,6 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                     else:
                         raise Exception('Error in specified ROI')
 
-                # Check that dim(x) = 2
-                elif len(np.shape(all_data[rois['x'][x]['req']])) == 2:
-                    # Require ROI is of correct type
-                    if isinstance(rois['x'][x]['roi'],tuple):
-                        # x-dimension will be 1
-                        dim = 1
-
-                        # Get indices and reduce data
-                        xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[f"{rois['x'][x]['req']}_scale"])
-                        x_data = mca_roi(all_data[rois['x'][x]['req']],xlow,xhigh,1,scale=all_data[f"{rois['x'][x]['req']}_scale"])
-
-                        # Add data to locals
-                        locals()[f"s{arg}_val{i}_x"] = x_data
-                        x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
-                    else:
-                        raise Exception('Error in specified ROI')
                 else:
                     raise Exception("Wrong x dimensions")
             
@@ -184,6 +172,12 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                         data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
                                     else:
                                         raise Exception("Wrong axis defined.")
+                                    
+                            elif len(np.shape(z_data)) == 1:
+                                # This is only to perform additional math operations
+                                locals()[f"s{arg}_val{i}_z"] = z_data[:,None]
+                                z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
+
                             else:
                                 raise Exception('Data dimensionality incompatible with loader. Check integration axes.')
                             
@@ -213,6 +207,11 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 data[arg].x_data = all_data[f"{rois['z'][z]['req']}_scale1"][idxLow1:idxHigh1]
                                 data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
 
+                            elif len(np.shape(z_data)) == 1:
+                                # This is only to perform additional math operations
+                                locals()[f"s{arg}_val{i}_z"] = z_data[:,None]
+                                z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
+
                             else:
                                 raise Exception('Stack ROI inproper shape.')
 
@@ -221,6 +220,22 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
 
                     else:
                         raise Exception("Error in specified ROI")
+                
+                # This is only to perform additional math operations
+                elif len(np.shape(all_data[rois['z'][z]['req']])) == 2:
+                        # Check that ROI is appropriate
+                        if isinstance(rois['z'][z]['roi'],tuple):
+                            # Get ROI indices
+                            low,high = get_indices(rois['z'][z]['roi'],all_data[f"{rois['z'][z]['req']}_scale"])
+                            z_data = mca_roi(all_data[rois['z'][z]['req']],low,high,1,scale=all_data[f"{rois['z'][z]['req']}_scale"])
+
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_z"] = z_data[:,None]
+                            z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
+
+                        else:
+                            raise Exception("Error in specified ROI.")
+
                 else:
                     raise Exception("Wrong z dimensions")
                 
@@ -233,6 +248,11 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
 
                     # Add data to locals
                     locals()[f"s{arg}_val{i}_z"] = all_data[z]
+                    z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
+
+                elif len(np.shape(all_data[z])) == 1:
+                    # This is only to perform additional math operations
+                    locals()[f"s{arg}_val{i}_z"] = all_data[z][:,None]
                     z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                 else:
