@@ -39,6 +39,9 @@ def load_beamline(config, file, key, norm=False, xoffset=None, xcoffset=None, yo
 
     data = dict()
     data[0] = beamline_object()
+    data[0].xlabel = 'Scan Number'
+    data[0].ylabel = key
+    data[0].filename = file
 
     # Get the scan information from file
     infoObj = ScanInfo(config,file,key)

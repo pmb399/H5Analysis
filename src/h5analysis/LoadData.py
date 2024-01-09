@@ -43,9 +43,6 @@ class Load1d:
 
     def __init__(self):
         self.data = list()
-        self.type = list()
-        self.x_stream = list()
-        self.filename = list()
         self.plot_lim_x = [":", ":"]
         self.plot_lim_y = [":", ":"]
         self.legend_loc = 'outside'
@@ -92,9 +89,6 @@ class Load1d:
 
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(load_1d(config, file, x_stream, y_stream, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.type.append(y_stream)
-        self.filename.append(file)
 
     def loadObj(self,obj,line):
         """
@@ -109,9 +103,6 @@ class Load1d:
         """
 
         self.data.append(obj.data[line])
-        self.x_stream.append(obj.x_stream[line])
-        self.type.append(obj.type[line])
-        self.filename.append(obj.filename[line])
 
     def background(self,config, file, x_stream, y_stream, arg, **kwargs):
         """ Subtracts the defined data from all loaded data
@@ -186,9 +177,6 @@ class Load1d:
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ScanAddition(config,
             file, x_stream, y_stream, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.type.append(y_stream)
-        self.filename.append(file)
 
     def subtract(self, config, file, x_stream, y_stream, minuend, subtrahend, **kwargs):
         """
@@ -203,9 +191,6 @@ class Load1d:
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ScanSubtraction(config,
             file, x_stream, y_stream, minuend, subtrahend, **kwargs))
-        self.x_stream.append(x_stream)
-        self.type.append(y_stream)
-        self.filename.append(file)
 
     def xlim(self, lower, upper):
         """
@@ -304,9 +289,9 @@ class Load1d:
                     raise UserWarning(f'Error in line {i+1}. Cannot plot (x,y) arrays with differnet size.')
                 plot_data["x_stream"].append(v.x_stream)
                 plot_data["y_stream"].append(v.y_stream)
-                plot_data['x_name'].append(self.x_stream[i])
-                plot_data['y_name'].append(self.type[i])
-                plot_data['filename'].append(self.filename[i])
+                plot_data['x_name'].append(v.xlabel)
+                plot_data['y_name'].append(v.ylabel)
+                plot_data['filename'].append(v.filename)
                 plot_data['scan'].append(v.scan)
                 plot_data['legend'].append(v.legend)
 
@@ -395,18 +380,18 @@ class Load1d:
         for i, val in enumerate(self.data):
             # Iterate over all scans per load call.
             for k, v in val.items():
-                name = f"~{self.filename[i]}"
+                name = f"~{v.filename}"
                 if name not in files:
                     files.append(name)
                 fileindex = files.index(name)
 
                 # Append the x_stream data and header name
                 series_data.append(pd.Series(v.x_stream))
-                series_header.append(f"F{fileindex+1}_S{v.scan}_I{i+1}-{self.x_stream[i]}")
+                series_header.append(f"F{fileindex+1}_S{v.scan}_I{i+1}-{v.xlabel}")
 
                 # Append the y_stream data and header name
                 series_data.append(pd.Series(v.y_stream))
-                series_header.append(f"F{fileindex+1}_S{v.scan}_I{i+1}-{self.type[i]}")
+                series_header.append(f"F{fileindex+1}_S{v.scan}_I{i+1}-{v.ylabel}")
 
         dfT = pd.DataFrame(series_data).transpose(copy=True)
         dfT.columns = series_header
@@ -1240,9 +1225,6 @@ class LoadBeamline(Load1d):
 
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(load_beamline(config, file, key, **kwargs))
-        self.type.append(key)
-        self.x_stream.append('Scan Number')
-        self.filename.append(file)
 
     def add(*args):
         raise UserWarning('Undefined')

@@ -72,6 +72,9 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         # Create h5 Data object
         data[arg] = Data(config,file,arg)
         data[arg].scan = arg
+        data[arg].xlabel = x_stream
+        data[arg].ylabel = y_stream
+        data[arg].filename = file
 
         # Analyse x-stream and y-stream requests with parser
         # Get lists of requisitions
@@ -196,6 +199,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                 else:
                                     # Get number of new x-axis
                                     x_axis = list(x_axis_raw)[0] # convert to single element (from set to list, then slice)
+                                    data[arg].xlabel = f"{rois['y'][y]['req']}_scale{x_axis}"
                                     if x_axis == 1:
                                         data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow1:idxHigh1]
                                     elif x_axis == 2:
@@ -239,6 +243,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                     elif len(np.shape(all_data[y])) == 2:
                         # Either dim_x is zero, need to define x-stream with scale
                         if dim_x == 0:
+                            data[arg].xlabel = f"{y}_scale"
                             data[arg].x_stream = all_data[f"{y}_scale"]
                             # Apply ROI based off x-indices
                             y_data = mca_roi(all_data[y],xlow,xhigh,0,scale=all_data[f"{y}_scale"])

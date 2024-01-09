@@ -59,6 +59,9 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
     data = dict()
     data[0] = added_object()
+    data[0].xlabel = x_stream
+    data[0].ylabel = y_stream
+    data[0].filename = file
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
     data[0].scan = name
@@ -151,6 +154,9 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
     # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
     data = dict()
     data[0] = added_object()
+    data[0].xlabel = x_stream
+    data[0].ylabel = y_stream
+    data[0].filename = file
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
     data[0].scan = name
