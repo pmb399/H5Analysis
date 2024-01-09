@@ -74,9 +74,9 @@ class Object1dMath(Load1d):
         data[0].scan = 'Misc'
         data[0].legend = 'Addition/Subtraction'
 
-        self.x_stream.append('x-stream')
-        self.type.append('y-stream')
-        self.filename.append('Object Math')
+        data[0].xlabel = 'x-stream'
+        data[0].ylabel = 'y-stream'
+        data[0].filename = 'Object Math'
         
         self.data.append(data)
 
