@@ -145,14 +145,15 @@ class Data:
                                     try:
                                         req_data[req] = np.array(f[f'{p}/{req}'])
                                         has_data = True
+                                        break # Need to break after finding stream
                                     except:
                                         pass
 
                                 if has_data == False:
-                                    raise Exception("Data stream undefined")
+                                    raise Exception(f"Data stream {req} undefined")
 
                         else:
-                            raise Exception("Data stream undefined")
+                            raise Exception(f"Data stream {req} undefined")
                     else:
                         # Define fake array when no stream is given and req is empty string
                         req_data[req] = [0]
