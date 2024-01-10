@@ -245,8 +245,8 @@ class ObjectHistMath(LoadHistogram):
         data[0].xmax = xmax
         data[0].ymin = ymin
         data[0].ymax = ymax
-        data[0].xedge = xedge
-        data[0].yedge = yedge
+        data[0].new_x = xedge
+        data[0].new_y = yedge
         data[0].new_z = new_z
         data[0].zmin = zmin
         data[0].zmax = zmax
