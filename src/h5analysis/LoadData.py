@@ -32,7 +32,6 @@ from .histogram import load_histogram
 from .data_3d import load_3d
 from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction, HistogramAddition
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
-from .simplemath import grid_data_mesh
 
 #########################################################################################
 #########################################################################################
@@ -815,18 +814,18 @@ class Load2d:
 
                 # Append data to string now.
                 # Append x-stream
-                series_data.append( pd.Series(v.new_x))
-                series_header.append("Motor Scale Gridded")
+                series_data.append(pd.Series(v.new_x))
+                series_header.append(f"{v.xlabel} Gridded")
 
                 # Append y-stream
                 series_data.append(pd.Series(v.new_y))
-                series_header.append("Detector Scale Gridded")
+                series_header.append(f"{v.ylabel} Gridded")
 
                 dfT = pd.DataFrame(series_data).transpose(copy=True)
                 dfT.columns = series_header
                 dfT.to_csv(f, index=False, lineterminator='\n')
 
-                g.write("=== Image ===\n")
+                g.write(f"=== {v.zlabel} ===\n")
                 np.savetxt(g, v.new_z, fmt="%.9g")
 
             return f, g
@@ -951,65 +950,6 @@ class LoadHistogram(Load2d):
         kwargs.setdefault('kind', "Histogram")
 
         super().plot(*args, **kwargs)
-
-    def get_data(self):
-        """Make data available in memory as exported to file.
-
-        Returns
-        -------
-        f : string.IO object
-            Motor and Detector Scales. Pandas Data Series.
-            1) Rewind memory with f.seek(0)
-            2) Load with pandas.read_csv(f,skiprows=3)
-        g : string.IO object
-            Actual gridded detector image.
-            1) Rewind memory with g.seek(0)
-            2) Load with numpy.genfromtxt(g,skip_header=4)
-        """
-
-        f = io.StringIO()
-        g = io.StringIO()
-        for i, val in enumerate(self.data):
-            for k, v in val.items():
-                # Have the gridded data ready now from loader
-                f.write("========================\n")
-                f.write(
-                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                f.write("========================\n")
-
-                g.write("========================\n")
-                g.write(
-                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                g.write("========================\n")
-
-                f.write("=== x-axis bin edges ===\n")
-                np.savetxt(f, v.xedge)
-                f.write("=== y-axis bin edges ===\n")
-                np.savetxt(f, v.yedge)
-                g.write("=== Histogram ===\n")
-                np.savetxt(g, v.new_z, fmt="%.9g")
-        return f, g
-
-    def export(self, filename):
-        """
-        Export and write data to specified file.
-
-        Parameters
-        ----------
-        filename : string
-        """
-        f, g, = self.get_data()
-
-        with open(f"{filename}.txt_scale", "a") as scales:
-            f.seek(0)
-            shutil.copyfileobj(f, scales)
-
-        with open(f"{filename}.txt_matrix", "a") as matrix:
-            g.seek(0)
-            shutil.copyfileobj(g, matrix)
-
-        print(f"Successfully wrote Histogram data to {filename}.txt")
-
 
 #########################################################################################
         
