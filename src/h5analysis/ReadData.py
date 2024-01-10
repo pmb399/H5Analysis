@@ -103,6 +103,9 @@ class Data:
                     elif req_attr['type'] == 'STACK':
                         p = self.config.get_path(self.scan,req_attr['STACK_Path'])
                         data = np.array(f[p])
+
+                        if len(np.shape(data)) == 2:
+                            data = data[np.newaxis,...]
                                               
                         # Get the MCA scale or use points
                         if not isinstance(req_attr['MCA_Scale'],type(None)):
