@@ -103,6 +103,10 @@ class Data:
                     elif req_attr['type'] == 'STACK':
                         p = self.config.get_path(self.scan,req_attr['STACK_Path'])
                         data = np.array(f[p])
+
+                        # In case there is only one image, want to transpose to keep same axis order (collapsed)
+                        if len(np.shape(data)) == 2:
+                            data = np.transpose(data)
                                               
                         # Get the MCA scale or use points
                         if not isinstance(req_attr['MCA_Scale'],type(None)):
@@ -110,7 +114,12 @@ class Data:
                             scale = np.array(f[p])
                             req_data[f"{req}_scale1"] = scale
                         else:
-                            req_data[f"{req}_scale1"] = np.arange(0,np.shape(data)[1])
+                            if len(np.shape(data)) == 3:
+                                req_data[f"{req}_scale1"] = np.arange(0,np.shape(data)[1])
+                            elif len(np.shape(data)) == 2:
+                                req_data[f"{req}_scale1"] = np.arange(0,np.shape(data)[0])
+                            else:
+                                raise Exception(f'Data {req} has the wrong dimnesions.')
                             
                         # Get the image scale or use points
                         if not isinstance(req_attr['STACK_Scale'],type(None)):
@@ -118,7 +127,12 @@ class Data:
                             scale = np.array(f[p])
                             req_data[f"{req}_scale2"] = scale
                         else:
-                            req_data[f"{req}_scale2"] = np.arange(0,np.shape(data)[2])
+                            if len(np.shape(data)) == 3:
+                                req_data[f"{req}_scale2"] = np.arange(0,np.shape(data)[2])
+                            elif len(np.shape(data)) == 2:
+                                req_data[f"{req}_scale2"] = np.arange(0,np.shape(data)[1])
+                            else:
+                                raise Exception(f'Data {req} has the wrong dimnesions.')
                             
                         # Apply 3d/1d normalization among first axis, if requested
                         if not isinstance(req_attr['norm_by'],type(None)):

@@ -250,13 +250,24 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
             else:
                 # Need to require MCA data with dim = 2
                 if len(np.shape(all_data[z])) == 2:
-                    # Set the corresponding scale as y-data
-                    data[arg].ylabel = f"{z}_scale"
-                    data[arg].y_data = all_data[f"{z}_scale"]
+                        # Add data to locals
+                        locals()[f"s{arg}_val{i}_z"] = all_data[z]
+                        z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
-                    # Add data to locals
-                    locals()[f"s{arg}_val{i}_z"] = all_data[z]
-                    z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
+                        if dim == 1:
+                            # Set the corresponding scale as y-data
+                            data[arg].ylabel = f"{z}_scale"
+                            data[arg].y_data = all_data[f"{z}_scale"]
+
+                        elif dim == 0:
+                            # Assign the scales as x/y
+                            data[arg].xlabel = f"{z}_scale1"
+                            data[arg].ylabel = f"{z}_scale2"
+                            data[arg].x_data = all_data[f"{z}_scale1"]
+                            data[arg].y_data = all_data[f"{z}_scale2"]
+
+                        else:
+                            raise Exception(f"Wrong input dimension {z}")
 
                 elif len(np.shape(all_data[z])) == 1:
                     # This is only to perform additional math operations
