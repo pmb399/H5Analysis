@@ -116,6 +116,10 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
         data[arg].new_z = new_z
         data[arg].zmin = zmin
         data[arg].zmax = zmax
+        data[arg].xlabel = x_stream
+        data[arg].ylabel = y_stream
+        data[arg].zlabel = z_stream
+        data[arg].filename = file
 
     return data
 

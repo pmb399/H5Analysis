@@ -5,6 +5,9 @@ from scipy.interpolate import interp1d, interp2d
 # Import Loaders
 from .LoadData import Load1d, Load2d, LoadHistogram
 
+# Import simplemath
+from .simplemath import grid_data_mesh
+
 class Object1dMath(Load1d):
     """Apply addition/subtraction on loader objects"""
 
@@ -174,12 +177,10 @@ class Object2dMath(Load2d):
         data[0].ymax = MASTER_ymax
         data[0].scan = 'Misc'
         data[0].legend = 'Addition/Subtraction'
-
-        # Setup names
-        self.x_stream.append('x-stream')
-        self.y_stream.append('y-stream')
-        self.detector.append('Detector')
-        self.filename.append('Simple Math')
+        data[0].xlabel = 'x-stream'
+        data[0].ylabel = 'y-stream'
+        data[0].zlabel = 'Detector'
+        data[0].filename = 'Simple Math'
         
         self.data.append(data)
 
@@ -254,11 +255,9 @@ class ObjectHistMath(LoadHistogram):
         data[0].z_data = all_z
         data[0].scan = 'Misc'
         data[0].legend = 'Addition/Subtraction'
-
-        # Set up names
-        self.x_stream.append('x-stream')
-        self.y_stream.append('y-stream')
-        self.detector.append('Detector')
-        self.filename.append('Simple Math')
+        data[0].xlabel = 'x-stream'
+        data[0].ylabel = 'y-stream'
+        data[0].zlabel = 'z-stream'
+        data[0].filename = 'Simple Math'
         
         self.data.append(data)

@@ -453,10 +453,6 @@ class Load2d:
 
     def __init__(self):
         self.data = list()
-        self.x_stream = list()
-        self.y_stream = list()
-        self.detector = list()
-        self.filename = list()
         self.plot_lim_x = [":", ":"]
         self.plot_lim_y = [":", ":"]
         self.plot_vlines = list()
@@ -504,10 +500,6 @@ class Load2d:
             raise TypeError("You can only append one scan per object")
         
         self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.y_stream.append('Scale')
-        self.detector.append(detector)
-        self.filename.append(file)
 
     def background(self,config, file, x_stream, detector, arg, **kwargs):
         """ Subtracts the defined data from all loaded data
@@ -589,10 +581,6 @@ class Load2d:
         self.data.append(ImageAddition(config,file, x_stream,
                          detector, *args, **kwargs))
         
-        self.x_stream.append(x_stream)
-        self.y_stream.append("Scale")
-        self.detector.append(detector)
-        self.filename.append(file)
 
     def subtract(self, config, file, x_stream, detector, *args, **kwargs):
         """
@@ -615,10 +603,6 @@ class Load2d:
         self.data.append(ImageSubtraction(config, file, x_stream,
                          detector, *args, **kwargs))
         
-        self.x_stream.append(x_stream)
-        self.y_stream.append("Scale")
-        self.detector.append(detector)
-        self.filename.append(file)
 
     def xlim(self, lower, upper):
         """
@@ -779,15 +763,15 @@ class Load2d:
             if title != None:
                 p.title.text = str(title)
             else:
-                p.title.text = f'{self.detector[i]} {kind} for Scan {k}'
+                p.title.text = f'{v.zlabel} {kind} for Scan {k}'
             if xlabel != None:
                 p.xaxis.axis_label = str(xlabel)
             else:
-                p.xaxis.axis_label = str(self.x_stream[i])
+                p.xaxis.axis_label = str(v.xlabel)
             if ylabel != None:
                 p.yaxis.axis_label = str(ylabel)
             else:
-                p.yaxis.axis_label = f'{self.detector[i]} Scale'
+                p.yaxis.axis_label = str(v.ylabel)
 
             p.toolbar.logo = None
 
@@ -820,13 +804,13 @@ class Load2d:
                 # Start writing string f
                 f.write("========================\n")
                 f.write(
-                    f"F~{self.filename[i]}_S{v.scan}_{self.detector[i]}_{self.x_stream[i]}_{self.y_stream[i]}\n")
+                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
                 f.write("========================\n")
 
                 # Start writing string g
                 g.write("========================\n")
                 g.write(
-                    f"F~{self.filename[i]}_S{v.scan}_{self.detector[i]}_{self.x_stream[i]}_{self.y_stream[i]}\n")
+                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
                 g.write("========================\n")
 
                 # Append data to string now.
@@ -901,21 +885,6 @@ class Load2d:
 class LoadHistogram(Load2d):
     """Class to display (x,y,z) scatter data."""
 
-    def __init__(self):
-        self.data = list()
-        self.x_stream = list()
-        self.y_stream = list()
-        self.z_stream = list()
-        self.filename = list()
-        self.plot_lim_x = [":", ":"]
-        self.plot_lim_y = [":", ":"]
-        self.plot_vlines = list()
-        self.plot_hlines = list()
-        self.plot_labels = list()
-
-        # Use this so we can inherit from Load2d for plotting
-        self.detector = self.z_stream
-
     def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
         """
         Load (x,y,z) stream data to histogram
@@ -955,10 +924,6 @@ class LoadHistogram(Load2d):
         
         self.data.append(load_histogram(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
-        self.x_stream.append(x_stream)
-        self.y_stream.append(y_stream)
-        self.z_stream.append(z_stream)
-        self.filename.append(file)
 
     def add(self, config, file, x_stream, y_stream, z_stream, *args, norm=False):
         """
@@ -978,10 +943,6 @@ class LoadHistogram(Load2d):
         
         self.data.append(HistogramAddition(config, file, x_stream,
                          y_stream, z_stream, *args, norm=norm))
-        self.x_stream.append(x_stream)
-        self.y_stream.append(y_stream)
-        self.z_stream.append(z_stream)
-        self.filename.append(file)
     
     def subtract(self):
         raise UserWarning("Functionality not yet implemented.")
@@ -1013,12 +974,12 @@ class LoadHistogram(Load2d):
                 # Have the gridded data ready now from loader
                 f.write("========================\n")
                 f.write(
-                    f"F~{self.filename[i]}_S{v.scan}_{self.z_stream[i]}_{self.x_stream[i]}_{self.y_stream[i]}\n")
+                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
                 f.write("========================\n")
 
                 g.write("========================\n")
                 g.write(
-                    f"F~{self.filename[i]}_S{v.scan}_{self.z_stream[i]}_{self.x_stream[i]}_{self.y_stream[i]}\n")
+                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
                 g.write("========================\n")
 
                 f.write("=== x-axis bin edges ===\n")

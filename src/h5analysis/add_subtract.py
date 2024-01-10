@@ -264,6 +264,10 @@ def ImageAddition(config, file, x_stream, detector, *args, norm=True, xoffset=No
     data[0].xmax = MASTER_xmax
     data[0].ymin = MASTER_ymin
     data[0].ymax = MASTER_ymax
+    data[0].xlabel = x_stream
+    data[0].ylabel = 'Scale'
+    data[0].zlabel = detector
+    data[0].filename = file
 
     data[0].scan = name
 
@@ -335,6 +339,10 @@ def ImageSubtraction(config, file, x_stream, detector, minuend, subtrahend, norm
     data[0].xmax = MASTER_xmax
     data[0].ymin = MASTER_ymin
     data[0].ymax = MASTER_ymax
+    data[0].xlabel = x_stream
+    data[0].ylabel = 'Scale'
+    data[0].zlabel = detector
+    data[0].filename = file
 
     data[0].scan = name
 
@@ -410,6 +418,10 @@ def HistogramAddition(config,file, x_stream, y_stream, z_stream, *args, norm=Fal
     data[0].x_data = all_x
     data[0].y_data = all_y
     data[0].z_data = all_z
+    data[0].xlabel = x_stream
+    data[0].ylabel = x_stream
+    data[0].zlabel = z_stream
+    data[0].filename = file
 
     if norm == True:
         data[0].new_z =  data[0].new_z / data[0].new_z.max()

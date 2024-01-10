@@ -69,6 +69,9 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         # Create h5 Data object
         data[arg] = Data(config,file,arg)
         data[arg].scan = arg
+        data[arg].xlabel = x_stream
+        data[arg].zlabel = detector
+        data[arg].filename = file
         
         # Analyse x-stream and y-stream requests with parser
         # Get lists of requisitions
@@ -167,8 +170,10 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
 
                                     # Set the remaining (second) axis as y-data
                                     if y_axis == 1:
+                                        data[arg].ylabel = f"{rois['z'][z]['req']}_scale1"
                                         data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale1"][idxLow1:idxHigh1]
                                     elif y_axis == 2:
+                                        data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
                                         data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
                                     else:
                                         raise Exception(f"Wrong axis defined ({z}).")
@@ -204,6 +209,8 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                                 # Assign the scales as x/y
+                                data[arg].xlabel = f"{rois['z'][z]['req']}_scale1"
+                                data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
                                 data[arg].x_data = all_data[f"{rois['z'][z]['req']}_scale1"][idxLow1:idxHigh1]
                                 data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
 
@@ -244,6 +251,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                 # Need to require MCA data with dim = 2
                 if len(np.shape(all_data[z])) == 2:
                     # Set the corresponding scale as y-data
+                    data[arg].ylabel = f"{z}_scale"
                     data[arg].y_data = all_data[f"{z}_scale"]
 
                     # Add data to locals
