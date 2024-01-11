@@ -114,6 +114,11 @@ class Data:
                             req_data[f"{req}_scale1"] = scale
                         else:
                             req_data[f"{req}_scale1"] = np.arange(0,np.shape(data)[1])
+
+                        # With stack dimension (n,x,y)
+                        # Always require the scale to be of dim (n,x) and (n,y)
+                        if len(np.shape(req_data[f"{req}_scale1"])) == 1:
+                            req_data[f"{req}_scale1"] = np.repeat(req_data[f"{req}_scale1"][None,...],np.shape(data)[0],0)
                             
                         # Get the image scale or use points
                         if not isinstance(req_attr['STACK_Scale'],type(None)):
@@ -122,6 +127,11 @@ class Data:
                             req_data[f"{req}_scale2"] = scale
                         else:
                             req_data[f"{req}_scale2"] = np.arange(0,np.shape(data)[2])
+
+                        # With stack dimension (n,x,y)
+                        # Always require the scale to be of dim (n,x) and (n,y)
+                        if len(np.shape(req_data[f"{req}_scale2"])) == 1:
+                            req_data[f"{req}_scale2"] = np.repeat(req_data[f"{req}_scale2"][None,...],np.shape(data)[0],0)
                             
                         # Apply 3d/1d normalization among first axis, if requested
                         if not isinstance(req_attr['norm_by'],type(None)):

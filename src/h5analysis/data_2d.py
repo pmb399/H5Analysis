@@ -145,13 +145,15 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                     # Check that ROI is appropriate
                     if isinstance(rois['z'][z]['roi'],dict):
                         # Get ROI indices
-                        idxLow1,idxHigh1 = get_indices(rois['z'][z]['roi']['roi_list'][0],all_data[f"{rois['z'][z]['req']}_scale1"])
-                        idxLow2,idxHigh2 = get_indices(rois['z'][z]['roi']['roi_list'][1],all_data[f"{rois['z'][z]['req']}_scale2"])
+                        scale1 = np.average(all_data[f"{rois['z'][z]['req']}_scale1"],axis=0)
+                        scale2 = np.average(all_data[f"{rois['z'][z]['req']}_scale2"],axis=0)
+                        idxLow1,idxHigh1 = get_indices(rois['z'][z]['roi']['roi_list'][0],scale1)
+                        idxLow2,idxHigh2 = get_indices(rois['z'][z]['roi']['roi_list'][1],scale2)
 
                         # Reduce STACK once along specified scale axis if dim(x) = 1
                         if dim == 1:
                             # Calculate resulting 2d data
-                            z_data = stack_roi(all_data[f"{rois['z'][z]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['z'][z]['roi']['roi_axes'],scale1=all_data[f"{rois['z'][z]['req']}_scale1"],scale2=all_data[f"{rois['z'][z]['req']}_scale2"])
+                            z_data = stack_roi(all_data[f"{rois['z'][z]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['z'][z]['roi']['roi_axes'],scale1=scale1,scale2=scale2)
                             
                             # Ensure result is of correct dimensions
                             if len(np.shape(z_data)) == 2:
@@ -171,10 +173,10 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                     # Set the remaining (second) axis as y-data
                                     if y_axis == 1:
                                         data[arg].ylabel = f"{rois['z'][z]['req']}_scale1"
-                                        data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale1"][idxLow1:idxHigh1]
+                                        data[arg].y_data = np.average(all_data[f"{rois['z'][z]['req']}_scale1"],axis=0)[idxLow1:idxHigh1]
                                     elif y_axis == 2:
                                         data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
-                                        data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
+                                        data[arg].y_data = np.average(all_data[f"{rois['z'][z]['req']}_scale2"],axis=0)[idxLow2:idxHigh2]
                                     else:
                                         raise Exception(f"Wrong axis defined ({z}).")
                                     
@@ -200,7 +202,9 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 raise Exception('Inproper integration axes. You may not specify integration axes on the image.')
 
                             # Calculate resulting 2d data
-                            z_data = stack_roi(all_data[f"{rois['z'][z]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['z'][z]['req']}_scale1"],scale2=all_data[f"{rois['z'][z]['req']}_scale2"])
+                            scale1 = np.average(all_data[f"{rois['z'][z]['req']}_scale1"],axis=0)
+                            scale2 = np.average(all_data[f"{rois['z'][z]['req']}_scale2"],axis=0)
+                            z_data = stack_roi(all_data[f"{rois['z'][z]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=scale1,scale2=scale2)
                             
                             # Ensure proper dimensions
                             if len(np.shape(z_data)) == 2:
@@ -211,8 +215,8 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 # Assign the scales as x/y
                                 data[arg].xlabel = f"{rois['z'][z]['req']}_scale1"
                                 data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
-                                data[arg].x_data = all_data[f"{rois['z'][z]['req']}_scale1"][idxLow1:idxHigh1]
-                                data[arg].y_data = all_data[f"{rois['z'][z]['req']}_scale2"][idxLow2:idxHigh2]
+                                data[arg].x_data = np.average(all_data[f"{rois['z'][z]['req']}_scale1"],axis=0)[idxLow1:idxHigh1]
+                                data[arg].y_data = np.average(all_data[f"{rois['z'][z]['req']}_scale2"],axis=0)[idxLow2:idxHigh2]
 
                             elif len(np.shape(z_data)) == 1:
                                 # This is only to perform additional math operations

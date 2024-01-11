@@ -91,10 +91,12 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
             elif len(np.shape(all_data[rois]['s'][s]['req'])) == 3:
                 if isinstance(rois['s'][s]['roi'],dict):
                     # Get ROI indices
-                    idxLow1,idxHigh1 = get_indices(rois['s'][s]['roi']['roi_list'][0],all_data[f"{rois['s'][s]['req']}_scale1"])
-                    idxLow2,idxHigh2 = get_indices(rois['s'][s]['roi']['roi_list'][1],all_data[f"{rois['s'][s]['req']}_scale2"])
+                    scale1 = np.average(all_data[f"{rois['s'][s]['req']}_scale1"],axis=0)
+                    scale2 = np.average(all_data[f"{rois['s'][s]['req']}_scale2"],axis=0)
+                    idxLow1,idxHigh1 = get_indices(rois['s'][s]['roi']['roi_list'][0],scale1)
+                    idxLow2,idxHigh2 = get_indices(rois['s'][s]['roi']['roi_list'][1],scale2)
 
-                    data = stack_roi(all_data[f"{rois['s'][s]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,(1,2),scale1=all_data[f"{rois['s'][s]['req']}_scale1"],scale2=all_data[f"{rois['s'][s]['req']}_scale2"])
+                    data = stack_roi(all_data[f"{rois['s'][s]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,(1,2),scale1=scale1,scale2=scale2)
 
                     # Add data to locals
                     locals()[f"s{arg}_val{i}_s"] = data[:,None,None]
@@ -152,16 +154,24 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
 
     # Iterate over independent axis and grid all data to images
     stack_grid = list()
+    xmin_list = list()
+    xmax_list = list()
+    ymin_list = list()
+    ymax_list = list()
     for i,img in enumerate(my_stack):
-        xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(x_data, y_data, img, grid_x=grid_x,grid_y=grid_y)
+        xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], img, grid_x=grid_x,grid_y=grid_y)
         stack_grid.append(new_z)
+        xmin_list.append(xmin)
+        xmax_list.append(xmax)
+        ymin_list.append(ymin)
+        ymax_list.append(ymax)
 
     # Generate 3d stack from gridded z-data in stack_grid list
     # Store all data in dict
     data[arg].stack = np.stack(tuple(stack_grid))
-    data[arg].x_min = xmin
-    data[arg].x_max = xmax
-    data[arg].y_min = ymin
-    data[arg].y_max = ymax
+    data[arg].x_min = xmin_list
+    data[arg].x_max = xmax_list
+    data[arg].y_min = ymin_list
+    data[arg].y_max = ymax_list
 
     return data

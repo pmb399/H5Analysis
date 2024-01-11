@@ -168,10 +168,12 @@ def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
                 # Check correct ROI type
                 if isinstance(rois[stream][contrib]['roi'],dict):
                     # Get indices and reduce data
-                    idxLow1,idxHigh1 = get_indices(rois[stream][contrib]['roi']['roi_list'][0],all_data[f"{rois[stream][contrib]['req']}_scale1"])
-                    idxLow2,idxHigh2 = get_indices(rois[stream][contrib]['roi']['roi_list'][1],all_data[f"{rois[stream][contrib]['req']}_scale2"])
+                    scale1 = np.average(all_data[f"{rois[stream][contrib]['req']}_scale1"],axis=0)
+                    scale2 = np.average(all_data[f"{rois[stream][contrib]['req']}_scale2"],axis=0)
+                    idxLow1,idxHigh1 = get_indices(rois[stream][contrib]['roi']['roi_list'][0],scale1)
+                    idxLow2,idxHigh2 = get_indices(rois[stream][contrib]['roi']['roi_list'][1],scale2)
 
-                    data = stack_roi(all_data[f"{rois[stream][contrib]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois[stream][contrib]['roi']['roi_axes'],scale1=all_data[f"{rois[stream][contrib]['req']}_scale1"],scale2=all_data[f"{rois[stream][contrib]['req']}_scale2"])
+                    data = stack_roi(all_data[f"{rois[stream][contrib]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois[stream][contrib]['roi']['roi_axes'],scale1=scale1,scale2=scale2)
 
                     # Check correct data dimensions of reduced data
                     if len(np.shape(data)) == 1:
@@ -204,8 +206,10 @@ def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
                 convert = convert.replace(contrib,f"s{arg}_val{i}_{stream}")
 
             elif len(np.shape(all_data[contrib])) == 3:
-                # Apply automatic reduction
-                data = stack_roi(all_data[contrib],None,None,None,None,None,None,(1,2),scale1=all_data[f"{contrib}_scale1"],scale2=all_data[f"{contrib}_scale2"])
+                # Apply automatic 
+                scale1 = np.average(all_data[f"{contrib}_scale1"],axis=0)
+                scale2 = np.average(all_data[f"{contrib}_scale2"],axis=0)
+                data = stack_roi(all_data[contrib],None,None,None,None,None,None,(1,2),scale1=scale1,scale2=scale2)
 
                 # Add data to locals
                 locals()[f"s{arg}_val{i}_{stream}"] = data

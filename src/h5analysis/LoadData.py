@@ -1011,10 +1011,10 @@ class Load3d:
         def update(f=0):
             """Update stack to next image on slider move"""
             r.data_source.data['image'] = [v.stack[f]]
-            r.data_source.data['x'] = [v.x_min]
-            r.data_source.data['y'] = [v.y_min]
-            r.data_source.data['dw'] = [v.x_max-v.x_min]
-            r.data_source.data['dh'] = [v.y_max-v.y_min]
+            r.data_source.data['x'] = [v.x_min[f]]
+            r.data_source.data['y'] = [v.y_min[f]]
+            r.data_source.data['dw'] = [v.x_max[f]-v.x_min[f]]
+            r.data_source.data['dh'] = [v.y_max[f]-v.y_min[f]]
 
             push_notebook(handle=s)
 
@@ -1027,8 +1027,8 @@ class Load3d:
                 # must give a vector of image data for image parameter
                 color_mapper = LinearColorMapper(palette="Viridis256")
 
-                simage = ColumnDataSource(data=dict(image=[v.stack[0]], x=[v.x_min], y=[
-                                          v.y_min], dw=[v.x_max-v.x_min], dh=[v.y_max-v.y_min],))
+                simage = ColumnDataSource(data=dict(image=[v.stack[0]], x=[v.x_min[0]], y=[
+                                          v.y_min[0]], dw=[v.x_max[0]-v.x_min[0]], dh=[v.y_max[0]-v.y_min[0]],))
 
                 r = p.image(image='image', source=simage, x='x', y='y',
                             dw='dw', dh='dh', color_mapper=color_mapper, level="image")

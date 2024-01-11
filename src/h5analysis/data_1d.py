@@ -168,12 +168,14 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                     elif len(np.shape(all_data[rois['y'][y]['req']])) == 3:
                         # Check that ROI is appropriate
                         if isinstance(rois['y'][y]['roi'],dict):
-                            idxLow1,idxHigh1 = get_indices(rois['y'][y]['roi']['roi_list'][0],all_data[f"{rois['y'][y]['req']}_scale1"])
-                            idxLow2,idxHigh2 = get_indices(rois['y'][y]['roi']['roi_list'][1],all_data[f"{rois['y'][y]['req']}_scale2"])
+                            scale1 = np.average(all_data[f"{rois['y'][y]['req']}_scale1"],axis=0)
+                            scale2 = np.average(all_data[f"{rois['y'][y]['req']}_scale2"],axis=0)
+                            idxLow1,idxHigh1 = get_indices(rois['y'][y]['roi']['roi_list'][0],scale1)
+                            idxLow2,idxHigh2 = get_indices(rois['y'][y]['roi']['roi_list'][1],scale2)
 
                             # Reduce STACK data twice if dim_x == 1
                             if dim_x == 1:
-                                y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['y'][y]['roi']['roi_axes'],scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                                y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],None,None,idxLow1,idxHigh1,idxLow2,idxHigh2,rois['y'][y]['roi']['roi_axes'],scale1=scale1,scale2=scale2)
                                 # Ensure we reduced to 1d data
                                 if len(np.shape(y_data)) == 1:
                                     # Add data to locals
@@ -201,14 +203,14 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                     x_axis = list(x_axis_raw)[0] # convert to single element (from set to list, then slice)
                                     data[arg].xlabel = f"{rois['y'][y]['req']}_scale{x_axis}"
                                     if x_axis == 1:
-                                        data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow1:idxHigh1]
+                                        data[arg].x_stream = scale1[idxLow1:idxHigh1]
                                     elif x_axis == 2:
-                                        data[arg].x_stream = all_data[f"{rois['y'][y]['req']}_scale{x_axis}"][idxLow2:idxHigh2]
+                                        data[arg].x_stream = scale2[idxLow2:idxHigh2]
                                     else:
                                         raise Exception("Wrong axis defined.")
                                     
                                     # Reduce data
-                                    y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
+                                    y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=scale1,scale2=scale2)
                                     if len(np.shape(y_data)) == 1:
                                         # Add data to locals
                                         locals()[f"s{arg}_val{i}_y"] = y_data
@@ -269,7 +271,9 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                     elif len(np.shape(all_data[y])) == 3:
                         # Only unambiguous if dim_x == 1 
                         if dim_x == 1:
-                            y_data = stack_roi(all_data[y],None,None,None,None,None,None,(1,2),scale1=all_data[f"{y}_scale1"],scale2=all_data[f"{y}_scale2"])
+                            scale1 = np.average(all_data[f"{y}_scale1"],axis=0)
+                            scale2 = np.average(all_data[f"{y}_scale2"],axis=0)
+                            y_data = stack_roi(all_data[y],None,None,None,None,None,None,(1,2),scale1=scale1,scale2=scale2)
 
                             # Add data to locals
                             locals()[f"s{arg}_val{i}_y"] = y_data
