@@ -112,8 +112,8 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                             raise Exception(f"Error in specified ROI {rois['x'][x]['roi']} for {x}")
                     else:
                         raise Exception(f"Inappropriate dimensions for x-stream ({x})")
-                except:
-                    raise Exception(f'x-stream undefined ({x}).')
+                except Exception as e:
+                    raise Exception(f'x-stream undefined ({x}).\nException: {e}')
             
             # If x component has no ROI
             else:
@@ -128,8 +128,8 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                         x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
                     else:
                         raise Exception(f'x-stream dimensions unsupported ({x})')
-                except:
-                    raise Exception(f'x-stream undefined ({x}).')
+                except Exception as e:
+                    raise Exception(f'x-stream undefined ({x}).\nException: {e}')
 
         # Check proper dimensions for x-stream
         if not (dim_x==0 or dim_x == 1):
@@ -223,8 +223,8 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                             raise Exception(f"Error in specified ROI {rois['y'][y]['roi']['roi_list']} for {y}")
                     else:
                         raise Exception(f"Inappropriate dimensions for y-stream ({y})")
-                except:
-                    raise Exception(f'y-stream undefined ({y}).')
+                except Exception as e:
+                    raise Exception(f'y-stream undefined ({y}).\nException: {e}')
                 
             # No ROI is specified
             else:
@@ -280,13 +280,13 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                     else:
                         raise Exception(f'Improper dimensions of y-stream {y}')
 
-                except:
-                    raise Exception(f'y-stream undefined ({y}).')
+                except Exception as e:
+                    raise Exception(f'y-stream undefined ({y}).\nException" {e}')
         
         try:
             data[arg].y_stream = eval(y_stream_convert)
-        except:
-            raise Exception("Error determining y stream.")
+        except Exception as e:
+            raise Exception(f"Error determining y stream.\nException: {e}")
         
 
         # Get legend items

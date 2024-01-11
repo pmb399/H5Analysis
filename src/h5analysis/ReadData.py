@@ -211,7 +211,7 @@ class ScanInfo:
                         except:
                             pass
 
-        except:
-            raise KeyError("Error opening and processing file.")
+        except Exception as e:
+            raise Exception(f"Error opening and processing file. {e}")
 
         self.info_dict = info_dict

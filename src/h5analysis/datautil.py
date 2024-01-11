@@ -164,18 +164,18 @@ def get_roi(roi):
             if ':' in roi:
                 try:
                     roi_low = float(roi.split(":")[0])
-                except:
+                except Exception as e:
                     if roi.split(":")[0] == 'None':
                         roi_low = None
                     else:
-                        raise Exception('Error with lower bound in ROI')
+                        raise Exception(f'Error with lower bound in ROI. {e}')
                 try:
                     roi_high = float(roi.split(":")[1])
-                except:
+                except Exception as e:
                     if roi.split(":")[1] == 'None':
                         roi_high = None
                     else:
-                        raise Exception("Error with upper bound in ROI")
+                        raise Exception(f"Error with upper bound in ROI. {e}")
 
             # Assume only one value, use as upper and lower limit   
             else:
@@ -188,9 +188,9 @@ def get_roi(roi):
                 
             return (roi_low, roi_high)
         
-        except:
+        except Exception as e:
             warnings.warn("Did not understand ROI type")
-            raise Exception("Did not understand ROI type")
+            raise Exception(e)
     
     # Check whether 1 or multiple comma separated ROIs are defined
     if not ',' in roi:
@@ -206,7 +206,8 @@ def get_roi(roi):
 
         # Go through individual ROIs separately
         for i,roi_tup in enumerate(roi.split(',')):
-            try: # Check if sums specified with curely braces
+            if '{' in roi_tup and '}' in roi_tup:
+                # Check if sums specified with curely braces
                 search = re.search('\{(.*)\}', roi_tup)
 
                 # Remove curely braces and get regular ROI
@@ -214,7 +215,7 @@ def get_roi(roi):
                 # Append those ROIs with curely braces to sum axes
                 sum_axes.append(i+1) # start iterating with index 1 since double indices need to catch axes 1 and 2 of stack, not independent axis 0
 
-            except Exception as e:
+            else:
                 roi_list.append(split_roi(roi_tup))
 
         # Convert sum_axes list to tuple for direct feed to np.sum later
@@ -257,8 +258,8 @@ def strip_roi(contrib_reqs,stream, reqs, rois):
     for reqroi in contrib_reqs:
         # Add dict for contribution
         req_roi = dict()
-        try:
-            # Split the ROI at"[" and "]"
+        if '[' in reqroi and ']' in reqroi:
+            # Split the ROI at "[" and "]"
             # Then get the appropriate ROI (tuple or dict)
             strip = reqroi.split("[")[1].rstrip("]")
             roi = get_roi(strip)
@@ -273,7 +274,7 @@ def strip_roi(contrib_reqs,stream, reqs, rois):
             req_roi['roi'] = roi
             stream_rois[reqroi] = req_roi
 
-        except:
+        else:
             # If no ROI could be extracted
             # Add plain request to reqs list
             reqs.append(reqroi)
