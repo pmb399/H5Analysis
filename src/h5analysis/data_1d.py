@@ -208,8 +208,8 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                         raise Exception("Wrong axis defined.")
                                     
                                     # Reduce data
+                                    y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
                                     if len(np.shape(y_data)) == 1:
-                                        y_data = stack_roi(all_data[f"{rois['y'][y]['req']}"],xlow,xhigh,idxLow1,idxHigh1,idxLow2,idxHigh2,integration_axes,scale1=all_data[f"{rois['y'][y]['req']}_scale1"],scale2=all_data[f"{rois['y'][y]['req']}_scale2"])
                                         # Add data to locals
                                         locals()[f"s{arg}_val{i}_y"] = y_data
                                         y_stream_convert = y_stream_convert.replace(y,f"s{arg}_val{i}_y")
