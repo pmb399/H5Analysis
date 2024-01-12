@@ -572,8 +572,6 @@ class Load2d:
         """
 
         # Ensure that only one scan is loaded.
-        if len(args) != 1:
-            raise TypeError("You may only select one scan at a time")
         if self.data != []:
             raise TypeError("You can only append one scan per object")
 
@@ -593,8 +591,6 @@ class Load2d:
         """
 
         # Ensure that only one scan is loaded.
-        if len(args) != 1:
-            raise TypeError("You may only select one scan at a time")
         if self.data != []:
             raise TypeError("You can only append one scan per object")
 
@@ -935,8 +931,6 @@ class LoadHistogram(Load2d):
         """
 
         # Ensure that only one scan is loaded.
-        if len(args) != 1:
-            raise TypeError("You may only select one scan at a time")
         if self.data != []:
             raise TypeError("You can only append one scan per object")
         
