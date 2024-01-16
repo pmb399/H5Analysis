@@ -49,20 +49,51 @@ class Object1dMath(Load1d):
     def evaluate(self):
         """Evaluate the request"""
 
+        if self.DataObjectsAdd == []:
+            raise Exception('You need to add at least one scan.')
+
+        all_objs = self.DataObjectsAdd + self.DataObjectsSubtract
+        start_list = list()
+        end_list = list()
+
+        for i,item in enumerate(all_objs):
+            start_list.append(item.x_stream.min())
+            end_list.append(item.x_stream.max())
+
+            if i == 0:
+                x_diff = np.abs(np.diff(item.x_stream).min())
+
+        s = max(start_list)
+        e = min(end_list)
+
+        if s>=e:
+            raise Exception("There is not sufficient overlap in x to perform interpolation.")
+        
+        # Limit array size to 100MB (=104857600 bytes)
+        # Numpy float64 array element requires 8 bytes
+        max_steps = 104857600/8
+        steps = int((e-s)/x_diff)
+
+        if steps>max_steps:
+            num = max_steps
+        else:
+            num = steps
+
+        MASTER_x = np.linspace(s,e,num)
+
         # First, add all objects
         for i,item in enumerate(self.DataObjectsAdd):
             # Determine MASTER streams
             if i ==0:
-                MASTER_x = item.x_stream
-                MASTER_y = item.y_stream
+                MASTER_y = interp1d(item.x_stream,item.y_stream)(MASTER_x)
             
             # Interpolate other data and add
             else:
-                MASTER_y += interp1d(item.x_stream,item.y_stream,fill_value='extrapolate')(MASTER_x)
+                MASTER_y += interp1d(item.x_stream,item.y_stream)(MASTER_x)
         
         # Second, subtract objects
         for i,item in enumerate(self.DataObjectsSubtract):
-                MASTER_y -= interp1d(item.x_stream,item.y_stream,fill_value='extrapolate')(MASTER_x)
+                MASTER_y -= interp1d(item.x_stream,item.y_stream)(MASTER_x)
 
         # Store data
         class added_object:
@@ -128,17 +159,62 @@ class Object2dMath(Load2d):
         # Make sure there is no other scan loaded
         if self.data != []:
             raise UserWarning("Can only load one scan at a time.")
+        
+        if self.DataObjectsAdd == []:
+            raise Exception('You need to add at least one scan.')
+        
+        all_objs = self.DataObjectsAdd + self.DataObjectsSubtract
+        x_start_list = list()
+        x_end_list = list()
+        y_start_list = list()
+        y_end_list = list()
+
+        for i,item in enumerate(all_objs):
+            x_start_list.append(item.new_x.min())
+            x_end_list.append(item.new_x.max())
+            y_start_list.append(item.new_y.min())
+            y_end_list.append(item.new_y.max())
+
+            if i == 0:
+                x_diff = np.abs(np.diff(item.new_x).min())
+                y_diff = np.abs(np.diff(item.new_y).min())
+
+        x_s = max(x_start_list)
+        x_e = min(x_end_list)
+        y_s = max(y_start_list)
+        y_e = min(y_end_list)
+
+        if x_s>=x_e:
+            raise Exception("There is not sufficient overlap in x to perform interpolation.")
+        
+        if y_s>=y_e:
+            raise Exception("There is not sufficient overlap in y to perform interpolation.")
+        
+        # Limit array size to 100MB (=104857600 bytes)
+        # Numpy float64 array element requires 8 bytes
+        max_steps = 104857600/8
+        x_steps = int((x_e-x_s)/x_diff)
+        y_steps = int((y_e-y_s)/y_diff)
+
+        if x_steps>max_steps:
+            x_num = max_steps
+        else:
+            x_num = x_steps
+
+        MASTER_x_stream = np.linspace(x_s,x_e,x_num)
+
+        if y_steps>max_steps:
+            y_num = max_steps
+        else:
+            y_num = y_steps
+
+        MASTER_y_stream = np.linspace(y_s,y_e,y_num)
+
 
         # Set up the new master streams
         for i,item in enumerate(self.DataObjectsAdd):
             if i ==0:
-                MASTER_x_stream = item.new_x
-                MASTER_y_stream = item.new_y
-                MASTER_detector = item.new_z
-                MASTER_xmin = item.xmin
-                MASTER_xmax = item.xmax
-                MASTER_ymin = item.ymin
-                MASTER_ymax = item.ymax
+                MASTER_detector = interp2d(item.new_x,item.new_y,item.new_z)(MASTER_x_stream,MASTER_y_stream)
                 
         # Add all objects (2d) after interpolation step to master
             else:
@@ -171,10 +247,10 @@ class Object2dMath(Load2d):
         data[0].new_x = MASTER_x_stream
         data[0].new_y = MASTER_y_stream
         data[0].new_z = MASTER_detector
-        data[0].xmin = MASTER_xmin
-        data[0].xmax = MASTER_xmax
-        data[0].ymin = MASTER_ymin
-        data[0].ymax = MASTER_ymax
+        data[0].xmin = MASTER_x_stream.min()
+        data[0].xmax = MASTER_x_stream.max()
+        data[0].ymin = MASTER_y_stream.min()
+        data[0].ymax = MASTER_y_stream.max()
         data[0].scan = 'Misc'
         data[0].legend = 'Addition/Subtraction'
         data[0].xlabel = 'x-stream'

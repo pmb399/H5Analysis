@@ -40,18 +40,44 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     # Load all specified scan data
     ScanData = load_1d(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None)
 
-    # Iterate over all loaded scans
+    # Iterate over all loaded scans to determine bounds
+    start_list = list()
+    end_list = list()
+    for i, (k, v) in enumerate(ScanData.items()):
+        start_list.append(v.x_stream.min())
+        end_list.append(v.x_stream.max())
+
+        if i == 0: # Get the difference
+            x_diff = np.abs(np.diff(v.x_stream).min())
+
+    s = max(start_list)
+    e = min(end_list)
+
+    if s>=e:
+        raise Exception("There is not sufficient overlap in x to perform interpolation.")
+    
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    max_steps = 104857600/8
+    steps = int((e-s)/x_diff)
+
+    if steps>max_steps:
+        num = max_steps
+    else:
+        num = steps
+
+    MASTER_x_stream = np.linspace(s,e,num)
+
+    # Iterate over all loaded scans for interpolation
     for i, (k, v) in enumerate(ScanData.items()):
         # Set the first scan as master data
         if i == 0:
-            MASTER_x_stream = v.x_stream
-            MASTER_y_stream = v.y_stream
+            MASTER_y_stream = interp1d(v.x_stream,v.y_stream)(MASTER_x_stream)
             name = str(k)+'+'
         else:
             # For additional scans, set the first x-scale as master and interpolate all
             # data suczessively to ensure appropriate addition
-            interp = interp1d(v.x_stream, v.y_stream,
-                                fill_value='extrapolate')(MASTER_x_stream)
+            interp = interp1d(v.x_stream, v.y_stream)(MASTER_x_stream)
             MASTER_y_stream += interp
 
             name += "_" + str(k)
@@ -141,14 +167,33 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
 
     name = f"{minuend}-{subtrahend}"
 
+    # Iterate over all loaded scans to determine bounds
+    s = max(minuendData[0].x_stream.min(),subtrahendData[0].x_stream.min())
+    e = min(minuendData[0].x_stream.max(),subtrahendData[0].x_stream.max())
+    x_diff = np.abs(np.diff(minuendData[0].x_stream).min())
+
+    if s>=e:
+        raise Exception("There is not sufficient overlap in x to perform interpolation.")
+    
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    max_steps = 104857600/8
+    steps = int((e-s)/x_diff)
+
+    if steps>max_steps:
+        num = max_steps
+    else:
+        num = steps
+
+    MASTER_x_stream = np.linspace(s,e,num)
+
     # Define the first scan (addition of scans as master)
-    MASTER_x_stream = minuendData[0].x_stream
-    MASTER_y_stream = minuendData[0].y_stream
+    MASTER_x_stream = np.linspace(s,e,num)
+    MASTER_y_stream = interp1d(minuendData[0].x_stream, minuendData[0].y_stream)(MASTER_x_stream)
 
     # For additional scans, set the first x-scale as master and interpolate all
     # data suczessively to ensure appropriate addition
-    interp = interp1d(subtrahendData[0].x_stream, subtrahendData[0].y_stream,
-                        fill_value='extrapolate')(MASTER_x_stream)
+    interp = interp1d(subtrahendData[0].x_stream, subtrahendData[0].y_stream)(MASTER_x_stream)
     MASTER_y_stream -= interp
 
     # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
@@ -234,17 +279,57 @@ def ImageAddition(config, file, x_stream, detector, *args, norm=True, xoffset=No
     # Note that this is possible since load2d supports loading multiple scans
     ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
 
+    # Iterate over all loaded scans to determine bounds
+    x_start_list = list()
+    x_end_list = list()
+    y_start_list = list()
+    y_end_list = list()
+    for i, (k, v) in enumerate(ScanData.items()):
+        x_start_list.append(v.new_x.min())
+        x_end_list.append(v.new_x.max())
+        y_start_list.append(v.new_y.min())
+        y_end_list.append(v.new_y.max())
+
+        if i == 0: # Get the difference
+            x_diff = np.abs(np.diff(v.new_x).min())
+            y_diff = np.abs(np.diff(v.new_y).min())
+
+    x_s = max(x_start_list)
+    x_e = min(x_end_list)
+    y_s = max(y_start_list)
+    y_e = min(y_end_list)
+
+    if x_s>=x_e:
+        raise Exception("There is not sufficient overlap in x to perform interpolation.")
+    
+    if y_s>=y_e:
+        raise Exception("There is not sufficient overlap in y to perform interpolation.")
+    
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    max_steps = 104857600/8
+    x_steps = int((x_e-x_s)/x_diff)
+    y_steps = int((y_e-y_s)/y_diff)
+
+    if x_steps>max_steps:
+        x_num = max_steps
+    else:
+        x_num = x_steps
+
+    MASTER_x_stream = np.linspace(x_s,x_e,x_num)
+
+    if y_steps>max_steps:
+        y_num = max_steps
+    else:
+        y_num = y_steps
+
+    MASTER_y_stream = np.linspace(y_s,y_e,y_num)
+
     # Iterate over all loaded scans
     for i, (k, v) in enumerate(ScanData.items()):
     # Set the first scan as master data
         if i == 0:
-            MASTER_x_stream = v.new_x
-            MASTER_y_stream = v.new_y
-            MASTER_detector = v.new_z
-            MASTER_xmin = v.xmin
-            MASTER_xmax = v.xmax
-            MASTER_ymin = v.ymin
-            MASTER_ymax = v.ymax
+            MASTER_detector = interp2d(v.new_x,v.new_y,v.new_z)(MASTER_x_stream,MASTER_y_stream)
             name = str(k)+'+'
         else:            
             interp = interp2d(v.new_x,v.new_y,v.new_z)
@@ -260,10 +345,10 @@ def ImageAddition(config, file, x_stream, detector, *args, norm=True, xoffset=No
     data[0].new_x = MASTER_x_stream
     data[0].new_y = MASTER_y_stream
     data[0].new_z = MASTER_detector
-    data[0].xmin = MASTER_xmin
-    data[0].xmax = MASTER_xmax
-    data[0].ymin = MASTER_ymin
-    data[0].ymax = MASTER_ymax
+    data[0].xmin = MASTER_x_stream.min()
+    data[0].xmax = MASTER_x_stream.max()
+    data[0].ymin = MASTER_y_stream.min()
+    data[0].ymax = MASTER_y_stream.max()
     data[0].xlabel = x_stream
     data[0].ylabel = 'Scale'
     data[0].zlabel = detector
@@ -315,13 +400,39 @@ def ImageSubtraction(config, file, x_stream, detector, minuend, subtrahend, norm
     name = f"{minuend}-{subtrahend}"
 
     # Set the master streams
-    MASTER_x_stream = minuend[0].new_x
-    MASTER_y_stream = minuend[0].new_y
-    MASTER_detector = minuend[0].new_z
-    MASTER_xmin = minuend[0].xmin
-    MASTER_xmax = minuend[0].xmax
-    MASTER_ymin = minuend[0].ymin
-    MASTER_ymax = minuend[0].ymax
+    x_s = max(minuend[0].new_x.min(),subtrahend[0].new_x.min())
+    x_e = min(minuend[0].new_x.max(),subtrahend[0].new_x.max())
+    x_diff = np.abs(np.diff(minuend[0].new_x).min())
+    y_s = max(minuend[0].new_y.min(),subtrahend[0].new_y.min())
+    y_e = min(minuend[0].new_y.max(),subtrahend[0].new_y.max())
+    y_diff = np.abs(np.diff(minuend[0].new_y).min())
+
+    if x_s>=x_e:
+        raise Exception("There is not sufficient overlap in x to perform interpolation.")
+
+    if y_s>=y_e:
+        raise Exception("There is not sufficient overlap in y to perform interpolation.")
+    
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    max_steps = 104857600/8
+    x_steps = int((x_e-x_s)/x_diff)
+    y_steps = int((y_e-y_s)/y_diff)
+
+    if x_steps>max_steps:
+        x_num = max_steps
+    else:
+        x_num = x_steps
+
+    MASTER_x_stream = np.linspace(x_s,x_e,x_num)
+
+    if y_steps>max_steps:
+        y_num = max_steps
+    else:
+        y_num = y_steps
+
+    MASTER_y_stream = np.linspace(y_s,y_e,y_num)
+    MASTER_detector = interp2d(minuend[0].new_x,minuend[0].new_y,minuend[0].new_z)(MASTER_x_stream,MASTER_y_stream)
 
     # Interpolate the subtrahend onto minuend, then subtract
     interp = interp2d(subtrahend[0].new_x,subtrahend[0].new_y,subtrahend[0].new_z)
@@ -335,10 +446,10 @@ def ImageSubtraction(config, file, x_stream, detector, minuend, subtrahend, norm
     data[0].new_x = MASTER_x_stream
     data[0].new_y = MASTER_y_stream
     data[0].new_z = MASTER_detector
-    data[0].xmin = MASTER_xmin
-    data[0].xmax = MASTER_xmax
-    data[0].ymin = MASTER_ymin
-    data[0].ymax = MASTER_ymax
+    data[0].xmin = MASTER_x_stream.min()
+    data[0].xmax = MASTER_x_stream.max()
+    data[0].ymin = MASTER_y_stream.min()
+    data[0].ymax = MASTER_y_stream.max()
     data[0].xlabel = x_stream
     data[0].ylabel = 'Scale'
     data[0].zlabel = detector
