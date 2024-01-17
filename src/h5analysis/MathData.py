@@ -196,18 +196,15 @@ class Object2dMath(Load2d):
         x_steps = int((x_e-x_s)/x_diff)
         y_steps = int((y_e-y_s)/y_diff)
 
-        if x_steps>max_steps:
-            x_num = max_steps
+        if x_steps*y_steps>max_steps:
+            step_norm = int(np.ceil(np.sqrt(x_steps*y_steps/13107200)))
+            x_num = int(x_steps/step_norm)
+            y_num = int(y_steps/step_norm)
         else:
             x_num = x_steps
-
-        MASTER_x_stream = np.linspace(x_s,x_e,x_num)
-
-        if y_steps>max_steps:
-            y_num = max_steps
-        else:
             y_num = y_steps
 
+        MASTER_x_stream = np.linspace(x_s,x_e,x_num)
         MASTER_y_stream = np.linspace(y_s,y_e,y_num)
 
 
