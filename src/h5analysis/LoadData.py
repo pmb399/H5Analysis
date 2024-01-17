@@ -685,12 +685,27 @@ class Load2d:
         for i, val in enumerate(self.data):
             for k, v in val.items():
 
+                # Let's ensure dimensions are matching
+                dim_z = np.shape(v.new_z) # in matrix notation
+                len_x = len(v.new_x)
+                len_y = len(v.new_y)
+
+                if dim_z[1] != len_x:
+                    raise Exception('x dimension of image and scale does not match')
+                
+                if dim_z[0] != len_y:
+                    raise Exception('y dimension of image and scale does not match')
+                
+                # Check that we are indeed plotting an image (equal spacing)
+                if not np.unique(np.diff(v.new_x).round(decimals=8)).size == 1:
+                    raise Exception('No even grid for x axis')
+                if not np.unique(np.diff(v.new_y).round(decimals=8)).size == 1:
+                    raise Exception('No even grid for y axis')
+
                 # Create the figure
                 p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
                            tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save", **kwargs)
                 p.x_range.range_padding = p.y_range.range_padding = 0
-
-                # Gridded scales now calculated directly during the MCA load and only need to be referenced here
 
                 # must give a vector of image data for image parameter
                 if vmin == None:
@@ -714,9 +729,20 @@ class Load2d:
                                                  low=mapper_low,
                                                  high=mapper_high)
 
+                # Calculate boundaries and shape of image for plotter
+                # so that pixels are centred at their given values
+                # since bokeh takes the left bound of the first and right bound of the last pixel
+
+                diff_x  = v.new_x[1]-v.new_x[0]
+                diff_y  = v.new_y[1]-v.new_y[0]
+                plot_x_corner = v.xmin-diff_x/2
+                plot_y_corner = v.ymin-diff_y/2
+                plot_dw = v.xmax-v.xmin + diff_x
+                plot_dh = v.ymax-v.ymin + diff_y
+
                 # Plot image and use limits as given by even grid.
-                p.image(image=[v.new_z], x=v.xmin, y=v.ymin, dw=v.xmax-v.xmin,
-                        dh=v.ymax-v.ymin, color_mapper=color_mapper, level="image")
+                p.image(image=[v.new_z], x=plot_x_corner, y=plot_y_corner, dw=plot_dw,
+                        dh=plot_dh, color_mapper=color_mapper, level="image")
                 p.grid.grid_line_width = 0.5
 
                 # Defining properties of color mapper
