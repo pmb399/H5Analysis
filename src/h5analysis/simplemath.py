@@ -140,9 +140,10 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
     elements = x_points*y_points
     if elements > 13107200:
         # Reduce matrix equally among all dimensions
-        norm = int(np.ceil(np.sqrt(elements/13107200)))
+        #norm = int(np.ceil(np.sqrt(elements/13107200)))
+        norm = int(np.ceil(elements/13107200)) # only reduce x
         x_points = int(x_points/norm)
-        y_points = int(y_points/norm)
+        #y_points = int(y_points/norm)
         warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
     # Interpolate the data with given grid
@@ -216,8 +217,10 @@ def grid_data_mesh(x_data,y_data,z_data):
     
     # Need to transpose data, to maintain compatibility with regular matrix notation
     new_z = np.transpose(new_z)
+    new_x = np.linspace(xedge.min(),xedge.max(),len(xedge)-1)
+    new_y = np.linspace(yedge.min(),yedge.max(),len(yedge)-1)
 
-    return xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax
+    return xmin, xmax, ymin, ymax, new_x, new_y, new_z, zmin, zmax
 
 def bin_data(x_data,y_data,binsize):
     """Reduce noise by averaging data points via binning mechanisms
