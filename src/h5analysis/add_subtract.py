@@ -252,7 +252,47 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
 
     return data
 
-def ImageAddition(config, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageAddition_2d(config, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+    """Internal function to handle image addition.
+
+            Parameters
+            ----------
+            args: Same as for the Load2d class
+            kwargs: See Load2d class
+
+            Returns
+            -------
+            data: dict
+        """
+
+    # Load all 2d data to be added
+    # Note that this is possible since load2d supports loading multiple scans
+    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
+
+    return ImageAddition(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by)
+
+def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+    """Internal function to handle image subtraction.
+
+            Parameters
+            ----------
+            args: Same as for the Load2d class
+            kwargs: See Load2d class
+
+            Returns
+            -------
+            data: dict
+        """   
+    
+    # Define minuend and subtrahend
+    # Add images of all scans specified in respective lists,
+    # then subtract
+    minuendData = ImageAddition_2d(config, file, x_stream, detector, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
+    subtrahendData = ImageAddition_2d(config, file, x_stream, detector, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
+
+    return ImageSubtraction(minuendData, subtrahendData, file, x_stream, detector, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by)
+
+def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -275,10 +315,6 @@ def ImageAddition(config, file, x_stream, detector, *args, norm=True, xoffset=No
         if args.count(i) > 1:
             raise ValueError("Cannot add the same scan to itself")
         
-    # Load all 2d data to be added
-    # Note that this is possible since load2d supports loading multiple scans
-    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
-
     # Iterate over all loaded scans to determine bounds
     x_start_list = list()
     x_end_list = list()
@@ -365,7 +401,7 @@ def ImageAddition(config, file, x_stream, detector, *args, norm=True, xoffset=No
 
     return data
 
-def ImageSubtraction(config, file, x_stream, detector, minuend, subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend, str_subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
 
     """ Internal function to handle image subtraction.
 
@@ -388,13 +424,7 @@ def ImageSubtraction(config, file, x_stream, detector, minuend, subtrahend, norm
         def __init__(self):
             pass
     
-    # Define minuend and subtrahend
-    # Add images of all scans specified in respective lists,
-    # then subtract
-    minuend = ImageAddition(config, file, x_stream, detector, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
-    subtrahend = ImageAddition(config, file, x_stream, detector, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
-
-    name = f"{minuend}-{subtrahend}"
+    name = f"{str_minuend}-{str_subtrahend}"
 
     # Set the master streams
     x_s = max(minuend[0].new_x.min(),subtrahend[0].new_x.min())

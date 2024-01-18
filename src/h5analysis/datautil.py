@@ -346,3 +346,64 @@ def get_indices(roi,roi_scale):
     
     else:
         raise Exception('No ROI specified')
+    
+
+#########################################################################################
+    
+def check_dimensions2d(x,y,z):
+    """Ensure dimensions of scales are matching image array and image is gridded evenly
+    
+    Parameters
+    ----------
+    x: 1d array
+    y: 1d array
+    z: 2d array with shape (len(y),len(x))
+
+    """
+
+    dim_z = np.shape(z) # in matrix notation
+    len_x = len(x)
+    len_y = len(y)
+
+    if dim_z[1] != len_x:
+        raise Exception('x dimension of image and scale does not match')
+    
+    if dim_z[0] != len_y:
+        raise Exception('y dimension of image and scale does not match')
+    
+    # Check that we are indeed plotting an image (equal spacing)
+    if not np.unique(np.diff(x).round(decimals=8)).size == 1:
+        raise Exception('No even grid for x axis')
+    if not np.unique(np.diff(y).round(decimals=8)).size == 1:
+        raise Exception('No even grid for y axis')
+    
+#########################################################################################
+    
+def bokeh_image_boundaries(x,y,xmin,xmax,ymin,ymax):
+    """Calculates the boundaries and width for the displayed image
+    
+    Parameters
+    ----------
+    x: 1d array
+    y: 1d array
+    xmin: minimum of x
+    xmax: maximum of x
+    ymin: minimum of y
+    ymax: maximum of y
+
+    Returns
+    -------
+    plot_x_corner: coordinates of the lower left corner on x
+    plot_y_corner: coordinates of the lower left corner on y
+    plot_dw: with of the plot (in data coordinates)
+    plot_df: height of the plot (in data coordinates)
+    """
+
+    diff_x  = x[1]-x[0]
+    diff_y  =y[1]-y[0]
+    plot_x_corner = xmin-diff_x/2
+    plot_y_corner = ymin-diff_y/2
+    plot_dw = xmax-xmin + diff_x
+    plot_dh = ymax-ymin + diff_y
+
+    return plot_x_corner,plot_y_corner, plot_dw,plot_dh

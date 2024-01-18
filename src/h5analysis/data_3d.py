@@ -154,6 +154,8 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
 
     # Iterate over independent axis and grid all data to images
     stack_grid = list()
+    new_x_list = list()
+    new_y_list = list()
     xmin_list = list()
     xmax_list = list()
     ymin_list = list()
@@ -161,6 +163,8 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
     for i,img in enumerate(my_stack):
         xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], img, grid_x=grid_x,grid_y=grid_y)
         stack_grid.append(new_z)
+        new_x_list.append(new_x)
+        new_y_list.append(new_y)
         xmin_list.append(xmin)
         xmax_list.append(xmax)
         ymin_list.append(ymin)
@@ -169,6 +173,8 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
     # Generate 3d stack from gridded z-data in stack_grid list
     # Store all data in dict
     data[arg].stack = np.stack(tuple(stack_grid))
+    data[arg].new_x = new_x_list
+    data[arg].new_y = new_y_list
     data[arg].x_min = xmin_list
     data[arg].x_max = xmax_list
     data[arg].y_min = ymin_list

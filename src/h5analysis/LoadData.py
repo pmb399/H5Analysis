@@ -19,6 +19,7 @@ from collections import defaultdict
 import io
 import shutil
 from .util import COLORP
+from .datautil import check_dimensions2d, bokeh_image_boundaries
 
 # Widgets
 import ipywidgets as widgets
@@ -30,7 +31,7 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition, ImageSubtraction, HistogramAddition
+from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, HistogramAddition
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -575,7 +576,7 @@ class Load2d:
         if self.data != []:
             raise TypeError("You can only append one scan per object")
 
-        self.data.append(ImageAddition(config,file, x_stream,
+        self.data.append(ImageAddition_2d(config,file, x_stream,
                          detector, *args, **kwargs))
         
 
@@ -595,7 +596,7 @@ class Load2d:
             raise TypeError("You can only append one scan per object")
 
         # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ImageSubtraction(config, file, x_stream,
+        self.data.append(ImageSubtraction_2d(config, file, x_stream,
                          detector, *args, **kwargs))
         
 
@@ -686,21 +687,7 @@ class Load2d:
             for k, v in val.items():
 
                 # Let's ensure dimensions are matching
-                dim_z = np.shape(v.new_z) # in matrix notation
-                len_x = len(v.new_x)
-                len_y = len(v.new_y)
-
-                if dim_z[1] != len_x:
-                    raise Exception('x dimension of image and scale does not match')
-                
-                if dim_z[0] != len_y:
-                    raise Exception('y dimension of image and scale does not match')
-                
-                # Check that we are indeed plotting an image (equal spacing)
-                if not np.unique(np.diff(v.new_x).round(decimals=8)).size == 1:
-                    raise Exception('No even grid for x axis')
-                if not np.unique(np.diff(v.new_y).round(decimals=8)).size == 1:
-                    raise Exception('No even grid for y axis')
+                check_dimensions2d(v.new_x,v.new_y,v.new_z)
 
                 # Create the figure
                 p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
@@ -732,13 +719,7 @@ class Load2d:
                 # Calculate boundaries and shape of image for plotter
                 # so that pixels are centred at their given values
                 # since bokeh takes the left bound of the first and right bound of the last pixel
-
-                diff_x  = v.new_x[1]-v.new_x[0]
-                diff_y  = v.new_y[1]-v.new_y[0]
-                plot_x_corner = v.xmin-diff_x/2
-                plot_y_corner = v.ymin-diff_y/2
-                plot_dw = v.xmax-v.xmin + diff_x
-                plot_dh = v.ymax-v.ymin + diff_y
+                plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x,v.new_y,v.xmin,v.xmax,v.ymin,v.ymax)
 
                 # Plot image and use limits as given by even grid.
                 p.image(image=[v.new_z], x=plot_x_corner, y=plot_y_corner, dw=plot_dw,
@@ -1030,16 +1011,29 @@ class Load3d:
 
         def update(f=0):
             """Update stack to next image on slider move"""
+
+            # This is for sanity check
+            # Let's ensure dimensions are matching
+            check_dimensions2d(v.new_x[f],v.new_y[f],v.stack[f])
+
+            # Get data
+            plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[f],v.new_y[f],v.x_min[f],v.x_max[f],v.y_min[f],v.y_max[f])
+
+            # This is to update bokeh data
             r.data_source.data['image'] = [v.stack[f]]
-            r.data_source.data['x'] = [v.x_min[f]]
-            r.data_source.data['y'] = [v.y_min[f]]
-            r.data_source.data['dw'] = [v.x_max[f]-v.x_min[f]]
-            r.data_source.data['dh'] = [v.y_max[f]-v.y_min[f]]
+            r.data_source.data['x'] = [plot_x_corner]
+            r.data_source.data['y'] = [plot_y_corner]
+            r.data_source.data['dw'] = [plot_dw]
+            r.data_source.data['dh'] = [plot_dh]
 
             push_notebook(handle=s)
 
         for i, val in enumerate(self.data):
             for k, v in val.items():
+
+                # Let's ensure dimensions are matching
+                check_dimensions2d(v.new_x[0],v.new_y[0],v.stack[0])
+
                 p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
                            tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save",**kwargs)
                 p.x_range.range_padding = p.y_range.range_padding = 0
@@ -1047,8 +1041,13 @@ class Load3d:
                 # must give a vector of image data for image parameter
                 color_mapper = LinearColorMapper(palette="Viridis256")
 
-                simage = ColumnDataSource(data=dict(image=[v.stack[0]], x=[v.x_min[0]], y=[
-                                          v.y_min[0]], dw=[v.x_max[0]-v.x_min[0]], dh=[v.y_max[0]-v.y_min[0]],))
+                # Calculate boundaries and shape of image for plotter
+                # so that pixels are centred at their given values
+                # since bokeh takes the left bound of the first and right bound of the last pixel
+                plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[0],v.new_y[0],v.x_min[0],v.x_max[0],v.y_min[0],v.y_max[0])
+
+                simage = ColumnDataSource(data=dict(image=[v.stack[0]], x=[plot_x_corner], y=[
+                                          plot_y_corner], dw=[plot_dw], dh=[plot_dh],))
 
                 r = p.image(image='image', source=simage, x='x', y='y',
                             dw='dw', dh='dh', color_mapper=color_mapper, level="image")
