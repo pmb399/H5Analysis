@@ -31,7 +31,7 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, HistogramAddition
+from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, HistogramAddition
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -927,7 +927,7 @@ class LoadHistogram(Load2d):
         self.data.append(load_histogram(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
 
-    def add(self, config, file, x_stream, y_stream, z_stream, *args, norm=False):
+    def add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
         """
         Add specified histograms for selected streams.
 
@@ -941,12 +941,27 @@ class LoadHistogram(Load2d):
         if self.data != []:
             raise TypeError("You can only append one scan per object")
         
-        self.data.append(HistogramAddition(config, file, x_stream,
-                         y_stream, z_stream, *args, norm=norm))
+        self.data.append(ImageAddition_hist(config, file, x_stream,
+                         y_stream, z_stream, *args, **kwargs))
     
-    def subtract(self):
-        raise UserWarning("Functionality not yet implemented.")
-    
+    def subtract(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Subract specified histograms for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Subtracts all scans specified in two *args lists.
+        """
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        self.data.append(ImageSubtraction_hist(config, file, x_stream,
+                         y_stream, z_stream, *args, **kwargs))
+        
+
     def plot(self, *args, **kwargs):
         kwargs.setdefault('kind', "Histogram")
 

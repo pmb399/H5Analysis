@@ -269,7 +269,7 @@ def ImageAddition_2d(config, file, x_stream, detector, *args, norm=True, xoffset
     # Note that this is possible since load2d supports loading multiple scans
     ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
 
-    return ImageAddition(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by)
+    return ImageAddition(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
 def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
     """Internal function to handle image subtraction.
@@ -290,9 +290,50 @@ def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, n
     minuendData = ImageAddition_2d(config, file, x_stream, detector, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
     subtrahendData = ImageAddition_2d(config, file, x_stream, detector, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
 
-    return ImageSubtraction(minuendData, subtrahendData, file, x_stream, detector, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by)
+    return ImageSubtraction(minuendData, subtrahendData, file, x_stream, detector, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+    """Internal function to handle image addition.
+
+            Parameters
+            ----------
+            args: Same as for the Load2d class
+            kwargs: See Load2d class
+
+            Returns
+            -------
+            data: dict
+        """
+
+    # Load all 2d data to be added
+    # Note that this is possible since load2d supports loading multiple scans
+    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+
+    return ImageAddition(ScanData, file, x_stream, z_stream, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
+
+def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+    """Internal function to handle image subtraction.
+
+            Parameters
+            ----------
+            args: Same as for the Load2d class
+            kwargs: See Load2d class
+
+            Returns
+            -------
+            data: dict
+        """   
+    
+    # Define minuend and subtrahend
+    # Add images of all scans specified in respective lists,
+    # then subtract
+    minuendData = ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+    subtrahendData = ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+
+    return ImageSubtraction(minuendData, subtrahendData, file, x_stream, z_stream, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
+
+
+def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -320,57 +361,81 @@ def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=
     x_end_list = list()
     y_start_list = list()
     y_end_list = list()
+    x_list = list()
+    y_list = list()
     for i, (k, v) in enumerate(ScanData.items()):
         x_start_list.append(v.new_x.min())
         x_end_list.append(v.new_x.max())
         y_start_list.append(v.new_y.min())
         y_end_list.append(v.new_y.max())
+        x_list.append(v.new_x)
+        y_list.append(v.new_y)
 
         if i == 0: # Get the difference
+            x_comp = v.new_x
+            y_comp = v.new_y
             x_diff = np.abs(np.diff(v.new_x).min())
             y_diff = np.abs(np.diff(v.new_y).min())
 
-    x_s = max(x_start_list)
-    x_e = min(x_end_list)
-    y_s = max(y_start_list)
-    y_e = min(y_end_list)
+    #Check if we need to interpolate scales
+    if all([np.array_equal(x_comp,test_scale) for test_scale in x_list]) and all([np.array_equal(y_comp,test_scale) for test_scale in y_list]):
+        # All scales are equal, no interpolation required
+        MASTER_x_stream = x_comp
+        MASTER_y_stream = y_comp
 
-    if x_s>=x_e:
-        raise Exception("There is not sufficient overlap in x to perform interpolation.")
-    
-    if y_s>=y_e:
-        raise Exception("There is not sufficient overlap in y to perform interpolation.")
-    
-    # Limit array size to 100MB (=104857600 bytes)
-    # Numpy float64 array element requires 8 bytes
-    max_steps = 104857600/8
-    x_steps = int((x_e-x_s)/x_diff)
-    y_steps = int((y_e-y_s)/y_diff)
+        # Iterate over all loaded scans
+        for i, (k, v) in enumerate(ScanData.items()):
+        # Set the first scan as master data
+            if i == 0:
+                MASTER_detector = v.new_z
+                name = str(k)+'+'
+            else:            
+                MASTER_detector = np.add(MASTER_detector,v.new_z)
+                name += "_" + str(k)
 
-    if x_steps*y_steps>max_steps:
-        step_norm = int(np.ceil(np.sqrt(x_steps*y_steps/13107200)))
-        x_num = int(x_steps/step_norm)
-        y_num = int(y_steps/step_norm)
     else:
-        x_num = x_steps
-        y_num = y_steps
+        # Interpolation required
+        x_s = max(x_start_list)
+        x_e = min(x_end_list)
+        y_s = max(y_start_list)
+        y_e = min(y_end_list)
 
-    MASTER_x_stream = np.linspace(x_s,x_e,x_num)
-    MASTER_y_stream = np.linspace(y_s,y_e,y_num)
+        if x_s>=x_e:
+            raise Exception("There is not sufficient overlap in x to perform interpolation.")
+        
+        if y_s>=y_e:
+            raise Exception("There is not sufficient overlap in y to perform interpolation.")
+        
+        # Limit array size to 100MB (=104857600 bytes)
+        # Numpy float64 array element requires 8 bytes
+        max_steps = 104857600/8
+        x_steps = int((x_e-x_s)/x_diff)
+        y_steps = int((y_e-y_s)/y_diff)
 
-    # Iterate over all loaded scans
-    for i, (k, v) in enumerate(ScanData.items()):
-    # Set the first scan as master data
-        if i == 0:
-            MASTER_detector = interp2d(v.new_x,v.new_y,v.new_z)(MASTER_x_stream,MASTER_y_stream)
-            name = str(k)+'+'
-        else:            
-            interp = interp2d(v.new_x,v.new_y,v.new_z)
-            new_z = interp(MASTER_x_stream,MASTER_y_stream)
+        if x_steps*y_steps>max_steps:
+            step_norm = int(np.ceil(np.sqrt(x_steps*y_steps/13107200)))
+            x_num = int(x_steps/step_norm)
+            y_num = int(y_steps/step_norm)
+        else:
+            x_num = x_steps
+            y_num = y_steps
 
-            MASTER_detector = np.add(MASTER_detector,new_z)
-            
-            name += "_" + str(k)
+        MASTER_x_stream = np.linspace(x_s,x_e,x_num)
+        MASTER_y_stream = np.linspace(y_s,y_e,y_num)
+
+        # Iterate over all loaded scans
+        for i, (k, v) in enumerate(ScanData.items()):
+        # Set the first scan as master data
+            if i == 0:
+                MASTER_detector = interp2d(v.new_x,v.new_y,v.new_z)(MASTER_x_stream,MASTER_y_stream)
+                name = str(k)+'+'
+            else:            
+                interp = interp2d(v.new_x,v.new_y,v.new_z)
+                new_z = interp(MASTER_x_stream,MASTER_y_stream)
+
+                MASTER_detector = np.add(MASTER_detector,new_z)
+                
+                name += "_" + str(k)
 
     # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
     data = dict()
@@ -401,7 +466,7 @@ def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=
 
     return data
 
-def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend, str_subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend, str_subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
 
     """ Internal function to handle image subtraction.
 

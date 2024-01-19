@@ -168,71 +168,104 @@ class Object2dMath(Load2d):
         x_end_list = list()
         y_start_list = list()
         y_end_list = list()
+        x_list = list()
+        y_list = list()
 
         for i,item in enumerate(all_objs):
             x_start_list.append(item.new_x.min())
             x_end_list.append(item.new_x.max())
             y_start_list.append(item.new_y.min())
             y_end_list.append(item.new_y.max())
+            x_list.append(item.new_x)
+            y_list.append(item.new_y)
 
             if i == 0:
+                x_comp = item.new_x
+                y_comp = item.new_y
                 x_diff = np.abs(np.diff(item.new_x).min())
                 y_diff = np.abs(np.diff(item.new_y).min())
 
-        x_s = max(x_start_list)
-        x_e = min(x_end_list)
-        y_s = max(y_start_list)
-        y_e = min(y_end_list)
+        #Check if we need to interpolate scales
+        if all([np.array_equal(x_comp,test_scale) for test_scale in x_list]) and all([np.array_equal(y_comp,test_scale) for test_scale in y_list]):
+            # All scales are equal, no interpolation required
+            MASTER_x_stream = x_comp
+            MASTER_y_stream = y_comp
 
-        if x_s>=x_e:
-            raise Exception("There is not sufficient overlap in x to perform interpolation.")
-        
-        if y_s>=y_e:
-            raise Exception("There is not sufficient overlap in y to perform interpolation.")
-        
-        # Limit array size to 100MB (=104857600 bytes)
-        # Numpy float64 array element requires 8 bytes
-        max_steps = 104857600/8
-        x_steps = int((x_e-x_s)/x_diff)
-        y_steps = int((y_e-y_s)/y_diff)
-
-        if x_steps*y_steps>max_steps:
-            step_norm = int(np.ceil(np.sqrt(x_steps*y_steps/13107200)))
-            x_num = int(x_steps/step_norm)
-            y_num = int(y_steps/step_norm)
-        else:
-            x_num = x_steps
-            y_num = y_steps
-
-        MASTER_x_stream = np.linspace(x_s,x_e,x_num)
-        MASTER_y_stream = np.linspace(y_s,y_e,y_num)
-
-
-        # Set up the new master streams
-        for i,item in enumerate(self.DataObjectsAdd):
-            if i ==0:
-                MASTER_detector = interp2d(item.new_x,item.new_y,item.new_z)(MASTER_x_stream,MASTER_y_stream)
-                
-        # Add all objects (2d) after interpolation step to master
-            else:
-                interp = interp2d(item.new_x,item.new_y,item.new_z)
-                new_z = interp(MASTER_x_stream,MASTER_y_stream)
-
-                MASTER_detector = np.add(MASTER_detector,new_z)
-        
-        # Add all objects (2d) that need to be removed after interpolation step to master
-        for i,item in enumerate(self.DataObjectsSubtract):
-                interp = interp2d(item.new_x,item.new_y,item.new_z)
-                new_z = interp(MASTER_x_stream,MASTER_y_stream)
-
-                if i == 0:
-                    SUB_detector = new_z
+            for i,item in enumerate(self.DataObjectsAdd):
+                if i ==0:
+                    MASTER_detector = item.new_z
+                    
+            # Add all objects (2d) after interpolation step to master
                 else:
-                    SUB_detector = np.add(SUB_detector,new_z)
+                    MASTER_detector = np.add(MASTER_detector,item.new_z)
+            
+            # Add all objects (2d) that need to be removed after interpolation step to master
+            for i,item in enumerate(self.DataObjectsSubtract):
+                    if i == 0:
+                        SUB_detector = item.new_z
+                    else:
+                        SUB_detector = np.add(SUB_detector,item.new_z)
 
-        # Remove subtraction from Master, if any
-        if len(self.DataObjectsSubtract)>0:
-            MASTER_detector = np.subtract(MASTER_detector,SUB_detector)
+            # Remove subtraction from Master, if any
+            if len(self.DataObjectsSubtract)>0:
+                MASTER_detector = np.subtract(MASTER_detector,SUB_detector)
+
+        else:
+            # Interpolation required
+            x_s = max(x_start_list)
+            x_e = min(x_end_list)
+            y_s = max(y_start_list)
+            y_e = min(y_end_list)
+
+            if x_s>=x_e:
+                raise Exception("There is not sufficient overlap in x to perform interpolation.")
+            
+            if y_s>=y_e:
+                raise Exception("There is not sufficient overlap in y to perform interpolation.")
+            
+            # Limit array size to 100MB (=104857600 bytes)
+            # Numpy float64 array element requires 8 bytes
+            max_steps = 104857600/8
+            x_steps = int((x_e-x_s)/x_diff)
+            y_steps = int((y_e-y_s)/y_diff)
+
+            if x_steps*y_steps>max_steps:
+                step_norm = int(np.ceil(np.sqrt(x_steps*y_steps/13107200)))
+                x_num = int(x_steps/step_norm)
+                y_num = int(y_steps/step_norm)
+            else:
+                x_num = x_steps
+                y_num = y_steps
+
+            MASTER_x_stream = np.linspace(x_s,x_e,x_num)
+            MASTER_y_stream = np.linspace(y_s,y_e,y_num)
+
+
+            # Set up the new master streams
+            for i,item in enumerate(self.DataObjectsAdd):
+                if i ==0:
+                    MASTER_detector = interp2d(item.new_x,item.new_y,item.new_z)(MASTER_x_stream,MASTER_y_stream)
+                    
+            # Add all objects (2d) after interpolation step to master
+                else:
+                    interp = interp2d(item.new_x,item.new_y,item.new_z)
+                    new_z = interp(MASTER_x_stream,MASTER_y_stream)
+
+                    MASTER_detector = np.add(MASTER_detector,new_z)
+            
+            # Add all objects (2d) that need to be removed after interpolation step to master
+            for i,item in enumerate(self.DataObjectsSubtract):
+                    interp = interp2d(item.new_x,item.new_y,item.new_z)
+                    new_z = interp(MASTER_x_stream,MASTER_y_stream)
+
+                    if i == 0:
+                        SUB_detector = new_z
+                    else:
+                        SUB_detector = np.add(SUB_detector,new_z)
+
+            # Remove subtraction from Master, if any
+            if len(self.DataObjectsSubtract)>0:
+                MASTER_detector = np.subtract(MASTER_detector,SUB_detector)
         
         # Store data
         class added_object:
