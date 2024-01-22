@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d, interp2d
 # Data loaders
 from .data_1d import load_1d
 from .data_2d import load_2d
+from .data_3d import load_3d
 from .histogram import load_histogram
 
 # Utilities
@@ -477,7 +478,7 @@ def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend,
             adds all images in list, generates minuend
         subtrahend: list
             adds all images in list, generates subtrahend
-        kwargs: See Load1d class
+        kwargs: See Load2d class
 
         Returns
         -------
@@ -557,6 +558,122 @@ def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend,
         data[0].new_z =  data[0].new_z / data[0].new_z.max()
 
     return data
+
+def StackAddition(config, file, ind_stream, stack, *args,**kwargs):
+
+    """
+    Adds multiple image stacks, given the scales are identical.
+
+    Parameters
+    ----------
+    arguments: Same as for the Load1d class, but
+    *args: multiple scans, comma separated
+    kwargs: See Load3d class
+
+    Returns
+    -------
+    data: dict
+    """
+
+    # Define generic object in which all data will be stored
+    class added_object:
+        def __init__(self):
+            pass
+
+    # Ensure we only add a unique scan once
+    for i in args:
+        if args.count(i) > 1:
+            raise ValueError("Cannot add the same scan to itself")
+
+    
+    # Retrieve all data
+    stack_data = list()
+    stack_data_dims = list()
+    for arg in args:
+        obj = load_3d(config,file,ind_stream,stack,arg,**kwargs)[arg]
+        stack_data.append(obj)
+        stack_data_dims.append(np.shape(obj.stack))
+
+    # make sure the dimensions are matching
+    if all([np.array_equal(stack_data_dims[0],dims) for dims in stack_data_dims]):
+        pass
+    else:
+        raise Exception("Adding stacks with incompatible dimensions.")
+    
+    data = dict()
+    data[0] = added_object()
+
+    for i,s in enumerate(stack_data):
+        if i == 0:
+            MASTER_STACK = s.stack
+        else:
+            MASTER_STACK = np.add(MASTER_STACK,s.stack)
+
+    # Generate 3d stack from gridded z-data in stack_grid list
+    # Store all data in dict
+    data[0].stack = MASTER_STACK
+    data[0].ind_stream = stack_data[0].ind_stream
+    data[0].str_ind_stream = stack_data[0].str_ind_stream
+    data[0].new_x = stack_data[0].new_x
+    data[0].new_y = stack_data[0].new_y
+    data[0].x_min = stack_data[0].x_min
+    data[0].x_max = stack_data[0].x_max
+    data[0].y_min = stack_data[0].y_min
+    data[0].y_max = stack_data[0].y_max
+
+    return data
+
+def StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwargs):
+    """
+    Subtracts multiple image stacks, given the scales are identical.
+
+    Parameters
+    ----------
+    args: Same as for the Load1d class, but
+    minuend: list
+        adds all images in list, generates minuend
+    subtrahend: list
+        adds all images in list, generates subtrahend
+    kwargs: See Load3d class
+
+    Returns
+    -------
+    data: dict
+    """
+
+    # Define generic object in which all data will be stored
+    class added_object:
+        def __init__(self):
+            pass
+
+    minuend = StackAddition(config, file, ind_stream, stack, *minuend,**kwargs)
+    subtrahend = StackAddition(config, file, ind_stream, stack, *subtrahend,**kwargs)
+    
+    # make sure the dimensions are matching
+    if np.shape(minuend[0].stack) == np.shape(subtrahend[0].stack):
+        pass
+    else:
+        raise Exception("Subtracting stacks with incompatible dimensions.")
+    
+    data = dict()
+    data[0] = added_object()
+
+    MASTER_STACK = np.subtract(minuend[0].stack,subtrahend[0].stack)
+
+    # Generate 3d stack from gridded z-data in stack_grid list
+    # Store all data in dict
+    data[0].stack = MASTER_STACK
+    data[0].ind_stream = minuend[0].ind_stream
+    data[0].str_ind_stream = minuend[0].str_ind_stream
+    data[0].new_x = minuend[0].new_x
+    data[0].new_y = minuend[0].new_y
+    data[0].x_min = minuend[0].x_min
+    data[0].x_max = minuend[0].x_max
+    data[0].y_min = minuend[0].y_min
+    data[0].y_max = minuend[0].y_max
+
+    return data
+
 
 def HistogramAddition(config,file, x_stream, y_stream, z_stream, *args, norm=False):
 

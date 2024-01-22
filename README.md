@@ -199,7 +199,7 @@ Note: Can only load one scan at a time!
 
 ```
 load3d = Load2d()
-load3d.load(config,'Filename.h5','stack',1)
+load3d.load(config,'Filename.h5','ind_stream','stack',1)
 load3d.plot()
 load3d.export()
 ```
@@ -208,12 +208,14 @@ load3d.export()
 
 2. Enter the file name of the scan to analyse ('FileName.h5')
 
-3. Options for **stack** quantities include:
+3. Enter SCA name for independent stream, corresponding to length of first axis.
+
+4. Options for **stack** quantities include:
 - All STACK specified in the config
 
-4. Select scan to analyse
+5. Select scan to analyse
 
-7. Set optional flags. Options include:
+6. Set optional flags. Options include:
 - _norm_ (Normalizes to [0,1])
 - _xcoffset_ (Defines a constant shift in the x-stream)
 - _xoffset_ (Takes a list of tuples and defines a polynomial fit of the x-stream)
@@ -243,14 +245,18 @@ bl.plot()
 ### Spreadsheet
 
 ```
-df = getSpreadsheet(config,'Filename.h5',columns=None)
+df = getSpreadsheet(config,'Filename.h5', average = False,columns=None)
 ```
 
 1. Create "Loader" object
 
 2. Enter the file name of the scan to analyse ('FileName.h5')
 
-3. Options for **columns** quantities include:
+3a. Specify average boolean
+- If False, return all data (even if 1d array)
+- If True, return average of 1d array where applicable
+
+3b. Options for **columns** quantities include:
 - Custom dictionary with column headers and quantities, see example below:
 
 ```

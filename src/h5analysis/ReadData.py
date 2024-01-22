@@ -175,7 +175,7 @@ class Data:
 
 class ScanInfo:
 
-    def __init__(self, config, file, keys):
+    def __init__(self, config, file, keys, average):
         """Load specific scan from data file and retrieve meta data
 
             Parameters
@@ -186,6 +186,8 @@ class ScanInfo:
                 file name
             keys: list, string
                 list of key paths to the desired information
+            average: Boolean
+                determines if array of values or their average is reported
         """
         
         # Try opening hdf5 container
@@ -217,6 +219,10 @@ class ScanInfo:
                                 entry = f[f'{k}/{key}'][()]
                                 if isinstance(entry, np.ndarray) and len(entry)==1:
                                     entry = entry[0]
+                                else:
+                                    if average == True:
+                                        entry = np.round(np.average(entry),decimals=4)
+
                                 info_dict[key][skey] = entry
                         except:
                             pass

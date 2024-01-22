@@ -8,8 +8,9 @@ from .ReadData import ScanInfo
 # Util functions
 from .simplemath import apply_offset
 from .util import invert_dict
+from collections import defaultdict
 
-def load_beamline(config, file, key, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
+def load_beamline(config, file, key, average=False, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
     """Load beamline meta data.
 
         Parameters
@@ -21,10 +22,8 @@ def load_beamline(config, file, key, norm=False, xoffset=None, xcoffset=None, yo
         key: string
             path to the meta data of interest
         kwargs: See Load1d class, but additional
-            xoffset: fitting offset
-            yoffset: fitting offset
-            xcoffset: constant offset
-            ycoffset: constant offset
+            average: Boolean
+                determines if array of values or their average is reported
             legend_item: string
 
         Returns
@@ -44,7 +43,7 @@ def load_beamline(config, file, key, norm=False, xoffset=None, xcoffset=None, yo
     data[0].filename = file
 
     # Get the scan information from file
-    infoObj = ScanInfo(config,file,key)
+    infoObj = ScanInfo(config,file,key,average)
     info = infoObj.info_dict
 
     # Parse data to numpy array
@@ -73,7 +72,7 @@ def load_beamline(config, file, key, norm=False, xoffset=None, xcoffset=None, yo
     return data
 
 
-def get_single_beamline_value(config, file, keys, *args):
+def get_single_beamline_value(config, file, keys, *args, average=False):
     """Load beamline meta data.
 
         Parameters
@@ -86,10 +85,13 @@ def get_single_beamline_value(config, file, keys, *args):
             path to the meta data of interest
         args: int
             scan numbers, comma separated
+        kwargs:
+            average: Boolean
+                determines if array of values or their average is reported
     """
 
     # Get the meta data
-    infoObj = ScanInfo(config, file, keys)
+    infoObj = ScanInfo(config, file, keys, average)
     info = infoObj.info_dict
 
     # Check type of key, need it as list
@@ -107,7 +109,7 @@ def get_single_beamline_value(config, file, keys, *args):
         print('====================')
 
 
-def get_spreadsheet(config, file, columns=None):
+def get_spreadsheet(config, file, average=False, columns=None):
     """Generate spreadsheet with meta data from h5 file.
 
         Parameters
@@ -116,6 +118,8 @@ def get_spreadsheet(config, file, columns=None):
             h5 data configuration
         file: string
             file name
+        average: Boolean
+            determines if array of values or their average is reported
         columns: dict
             Specify column header and h5 data path to meta datam i.e.
                 columns = dict()
@@ -138,9 +142,51 @@ def get_spreadsheet(config, file, columns=None):
         columns['Polarization'] = 'Beamline/Source/EPU/Polarization'
         columns['Status'] = 'status'
 
+    # Store all dictionary values in list
+    # Keep track which values to concatenate
+    key_list = list()
+    concat_list = list()
+    for key in columns.values():
+        if isinstance(key,tuple):
+            # these will get concatenated
+            concat_list.append(key)
+            for k in key:
+                # but append to key_list first, to get individual data
+                key_list.append(k)
+        else:
+            key_list.append(key)
+
     # Get the meta data for all specified dict keys
-    infoObj = ScanInfo(config, file,list(columns.values()))
+    infoObj = ScanInfo(config, file,key_list,average=average)
     info = infoObj.info_dict
 
+    # Combine columns, i.e. keys in dict
+    for concat in concat_list:
+        # Store all dicts with keys in single concat list
+        concat_dicts = list()
+        # Generate new defaultdict with combined results
+        new_dict = defaultdict(str)
+
+        # Get all dicts for concat tuple
+        for key in concat:
+            concat_dicts.append(info[key])
+
+        # Populate combined dict
+        for d in tuple(concat_dicts):
+            for key, value in d.items():
+                new_dict[key] += f"{str(value)} "
+
+        # Add combined dict to "global" info dict
+        info[tuple(concat)] = new_dict
+
+    # Remove single concat entries from info dict
+    # We do this separately, in case the same value is requested twice
+    for concat in concat_list:
+        for key in concat:
+            try:
+                del info[key]
+            except KeyError:
+                pass
+        
     # generate pandas data frame to store the entries
-    return pd.DataFrame(info).rename(invert_dict(columns), axis=1)
+    return pd.DataFrame(info).rename(invert_dict(columns), axis=1).fillna('')

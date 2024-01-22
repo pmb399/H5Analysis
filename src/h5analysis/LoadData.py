@@ -31,7 +31,7 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, HistogramAddition
+from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, StackAddition, StackSubtraction, HistogramAddition
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -973,7 +973,7 @@ class Load3d:
     def __init__(self):
         self.data = list()
 
-    def load(self, config, file, stack, arg,**kwargs):
+    def load(self, config, file, ind_stream, stack, arg,**kwargs):
         """ Shows a 3d stack of images interactively
 
             Parameters
@@ -982,6 +982,8 @@ class Load3d:
                 h5 configuration
             file: string
                 filename
+            ind_stream: string
+                independent stream, corresponding to stack's first dim
             stack: string
                 alias of an image STACK
             args: int
@@ -1007,7 +1009,42 @@ class Load3d:
         if self.data != []:
             raise UserWarning("Can only load one movie at a time.")
         else:
-            self.data.append(load_3d(config, file, stack, arg, **kwargs))
+            self.data.append(load_3d(config, file, ind_stream, stack, arg, **kwargs))
+
+    def add(self, config, file, ind_stream, stack, *args,**kwargs):
+        """ Adds 3d stacks of images with identical scales
+
+            Parameters
+            ----------
+            See Load3d function.
+            Adds all scans specified in *args.
+        """
+
+        # Ensure we only load 1
+        if self.data != []:
+            raise UserWarning("Can only load one movie at a time.")
+        else:
+            self.data.append(StackAddition(config, file, ind_stream, stack, *args, **kwargs))
+
+
+    def subtract(self, config, file, ind_stream, stack, minuend, subtrahend,**kwargs):
+        """ Subtracts 3d stacks of images with identical scales
+
+            Parameters
+            ----------
+            See Load3d function, but
+            minuend: list
+                adds all images in list, generates minuend
+            subtrahend: list
+                adds all images in list, generates subtrahend
+        """
+
+        # Ensure we only load 1
+        if self.data != []:
+            raise UserWarning("Can only load one movie at a time.")
+        else:
+            self.data.append(StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwargs))
+
 
     def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, **kwargs):
         """
@@ -1024,9 +1061,14 @@ class Load3d:
             all bokeh figure key-word arguments
         """
 
-        def update(f=0):
+        def update(g='init'):
             """Update stack to next image on slider move"""
 
+            if g == 'init':
+                f = 0
+            else:
+                f = indices[g['new']]
+                
             # This is for sanity check
             # Let's ensure dimensions are matching
             check_dimensions2d(v.new_x[f],v.new_y[f],v.stack[f])
@@ -1045,6 +1087,9 @@ class Load3d:
 
         for i, val in enumerate(self.data):
             for k, v in val.items():
+
+                # Map values of independent stream to indices
+                indices = {k: v for v,k in enumerate(v.ind_stream)}
 
                 # Let's ensure dimensions are matching
                 check_dimensions2d(v.new_x[0],v.new_y[0],v.stack[0])
@@ -1091,7 +1136,21 @@ class Load3d:
                     pass
 
                 s = show(p, notebook_handle=True)
-                display(widgets.interact(update, f=(0, len(v.stack)-1)))
+
+                # create SelectionSlider
+                mywidget = widgets.SelectionSlider(
+                options=v.ind_stream,
+                value=v.ind_stream[0],
+                description=v.str_ind_stream,
+                disabled=False,
+                continuous_update=True,
+                orientation='horizontal',
+                readout=True
+            )
+                
+                # Hook-up widget to update function, then display
+                mywidget.observe(update,names='value')
+                display(mywidget)
 
     def export(self,filename, interval=500, aspect=1, xlim=None, ylim=None, **kwargs):
         """ Export Stack image as movie
@@ -1139,6 +1198,8 @@ class LoadBeamline(Load1d):
         key : string
         **kwargs: multiple, optional
             Options:
+                average: Boolean
+                    determines if array of values or their average is reported
                 norm : boolean
                     Norm the spectra to [0,1].
                     default: True
@@ -1166,7 +1227,7 @@ class LoadBeamline(Load1d):
         raise UserWarning('Undefined')
 
 
-def getBL(config, file, stream, *args):
+def getBL(config, file, stream, *args, average=False):
     """Load beamline meta data.
 
         Parameters
@@ -1179,10 +1240,13 @@ def getBL(config, file, stream, *args):
             path to the meta data of interest
         args: int
             scan numbers, comma separated
+        kwargs:
+            average: Boolean
+                determines if array of values or their average is reported
     """
-    get_single_beamline_value(config, file, stream, *args)
+    get_single_beamline_value(config, file, stream, *args, average=average)
 
-def getSpreadsheet(config, file,columns=None):
+def getSpreadsheet(config, file, average=False,columns=None):
     """Generate spreadsheet with meta data from h5 file.
 
         Parameters
@@ -1191,13 +1255,15 @@ def getSpreadsheet(config, file,columns=None):
             h5 data configuration
         file: string
             file name
+        average: Boolean
+            determines if array of values or their average is reported
         columns: dict
             Specify column header and h5 data path to meta datam i.e.
                 columns = dict()
                 columns['Sample Stage horz'] = 'Endstation/Motors/ssh
                 ...
     """
-    return get_spreadsheet(config, file,columns)
+    return get_spreadsheet(config, file, average=average, columns=columns)
 
 #########################################################################################
 #########################################################################################

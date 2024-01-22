@@ -15,7 +15,7 @@ from .simplemath import apply_offset, grid_data2d
 from .datautil import strip_roi, get_indices, mca_roi, stack_roi
 from .readutil import stack_norm
 
-def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
     """ Internal function to load STACK data
     
         Parameters
@@ -24,6 +24,8 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
             h5 configuration
         file: string
             filename
+        ind_stream: string
+            independent stream, corresponding to stack's first dim
         stack: string
             alias of an image STACK
         args: int
@@ -67,6 +69,9 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
 
     # Strip the requsitions and sort reqs and rois
     reqs, rois = strip_roi(contrib_stack,'s', reqs, rois)
+
+    # Add independent stream to reqs
+    reqs.append(ind_stream)
 
     # Get the data for specified STACK
     all_data = data[arg].Scan(reqs)
@@ -173,11 +178,19 @@ def load_3d(config, file, stack, arg, xoffset=None, xcoffset=None, yoffset=None,
     # Generate 3d stack from gridded z-data in stack_grid list
     # Store all data in dict
     data[arg].stack = np.stack(tuple(stack_grid))
+    data[arg].ind_stream = all_data[ind_stream]
+    data[arg].str_ind_stream = ind_stream
     data[arg].new_x = new_x_list
     data[arg].new_y = new_y_list
     data[arg].x_min = xmin_list
     data[arg].x_max = xmax_list
     data[arg].y_min = ymin_list
     data[arg].y_max = ymax_list
+
+    # Check that independent stream dimension is correct
+    if len(data[arg].ind_stream) == np.shape(data[arg].stack)[0]:
+        pass
+    else:
+        raise Exception('Dimension mismatch. Check specified independent stream.')
 
     return data
