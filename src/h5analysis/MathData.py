@@ -72,7 +72,7 @@ class Object1dMath(Load1d):
         # Limit array size to 100MB (=104857600 bytes)
         # Numpy float64 array element requires 8 bytes
         max_steps = 104857600/8
-        steps = int((e-s)/x_diff)
+        steps = int((e-s)/x_diff)+1
 
         if steps>max_steps:
             num = max_steps
@@ -226,8 +226,8 @@ class Object2dMath(Load2d):
             # Limit array size to 100MB (=104857600 bytes)
             # Numpy float64 array element requires 8 bytes
             max_steps = 104857600/8
-            x_steps = int((x_e-x_s)/x_diff)
-            y_steps = int((y_e-y_s)/y_diff)
+            x_steps = int((x_e-x_s)/x_diff)+1
+            y_steps = int((y_e-y_s)/y_diff)+1
 
             if x_steps*y_steps>max_steps:
                 step_norm = int(np.ceil(np.sqrt(x_steps*y_steps/13107200)))
