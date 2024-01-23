@@ -32,6 +32,7 @@ from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
 from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, StackAddition, StackSubtraction, HistogramAddition
+from .stitch import ScanStitch
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -191,6 +192,20 @@ class Load1d:
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ScanSubtraction(config,
             file, x_stream, y_stream, minuend, subtrahend, **kwargs))
+        
+    def stitch(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """
+        Stitch specified scans for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Sticthes all scans specified in *args.
+        """
+
+        # Append all REIXS scan objects to scan list in current object.
+        self.data.append(ScanStitch(config,
+            file, x_stream, y_stream, *args, **kwargs))
 
     def xlim(self, lower, upper):
         """

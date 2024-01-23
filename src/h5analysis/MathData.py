@@ -8,7 +8,7 @@ from .LoadData import Load1d, Load2d, LoadHistogram
 # Import simplemath
 from .simplemath import grid_data_mesh
 
-class Object1dMath(Load1d):
+class Object1dAddSubtract(Load1d):
     """Apply addition/subtraction on loader objects"""
 
     def __init__(self):
@@ -115,8 +115,103 @@ class Object1dMath(Load1d):
         self.data.append(data)
 
 #########################################################################################
+
+class Object1dStitch(Load1d):
+    """Apply stitching on loader objects"""
+
+    def __init__(self):
+        self.DataObjectsStitch = list()
+
+        return Load1d.__init__(self)
         
-class Object2dMath(Load2d):
+    def stitch(self,obj,line,scan):
+        """Loader objects to be added
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        self.DataObjectsStitch.append(obj.data[line][scan])
+                
+    def evaluate(self):
+        """Evaluate the request"""
+
+        if self.DataObjectsStitch == []:
+            raise Exception('You need to add at least one scan.')
+
+        start_list = list()
+        end_list = list()
+        diff_list = list()
+
+        for i,item in enumerate(self.DataObjectsStitch):
+            start_list.append(item.x_stream.min())
+            end_list.append(item.x_stream.max())
+            diff_list.append(np.abs(np.diff(item.x_stream).min()))
+
+        s = min(start_list)
+        e = max(end_list)
+        x_diff = min(diff_list)
+        
+        # Limit array size to 100MB (=104857600 bytes)
+        # Numpy float64 array element requires 8 bytes
+        max_steps = 104857600/8
+        steps = int((e-s)/x_diff)+1
+
+        if steps>max_steps:
+            num = max_steps
+        else:
+            num = steps
+
+        MASTER_x = np.linspace(s,e,num)
+
+        # Store all y values
+        MASTER_y_list = list() # y-arrays interpolated to common scale
+        MASTER_y_nan_list = list() # where nan values are stored
+
+        # Iterate over all loaded scans for interpolation
+        for i, item in enumerate(self.DataObjectsStitch):
+            # interpolate to common scale
+            item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+            # Store results
+            MASTER_y_list.append(item)
+            # Return boolean True where array element is a number
+            MASTER_y_nan_list.append(~np.isnan(item))
+
+        # This is for averaging
+        # Sum the arrays of common length, treat nan as 0
+        # For each element, sum how many True (numbers) contribute to the sum
+        # Normalize to get average by array division
+        MASTER_y = np.nansum(MASTER_y_list,axis=0)/np.sum(MASTER_y_nan_list,axis=0)
+
+        # Store data
+        class added_object:
+            def __init__(self):
+                pass
+        
+        # Create dict with objects to be compatible with other loaders
+        data = dict()
+        data[0] = added_object()
+        data[0].x_stream = MASTER_x
+        data[0].y_stream = MASTER_y
+        data[0].scan = 'Misc'
+        data[0].legend = 'Stitching'
+
+        data[0].xlabel = 'x-stream'
+        data[0].ylabel = 'y-stream'
+        data[0].filename = 'Object Math'
+        
+        self.data.append(data)
+
+#########################################################################################
+
+
+class Object2dAddSubtract(Load2d):
     """Apply addition/subtraction on loader objects"""
 
     def __init__(self):
