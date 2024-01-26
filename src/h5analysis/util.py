@@ -46,3 +46,24 @@ COLORP = ['#d60000', '#8c3bff', '#018700', '#00acc6', '#e6a500', '#ff7ed1', '#6b
           '#c69eff', '#56831a', '#00d6a7', '#824638', '#11421c', '#59aa75', '#905b01', '#f64470', '#ff9703', '#e14231', '#ba91cf', '#34574d', '#f7807c', '#903400', '#b3cd00', '#2d9ed3', '#798a9e', '#50807c', '#c136d6', '#eb0552', '#b8ac7e', '#487031', '#839564', '#d89c89', '#0064a3', '#4b9077', '#8e6097', '#ff5238', '#a7423b', '#006e70', '#97833d', '#dbafc8']
 
 #########################################################################################
+
+def clean_beamline_info_dict(columns):
+    """Removes lists from dictionary values and reports first entry
+    
+        Parameters
+        ----------
+        my_map: dict
+
+        Returns
+        -------
+        dict (removed lists)
+    """
+
+    clean = dict()
+    for key,value in columns.items():
+        if isinstance(value,list):
+            clean[key] = value[0]
+        else:
+            clean[key] = value
+
+    return clean

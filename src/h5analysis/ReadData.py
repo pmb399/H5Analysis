@@ -221,7 +221,7 @@ class ScanInfo:
                                     entry = entry[0]
                                 else:
                                     if average == True:
-                                        entry = np.round(np.average(entry),decimals=4)
+                                        entry = (np.average(entry),entry.min(),entry.max())
 
                                 info_dict[key][skey] = entry
                         except:

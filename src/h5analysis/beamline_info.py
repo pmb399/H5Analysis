@@ -7,7 +7,7 @@ from .ReadData import ScanInfo
 
 # Util functions
 from .simplemath import apply_offset
-from .util import invert_dict
+from .util import invert_dict, clean_beamline_info_dict
 from collections import defaultdict
 
 def load_beamline(config, file, key, average=False, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
@@ -109,7 +109,7 @@ def get_single_beamline_value(config, file, keys, *args, average=False):
         print('====================')
 
 
-def get_spreadsheet(config, file, average=False, columns=None):
+def get_spreadsheet(config, file, average=True, columns=None):
     """Generate spreadsheet with meta data from h5 file.
 
         Parameters
@@ -145,16 +145,34 @@ def get_spreadsheet(config, file, average=False, columns=None):
     # Store all dictionary values in list
     # Keep track which values to concatenate
     key_list = list()
+    str_list = list()
     concat_list = list()
     for key in columns.values():
-        if isinstance(key,tuple):
+        if isinstance(key,str):
+            key_list.append(key)
+            str_list.append(key)
+        elif isinstance(key,tuple):
             # these will get concatenated
             concat_list.append(key)
             for k in key:
                 # but append to key_list first, to get individual data
                 key_list.append(k)
+        elif isinstance(key,list):
+            if len(key) == 2:
+                key_entry = key[0]
+            else:
+                raise Exception(f"Wrong number of arguments specified in {key}.")
+            if isinstance(key_entry,str):
+                key_list.append(key_entry)
+                str_list.append(key_entry)
+            elif isinstance(key_entry,tuple):
+                # these will get concatenated
+                concat_list.append(key_entry)
+                for k in key_entry:
+                    # but append to key_list first, to get individual data
+                    key_list.append(k) 
         else:
-            key_list.append(key)
+            raise Exception("Data type not understood.")
 
     # Get the meta data for all specified dict keys
     infoObj = ScanInfo(config, file,key_list,average=average)
@@ -174,7 +192,7 @@ def get_spreadsheet(config, file, average=False, columns=None):
         # Populate combined dict
         for d in tuple(concat_dicts):
             for key, value in d.items():
-                new_dict[key] += f"{str(value)} "
+                new_dict[key] += f"{str(value)}; "
 
         # Add combined dict to "global" info dict
         info[tuple(concat)] = new_dict
@@ -183,10 +201,54 @@ def get_spreadsheet(config, file, average=False, columns=None):
     # We do this separately, in case the same value is requested twice
     for concat in concat_list:
         for key in concat:
-            try:
-                del info[key]
-            except KeyError:
-                pass
+            if key not in str_list:
+                try:
+                    del info[key]
+                except KeyError:
+                    pass
         
     # generate pandas data frame to store the entries
-    return pd.DataFrame(info).rename(invert_dict(columns), axis=1).fillna('')
+    clean_columns = clean_beamline_info_dict(columns) # returns only first element from values if type is list
+    df = pd.DataFrame(info).rename(invert_dict(clean_columns), axis=1).fillna('')
+
+    # Apply rounding
+    for header,decimal_info in columns.items():
+        if isinstance(decimal_info,list):
+            decimals = int(decimal_info[1])
+            if isinstance(decimal_info[0],tuple):
+                df[header] = df[header].apply(lambda x: apply_rounding_tuple(x,decimals))
+            else:
+                df[header] = df[header].apply(lambda x: apply_rounding(x,decimals)) 
+
+    return df
+
+def apply_rounding(item, decimals):
+    if isinstance(item,tuple):
+        i1_rounded = np.round(item[0],decimals)
+        ii_rounded = np.round(item[1],decimals)
+        if_rounded = np.round(item[2],decimals)
+        return f"({i1_rounded},{ii_rounded},{if_rounded})"
+    else:
+        return np.round(item,decimals)
+
+def apply_rounding_tuple(item,decimals):
+    contributions = item.split("; ")
+    cont = [x for x in contributions if x != '']
+
+    item = ""
+
+    for x in cont:
+        try:
+            r = np.round(float(x),decimals)
+            item += f"{r}; "
+        except:
+            try:
+                strtup = x.split("(")[1].rstrip(")").split(',')
+                t = [float(a) for a in strtup]
+                r1 = np.round(t[0],decimals)
+                ri = np.round(t[1],decimals)
+                rf = np.round(t[2],decimals)
+                item += f"({r1},{ri},{rf}); "
+            except Exception as e:
+                item += f"{x}; "
+    return item

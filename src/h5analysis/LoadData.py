@@ -1261,7 +1261,7 @@ def getBL(config, file, stream, *args, average=False):
     """
     get_single_beamline_value(config, file, stream, *args, average=average)
 
-def getSpreadsheet(config, file, average=False,columns=None):
+def getSpreadsheet(config, file, average=True,columns=None):
     """Generate spreadsheet with meta data from h5 file.
 
         Parameters
