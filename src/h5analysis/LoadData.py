@@ -301,7 +301,7 @@ class Load1d:
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 if len(v.x_stream) != len(v.y_stream):
-                    raise UserWarning(f'Error in line {i+1}. Cannot plot (x,y) arrays with differnet size.')
+                    raise UserWarning(f'Error in line {i+1}. Cannot plot (x,y) arrays with different size.')
                 plot_data["x_stream"].append(v.x_stream)
                 plot_data["y_stream"].append(v.y_stream)
                 plot_data['x_name'].append(v.xlabel)

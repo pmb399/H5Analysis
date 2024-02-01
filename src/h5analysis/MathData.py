@@ -1,12 +1,15 @@
 # Scientific modules
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
+from shapely.geometry import Point, Polygon
+import skimage as ski
 
 # Import Loaders
 from .LoadData import Load1d, Load2d, LoadHistogram
 
-# Import simplemath
+# Import simplemath and datautil
 from .simplemath import grid_data_mesh
+from .datautil import mca_roi, get_indices, get_indices_polygon
 
 class Object1dAddSubtract(Load1d):
     """Apply addition/subtraction on loader objects"""
@@ -386,7 +389,265 @@ class Object2dAddSubtract(Load2d):
         self.data.append(data)
 
 #########################################################################################
+
+class Object2dReduce(Load1d):
+    """Apply reduction from 2d data to 1d"""
+
+    def load(self,obj,line,scan):
+        """Loader for 2d object
         
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+        self.MCADataObject = obj.data[line][scan]
+
+    def roi(self,integration_axis,roi=(None,None)):
+        """ Apply an region of interest (ROI) to one axis
+        
+            Parameters
+            ----------
+            integration_axis: string
+                options: 'x' or 'y'
+            roi: tuple
+                specify the lower and upper bounds, i.e. (lower,upper)
+        """
+
+        # Get the data from the loaded object
+        x = self.MCADataObject.new_x
+        y = self.MCADataObject.new_y
+        z = self.MCADataObject.new_z
+
+        # Prepare data storage
+        class added_object:
+            def __init__(self):
+                pass
+        
+        # Create dict with objects to be compatible with other loaders
+        data = dict()
+        data[0] = added_object()
+
+        # Integrate depending on chosen axis
+        # Note, in matrix notation x axis (horizontal) corresponds to 1st axis
+        if integration_axis == 'x':
+            idx_low, idx_high = get_indices(roi,x)
+            sum = mca_roi(z,idx_low,idx_high,1)
+            MASTER_x = y
+            data[0].xlabel = self.MCADataObject.ylabel
+
+        elif integration_axis == 'y':
+            idx_low, idx_high = get_indices(roi,y)
+            sum = mca_roi(z,idx_low,idx_high,0)
+            MASTER_x = x
+            data[0].xlabel = self.MCADataObject.xlabel
+
+        else:
+            raise Exception('Specified integration axis not defined.')
+
+        # Store all pertinent information in object
+        data[0].x_stream = MASTER_x
+        data[0].y_stream = sum
+        data[0].scan = self.MCADataObject.scan
+        data[0].ylabel = f"{self.MCADataObject.zlabel} - ROI"
+        data[0].legend = '2d ROI reduction'
+        data[0].filename = self.MCADataObject.filename
+        
+        self.data.append(data)
+
+
+    def polygon(self,integration_axis,polygon,exact=False):
+        """ Mask array defined by a polygon and sum over specified axis
+        
+            Parameters
+            ----------
+            integration_axis: string
+                options: 'x' or 'y'
+            polygon: list of tuple
+                corresponds to coordinate pairs
+            exact: Boolean
+                True: Iterates over all data points P explicitly and determines if P is contained in polygon (most accurate, slow)
+                False: Applies image algorithm to mask polygon by filling holes (less accurate, faster)
+        """
+
+        # Get the data from the loaded object
+        x = self.MCADataObject.new_x
+        y = self.MCADataObject.new_y
+        z = self.MCADataObject.new_z
+
+        # Prepare data storage
+        class added_object:
+            def __init__(self):
+                pass
+        
+        # Create dict with objects to be compatible with other loaders
+        data = dict()
+        data[0] = added_object()
+
+        # Choose integration axis
+        if integration_axis == 'x':                
+            if exact == False:
+                # If not exact, 
+                # return array indices corresponding to polygon boundaries
+                # then apply algorithm to get mask
+                # apply mask to array
+                idx = get_indices_polygon(polygon,x,y)
+                mask = ski.draw.polygon2mask(z.shape, idx)
+                sum = np.where(mask,z,0).sum(axis=1)
+
+            else:
+                # If exact,
+                # get shapely polygon
+                # check iteratively for each data point in array if contained
+                # in polygon.
+                # if so, add to sum
+                poly = Polygon(polygon)
+                pXES = list()
+                for y_idx,py in enumerate(y):
+                    x_sum = 0
+                    for x_idx,px in enumerate(x):
+                        p = Point(px,py)
+                        if poly.contains(p):
+                            x_sum += z[y_idx,x_idx]
+                    pXES.append(x_sum)
+
+                sum = np.array(pXES)
+
+            # Set labels and independent data stream
+            data[0].xlabel = self.MCADataObject.ylabel
+            MASTER_x = y
+
+        elif integration_axis == 'y':
+            if exact == False:
+                idx = get_indices_polygon(polygon,x,y)
+                mask = ski.draw.polygon2mask(z.shape, idx)
+                sum = np.where(mask,z,0).sum(axis=0)
+
+            else:
+                poly = Polygon(polygon)
+                pXES = list()
+                for x_idx,px in enumerate(x):
+                    y_sum = 0
+                    for y_idx,py in enumerate(y):
+                        p = Point(px,py)
+                        if poly.contains(p):
+                            y_sum += z[y_idx,x_idx]
+                    pXES.append(y_sum)
+
+                sum = np.array(pXES)
+
+            data[0].xlabel = self.MCADataObject.xlabel                
+            MASTER_x = x
+
+        else:
+            raise Exception('Specified integration axis not defined.')
+
+        # Store all pertinent information in object
+        data[0].x_stream = MASTER_x
+        data[0].y_stream = sum
+        data[0].scan = self.MCADataObject.scan
+        data[0].ylabel = f"{self.MCADataObject.zlabel} - ROI"
+        data[0].legend = '2d polygon reduction'
+        data[0].filename = self.MCADataObject.filename
+        
+        self.data.append(data)
+
+class Object2dTransform(Load2d):
+    """Apply transformations to a 2d image"""
+
+    def transform(self,trans_y):
+        """ Apply math operations on a per data point basis. Change second axis (y) for all data along first (x) axis
+
+            Parameters
+            ----------
+            trans_y: string
+                math expression to be evaluated at every x data point
+                available variables include 'x', 'y', 'z'.
+        """
+
+        # Do this for all scans in loaded object
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                # Get data as variables x, y, z
+                y = v.new_y
+                z = v.new_z
+
+                # Store the axes modified for each data point
+                axes_math = list()
+                for x in v.new_x:
+                    # For each data point, evaluate the math and store y-axis
+                    axes_math.append(eval(trans_y))
+
+                # Find min/max values
+                mins = list()
+                maxs = list()
+                for arr in axes_math:
+                    mins.append(min(arr))
+                    maxs.append(max(arr))
+                
+                # Need the biggest common overlap
+                # Then create new, common y scale
+                ymin = max(mins)
+                ymax = min(maxs)
+                new_y = np.linspace(ymin, ymax, len(v.new_y), endpoint=True)
+
+                # Store shifted data in new array
+                scatter_z = np.zeros((len(new_y),len(v.new_x)))
+
+                # Evaluate the image on the new common energy axis
+                for idx,val in enumerate(np.transpose(z)):
+                    scatter_z[:,idx] = interp1d(axes_math[idx],val)(new_y)
+                
+                # Note, loading with Load2d ensures that the x-axis (v.new_x) is
+                # is already interpolated on evenly spaced grid
+
+                # Update data as calculated above
+                v.new_z = scatter_z
+                v.new_y = new_y
+                v.ymin = ymin
+                v.ymax = ymax
+                v.ylabel = 'Transformed Scale'
+
+                self.data[i][k] = v
+
+    def transpose(self):
+        """ Transpose loaded image and swap axes """
+
+        # For all loaded objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                # apply transpose to image matrix
+                v.new_z = np.transpose(v.new_z)
+
+                # update the axes and labels
+                new_x = v.new_y
+                new_y = v.new_x
+                xmin = v.ymin
+                xmax = v.ymax
+                xlabel = v.ylabel
+                ymin = v.xmin
+                ymax = v.xmax
+                ylabel = v.xlabel
+
+                v.new_x = new_x
+                v.new_y = new_y
+                v.xmin = xmin
+                v.xmax = xmax
+                v.xlabel = xlabel
+                v.ymin = ymin
+                v.ymax = ymax
+                v.ylabel = ylabel
+
+                # Write back to dict
+                self.data[i][k] = v
+
+#########################################################################################
 class ObjectHistMath(LoadHistogram):
     """Apply addition on histogram loader objects"""
 

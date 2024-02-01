@@ -347,6 +347,29 @@ def get_indices(roi,roi_scale):
     else:
         raise Exception('No ROI specified')
     
+#########################################################################################
+
+def get_indices_polygon(pairs,scale1,scale2):
+    """ Get the indices for specified coordinate pairs
+
+        Parameters
+        ----------
+        pairs: list of tuple
+            corresponds to coordinates
+        scale1: numpy array
+            scale to extract closest index from
+        scale2: numpy array
+            scale to extract closest index from
+        """
+
+    x_list = list()
+    y_list = list()
+
+    for pair in pairs:
+        x_list.append((np.abs(pair[0]-scale1)).argmin())
+        y_list.append((np.abs(pair[1]-scale2)).argmin())
+
+    return np.column_stack((y_list,x_list))
 
 #########################################################################################
     
