@@ -145,12 +145,10 @@ def get_spreadsheet(config, file, average=True, columns=None):
     # Store all dictionary values in list
     # Keep track which values to concatenate
     key_list = list()
-    str_list = list()
     concat_list = list()
-    for key in columns.values():
+    for idx,key in enumerate(list(columns.values())):
         if isinstance(key,str):
             key_list.append(key)
-            str_list.append(key)
         elif isinstance(key,tuple):
             # these will get concatenated
             concat_list.append(key)
@@ -164,7 +162,6 @@ def get_spreadsheet(config, file, average=True, columns=None):
                 raise Exception(f"Wrong number of arguments specified in {key}.")
             if isinstance(key_entry,str):
                 key_list.append(key_entry)
-                str_list.append(key_entry)
             elif isinstance(key_entry,tuple):
                 # these will get concatenated
                 concat_list.append(key_entry)
@@ -178,8 +175,9 @@ def get_spreadsheet(config, file, average=True, columns=None):
     infoObj = ScanInfo(config, file,key_list,average=average)
     info = infoObj.info_dict
 
+    concat_info = dict()
     # Combine columns, i.e. keys in dict
-    for concat in concat_list:
+    for idx,concat in enumerate(concat_list):
         # Store all dicts with keys in single concat list
         concat_dicts = list()
         # Generate new defaultdict with combined results
@@ -195,21 +193,26 @@ def get_spreadsheet(config, file, average=True, columns=None):
                 new_dict[key] += f"{str(value)}; "
 
         # Add combined dict to "global" info dict
-        info[tuple(concat)] = new_dict
+        concat_info[concat] = new_dict
 
-    # Remove single concat entries from info dict
-    # We do this separately, in case the same value is requested twice
-    for concat in concat_list:
-        for key in concat:
-            if key not in str_list:
-                try:
-                    del info[key]
-                except KeyError:
-                    pass
+    data_info = dict()
+    for key,value in columns.items():
+        if isinstance(value,str):
+            data_info[value] = info[value]
+        elif isinstance(value,tuple):
+            data_info[value] = concat_info[value]
+        elif isinstance(value,list):
+            value_entry = value[0]
+            if isinstance(value_entry,str):
+                data_info[value_entry] = info[value_entry]
+            elif isinstance(value_entry,tuple):
+                data_info[value_entry] = concat_info[value_entry]
+        else:
+            raise Exception("Data type not understood.")
         
     # generate pandas data frame to store the entries
     clean_columns = clean_beamline_info_dict(columns) # returns only first element from values if type is list
-    df = pd.DataFrame(info).rename(invert_dict(clean_columns), axis=1).fillna('')
+    df = pd.DataFrame(data_info).rename(invert_dict(clean_columns), axis=1).fillna('')
 
     # Apply rounding
     for header,decimal_info in columns.items():

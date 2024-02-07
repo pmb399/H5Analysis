@@ -212,7 +212,11 @@ class ScanInfo:
                             # Append the data for the specific scan to the info_dict->dict
                             # Try to decode information as utf-8 if string
                             try:
-                                info_dict[key][skey] = f[f'{k}/{key}'][()].decode("utf-8")
+                                item = f[f'{k}/{key}'][()].decode("utf-8")
+                                try:
+                                    info_dict[key][skey] = float(item)
+                                except:
+                                    info_dict[key][skey] = item
                             # else, stored as data array of length 1, extract first entry
                             except AttributeError:
                                 # some magic to get the stored array entry
