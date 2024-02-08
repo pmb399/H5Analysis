@@ -214,6 +214,10 @@ def get_spreadsheet(config, file, average=True, columns=None):
     clean_columns = clean_beamline_info_dict(columns) # returns only first element from values if type is list
     df = pd.DataFrame(data_info).rename(invert_dict(clean_columns), axis=1).fillna('')
 
+    # Set row labels as scan and name index column
+    df.set_axis(list(list(data_info.values())[0].keys()))
+    df.index.name = 'Scan'
+
     # Apply rounding
     for header,decimal_info in columns.items():
         if isinstance(decimal_info,list):
