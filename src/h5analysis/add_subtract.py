@@ -160,6 +160,12 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
     class added_object:
         def __init__(self):
             pass
+
+    # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+    if isinstance(minuend,int):
+        minuend = [minuend]
+    if isinstance(subtrahend,int):
+        subtrahend = [subtrahend]
         
     # Get the minuend and subtrahend data
     # Pass the scans specified in each list to the Scan addition function
@@ -285,6 +291,12 @@ def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, n
             data: dict
         """   
     
+    # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+    if isinstance(minuend,int):
+        minuend = [minuend]
+    if isinstance(subtrahend,int):
+        subtrahend = [subtrahend]
+
     # Define minuend and subtrahend
     # Add images of all scans specified in respective lists,
     # then subtract
@@ -325,6 +337,12 @@ def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, s
             data: dict
         """   
     
+    # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+    if isinstance(minuend,int):
+        minuend = [minuend]
+    if isinstance(subtrahend,int):
+        subtrahend = [subtrahend]
+
     # Define minuend and subtrahend
     # Add images of all scans specified in respective lists,
     # then subtract
