@@ -9,6 +9,7 @@ from .ReadData import ScanInfo
 from .simplemath import apply_offset
 from .util import invert_dict, clean_beamline_info_dict
 from collections import defaultdict
+import warnings
 
 def load_beamline(config, file, key, average=False, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
     """Load beamline meta data.
@@ -223,9 +224,15 @@ def get_spreadsheet(config, file, average=True, columns=None):
         if isinstance(decimal_info,list):
             decimals = int(decimal_info[1])
             if isinstance(decimal_info[0],tuple):
-                df[header] = df[header].apply(lambda x: apply_rounding_tuple(x,decimals))
+                try:
+                    df[header] = df[header].apply(lambda x: apply_rounding_tuple(x,decimals))
+                except:
+                    warnings.warn(f'Rounding cannot be applied to {header}')
             else:
-                df[header] = df[header].apply(lambda x: apply_rounding(x,decimals)) 
+                try:
+                    df[header] = df[header].apply(lambda x: apply_rounding(x,decimals))
+                except:
+                    warnings.warn(f'Rounding cannot be applied to {header}')
 
     return df
 
