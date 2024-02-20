@@ -559,7 +559,7 @@ class Object2dReduce(Load1d):
 class Object2dTransform(Load2d):
     """Apply transformations to a 2d image"""
 
-    def transform(self,trans_y):
+    def transform(self,trans_y,xlim=(None,None),ylim=(None,None)):
         """ Apply math operations on a per data point basis. Change second axis (y) for all data along first (x) axis
 
             Parameters
@@ -567,6 +567,10 @@ class Object2dTransform(Load2d):
             trans_y: string
                 math expression to be evaluated at every x data point
                 available variables include 'x', 'y', 'z'.
+            xlim: tuple
+                specify lower and upper bound of x-limits, cropped before transformation
+            ylim: tuple
+                specify lower and upper bound of y-limits included in matrix after transformation
         """
 
         # Do this for all scans in loaded object
@@ -576,6 +580,22 @@ class Object2dTransform(Load2d):
                 # Get data as variables x, y, z
                 y = v.new_y
                 z = v.new_z
+
+                # Restrict on xlim if requested
+                if xlim[0] != None:
+                    xlow = (np.abs(xlim[0]-v.new_x)).argmin()
+                else:
+                    xlow = None
+                if xlim[1] != None:
+                    xhigh = (np.abs(xlim[1]-v.new_x)).argmin()
+                else:
+                    xhigh = None
+
+                # Adjust the scale and image
+                v.new_x = v.new_x[xlow:xhigh]
+                v.xmin = min(v.new_x)
+                v.xmax = max(v.new_x)
+                z = z[:,xlow:xhigh]
 
                 # Store the axes modified for each data point
                 axes_math = list()
@@ -590,10 +610,41 @@ class Object2dTransform(Load2d):
                     mins.append(min(arr))
                     maxs.append(max(arr))
                 
-                # Need the biggest common overlap
-                # Then create new, common y scale
-                ymin = max(mins)
-                ymax = min(maxs)
+                # May also choose to limit y-range
+                # Need the biggest common overlap or as requested
+                if (ylim[0] == None and ylim[1] == None):
+                    ymin = max(mins)
+                    ymax = min(maxs)
+                    yaxes = axes_math
+                else:
+                    ydict = dict()
+                    # Check which scales contain lower and upper bound of y
+                    for idx,arr in enumerate(axes_math):
+                        if min(arr) <= ylim[0] <= max(arr):
+                            if min(arr) <= ylim[1] <= max(arr):
+                                ydict[idx] = arr
+
+                    # Need to have at least one scale that contains both ymin and ymax
+                    if len(ydict.keys()) == 0:
+                        raise Exception('Invalid y-range specified.')
+                    
+                    # Set the y range and set available axes
+                    ymin = ylim[0]
+                    ymax = ylim[1]
+                    yaxes = list(ydict.values())
+
+                    # Extract indices to find min/max x-values supported
+                    # And crop axis
+                    # works because we iterate over x when checking the y-scales
+                    xindices = list(ydict.keys())                        
+                    v.new_x = v.new_x[xindices]
+                    v.xmin = min(v.new_x)
+                    v.xmax = max(v.new_x)
+
+                    # Also crop down matrix accordingly
+                    z = z[:,xindices]
+
+                # Create new, common y scale
                 new_y = np.linspace(ymin, ymax, len(v.new_y), endpoint=True)
 
                 # Store shifted data in new array
@@ -601,7 +652,7 @@ class Object2dTransform(Load2d):
 
                 # Evaluate the image on the new common energy axis
                 for idx,val in enumerate(np.transpose(z)):
-                    scatter_z[:,idx] = interp1d(axes_math[idx],val)(new_y)
+                    scatter_z[:,idx] = interp1d(yaxes[idx],val)(new_y)
                 
                 # Note, loading with Load2d ensures that the x-axis (v.new_x) is
                 # is already interpolated on evenly spaced grid
