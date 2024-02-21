@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d, interp2d
 
 # Plotting
 from bokeh.plotting import show, figure
-from bokeh.models import ColumnDataSource, HoverTool, LinearColorMapper, LogColorMapper, ColorBar, Span, Label
+from bokeh.models import ColumnDataSource, HoverTool, LinearColorMapper, LogColorMapper, ColorBar, Span, Label, DataRange1d, LinearAxis
 from bokeh.io import push_notebook
 
 # Video Export
@@ -86,6 +86,8 @@ class Load1d:
                 puts data in bins of specified size
             legend_items: dict
                 dict[scan number] = description for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
         """
 
         # Append all REIXS scan objects to scan list in current object.
@@ -297,18 +299,28 @@ class Load1d:
         """
 
         # Organize all data assosciated with object in sorted dictionary.
+        # Separate data by y-axis (if right-hand side axis requested)
         plot_data = defaultdict(list)
+        plot_data_twin = defaultdict(list)
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 if len(v.x_stream) != len(v.y_stream):
                     raise UserWarning(f'Error in line {i+1}. Cannot plot (x,y) arrays with different size.')
-                plot_data["x_stream"].append(v.x_stream)
-                plot_data["y_stream"].append(v.y_stream)
-                plot_data['x_name'].append(v.xlabel)
-                plot_data['y_name'].append(v.ylabel)
-                plot_data['filename'].append(v.filename)
-                plot_data['scan'].append(v.scan)
-                plot_data['legend'].append(v.legend)
+                if hasattr(v,'twin_y'):
+                    if v.twin_y != True:
+                        data_default_dict = plot_data
+                    else:
+                        data_default_dict = plot_data_twin
+                else:
+                    data_default_dict = plot_data
+
+                data_default_dict["x_stream"].append(v.x_stream)
+                data_default_dict["y_stream"].append(v.y_stream)
+                data_default_dict['x_name'].append(v.xlabel)
+                data_default_dict['y_name'].append(v.ylabel)
+                data_default_dict['filename'].append(v.filename)
+                data_default_dict['scan'].append(v.scan)
+                data_default_dict['legend'].append(v.legend)
 
         # Get the colours for the glyphs.
         numlines = len(plot_data['scan'])
@@ -322,7 +334,32 @@ class Load1d:
         p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
                      line_width=linewidth, line_color='color', line_alpha=0.6,
                      hover_line_color='color', hover_line_alpha=1.0,
-                     source=source)
+                     source=source,y_range_name='default',)
+        
+        # Plot all data associated with the right side y-axis
+        if len(plot_data_twin['x_stream']) != 0:
+            # Determine the range of the axis and add it to plot
+            mins = [min(x) for x in plot_data_twin['y_stream']]
+            maxs = [max(x) for x in plot_data_twin['y_stream']]
+            yrange = max(maxs)-min(mins)
+            ymin = min(mins) - 0.05*yrange
+            ymax = max(maxs) + 0.05*yrange
+
+            p.extra_y_ranges['right'] = DataRange1d(bounds=(ymin,ymax))
+            p.add_layout(LinearAxis(y_range_name='right'), 'right')
+            
+            # Determine the color
+            numlines_y = len(plot_data_twin['scan'])
+            plot_data_twin['color'] = COLORP[numlines:numlines+numlines_y]
+
+            # Get the data source
+            source_twin = ColumnDataSource(plot_data_twin)
+            
+            # Add to plot
+            p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
+                     line_width=linewidth, line_color='color', line_alpha=0.6,
+                     hover_line_color='color', hover_line_alpha=1.0,
+                     source=source_twin,y_range_name='right',)
 
         # Set up the information for hover box
         p.add_tools(HoverTool(show_arrow=False, line_policy='next', tooltips=[

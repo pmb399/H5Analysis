@@ -21,7 +21,7 @@ from .simplemath import apply_offset, grid_data, apply_savgol, bin_data
 # Warnings
 import warnings
 
-def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}):
+def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}, twin_y = False):
     """ Internal function to load 1d data
 
         Parameters
@@ -55,6 +55,8 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                 puts data in bins of specified size
             legend_items: dict
                 dict[scan number] = description for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
     
     """
 
@@ -75,6 +77,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         data[arg].xlabel = x_stream
         data[arg].ylabel = y_stream
         data[arg].filename = file
+        data[arg].twin_y = twin_y
 
         # Analyse x-stream and y-stream requests with parser
         # Get lists of requisitions

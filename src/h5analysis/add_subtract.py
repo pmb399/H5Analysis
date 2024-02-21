@@ -15,7 +15,7 @@ from .readutil import detector_norm
 # Warnings
 import warnings
 
-def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None):
+def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False):
     """Internal function to handle scan addition.
 
         Parameters
@@ -92,6 +92,7 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
     data[0].scan = name
+    data[0].twin_y = twin_y
 
     # Get legend items
     if legend_item != None:
@@ -139,7 +140,7 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
 
     return data
 
-def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None):
+def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False):
     """ Internal function to handle scan subtraction.
 
         Parameters
@@ -212,6 +213,7 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
     data[0].scan = name
+    data[0].twin_y = twin_y
 
     # Get legend items
     if legend_item != None:

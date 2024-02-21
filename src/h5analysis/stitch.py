@@ -8,7 +8,7 @@ from .data_1d import load_1d
 # Utilities
 from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data, grid_data_mesh
 
-def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None):
+def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False):
     """Internal function to handle scan stitching.
 
         Parameters
@@ -93,6 +93,7 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
     data[0].scan = name
+    data[0].twin_y = twin_y
 
     # Get legend items
     if legend_item != None:
