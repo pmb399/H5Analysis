@@ -48,6 +48,8 @@ def apply_offset(stream, offset=None, coffset=None):
     else:
         return stream
 
+#########################################################################################
+    
 def grid_data(x_stream, y_stream, grid):
     """Grid 1d data
     
@@ -83,6 +85,8 @@ def grid_data(x_stream, y_stream, grid):
     new_y = f(new_x)
 
     return new_x, new_y
+
+#########################################################################################
 
 def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None, None,None]):
     """Internal function to apply specified grid or ensure otherwise that axes are evenly spaced as this is required to plot an image.
@@ -157,6 +161,7 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
 
     return xmin, xmax, ymin, ymax, new_x, new_y, new_z
     
+#########################################################################################
 
 def grid_data_mesh(x_data,y_data,z_data):
     """Internal function to generate scatter histogram for 3 independent SCA streams.
@@ -222,6 +227,8 @@ def grid_data_mesh(x_data,y_data,z_data):
 
     return xmin, xmax, ymin, ymax, new_x, new_y, new_z, zmin, zmax
 
+#########################################################################################
+
 def bin_data(x_data,y_data,binsize):
     """Reduce noise by averaging data points via binning mechanisms
     
@@ -264,6 +271,8 @@ def bin_data(x_data,y_data,binsize):
 
     return np.array(new_x), np.array(new_y)
 
+#########################################################################################
+
 def apply_savgol(x,y,window,polyorder,deriv):
     """Appply smoothing and take derivatives
     
@@ -302,3 +311,26 @@ def apply_savgol(x,y,window,polyorder,deriv):
     smooth_y = savgol_filter(new_y,window,polyorder,deriv,delta)
 
     return new_x,smooth_y
+
+#########################################################################################
+
+def handle_eval(expr,vars):
+    """ Replaces any NaN and inf values from evaluated array 
+    
+        Parameters
+        ----------
+        expr: string
+            expression to be evaluated
+        vars: dict
+            dictionary of local variables need to perform evaluation
+
+        Returns
+        -------
+        numpy array
+
+    """
+
+    # Update the local variables to make everything available needed to perform eval
+    locals().update(vars)
+    # Eval the expression and replace NaN and inf entries with 0
+    return np.nan_to_num(eval(expr),nan=0,posinf=0,neginf=0)

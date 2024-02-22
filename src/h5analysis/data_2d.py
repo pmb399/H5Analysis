@@ -12,7 +12,7 @@ from .ReadData import Data
 from .parser import parse
 from .datautil import get_roi, get_indices, mca_roi, strip_roi, stack_roi
 from .util import check_key_in_dict
-from .simplemath import apply_offset, grid_data2d
+from .simplemath import apply_offset, grid_data2d, handle_eval
 from .readutil import detector_norm
 
 # Warnings
@@ -130,7 +130,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         # If dim_x == 1, can evaluate expression
         if dim == 1:
             # Assign the calculated result to the x_stream of the object in data dict
-            data[arg].x_data = eval(x_stream_convert)
+            data[arg].x_data = handle_eval(x_stream_convert,locals())
                 
         # z-stream
         # Set up an z_stream_convert in which we will replace the strings with local data variables
@@ -277,7 +277,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         data[arg].y_data = apply_offset(data[arg].y_data, yoffset, ycoffset)
 
         # Assign the calculated result to the z_stream of the object in data dict
-        data[arg].detector = eval(z_stream_convert)
+        data[arg].detector = handle_eval(z_stream_convert,locals())
 
         # Normalize MCA data by SCA
         if not isinstance(norm_by,type(None)):

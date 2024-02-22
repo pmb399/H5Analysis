@@ -16,7 +16,7 @@ from .util import check_key_in_dict
 from .parser import parse
 
 # Simple math OPs
-from .simplemath import apply_offset, grid_data, apply_savgol, bin_data
+from .simplemath import apply_offset, grid_data, apply_savgol, bin_data, handle_eval
 
 # Warnings
 import warnings
@@ -140,7 +140,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         
         # If dim_x == 1, can evaluate expression
         if dim_x == 1:
-            data[arg].x_stream = eval(x_stream_convert)
+            data[arg].x_stream = handle_eval(x_stream_convert,locals())
 
         # Set up an y_stream_convert in which we will replace the strings with local data variables
         # and evaluate the expression later
@@ -291,7 +291,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                     raise Exception(f'y-stream undefined ({y}).\nException" {e}')
         
         try:
-            data[arg].y_stream = eval(y_stream_convert)
+            data[arg].y_stream = handle_eval(y_stream_convert,locals())
         except Exception as e:
             raise Exception(f"Error determining y stream.\nException: {e}")
         

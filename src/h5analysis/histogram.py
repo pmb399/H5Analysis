@@ -16,7 +16,7 @@ from .datautil import get_roi, get_indices, mca_roi, strip_roi, stack_roi
 from .util import check_key_in_dict
 
 # Simple math OPs
-from .simplemath import grid_data_mesh, apply_offset
+from .simplemath import grid_data_mesh, apply_offset, handle_eval
 
 def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
     """ Internal function to generate scatter plots for (x,y,z) SCA data
@@ -218,4 +218,4 @@ def get_hist_stream(contrib_stream,convert,stream,arg,rois,all_data):
             else:
                 raise Exception(f"Wrong input dimension {contrib}")
                 
-    return eval(convert)
+    return handle_eval(convert,locals())

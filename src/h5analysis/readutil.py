@@ -16,7 +16,9 @@ def detector_norm(detector_mca,norm_by):
         Division of detector_mca and norm_by array
     """
 
-    return np.true_divide(detector_mca,norm_by[:, None])
+    return np.true_divide(detector_mca,norm_by[:, None],where=norm_by[:, None]!=0)
+
+#########################################################################################
 
 def stack_norm(detector_stack,norm_by):
     """Normalize the stack data by mesh current.
@@ -34,4 +36,4 @@ def stack_norm(detector_stack,norm_by):
 
     """
     
-    return np.true_divide(detector_stack,norm_by[:, None, None])
+    return np.true_divide(detector_stack,norm_by[:, None, None],where=norm_by[:, None, None]!=0)

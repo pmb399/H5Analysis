@@ -11,7 +11,7 @@ from .ReadData import Data
 # Data utilities
 from .parser import parse
 from .util import check_key_in_dict
-from .simplemath import apply_offset, grid_data2d
+from .simplemath import apply_offset, grid_data2d, handle_eval
 from .datautil import strip_roi, get_indices, mca_roi, stack_roi
 from .readutil import stack_norm
 
@@ -147,7 +147,7 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     if has_stack == False:
         raise Exception("No stack specified.")
     
-    stack_data = eval(s_stream_convert)
+    stack_data = handle_eval(s_stream_convert,locals())
 
     # Normalize MCA data by SCA
     if not isinstance(norm_by,type(None)):

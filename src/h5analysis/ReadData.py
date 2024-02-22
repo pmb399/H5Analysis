@@ -73,7 +73,7 @@ class Data:
                         if not isinstance(req_attr['norm_by'],type(None)):
                             p = self.config.get_path(self.scan,req_attr['norm_by'])
                             norm_by = np.array(f[p])
-                            req_data[req] = np.true_divide(data,norm_by)
+                            req_data[req] = np.true_divide(data,norm_by,where=norm_by!=0)
                         else:
                             req_data[req] = data
                     

@@ -8,7 +8,7 @@ import skimage as ski
 from .LoadData import Load1d, Load2d, LoadHistogram
 
 # Import simplemath and datautil
-from .simplemath import grid_data_mesh
+from .simplemath import grid_data_mesh, handle_eval
 from .datautil import mca_roi, get_indices, get_indices_polygon
 
 class Object1dAddSubtract(Load1d):
@@ -601,7 +601,7 @@ class Object2dTransform(Load2d):
                 axes_math = list()
                 for x in v.new_x:
                     # For each data point, evaluate the math and store y-axis
-                    axes_math.append(eval(trans_y))
+                    axes_math.append(handle_eval(trans_y,locals()))
 
                 # Find min/max values
                 mins = list()
