@@ -18,7 +18,7 @@ import os
 from collections import defaultdict
 import io
 import shutil
-from .util import COLORP
+from .util import COLORP, get_emission_line
 from .datautil import check_dimensions2d, bokeh_image_boundaries
 
 # Widgets
@@ -243,6 +243,30 @@ class Load1d:
             See bokeh manual for available options.
         """
         self.legend_loc = pos
+
+    def show_fluorescence(self, element, siegbahn_symbol, orientation='v', **kwargs):
+        """
+        Draw a line in the plot for the requested fluorescence line.
+
+        Parameters
+        ----------
+        element: string
+            IUPAC element abbreviation
+        siegbahn_symbol: string
+            Siegbahn symbol for requested energy transition
+        orientation: ['v','h']
+            Determines if a vertical or horizontal line is drawn
+        **kwargs : dict, optional
+            See bokeh manual for available options.
+        """
+
+        pos = get_emission_line(element, siegbahn_symbol)
+        if orientation == 'v':
+            self.vline(pos,**kwargs)
+        elif orientation == 'h':
+            self.hline(pos,**kwargs)
+        else:
+            raise Exception('Specified line orientation undefined')
 
     def vline(self, pos, **kwargs):
         """
@@ -675,6 +699,30 @@ class Load2d:
         """
         self.plot_lim_y[0] = lower
         self.plot_lim_y[1] = upper
+
+    def show_fluorescence(self, element, siegbahn_symbol, orientation='v', **kwargs):
+        """
+        Draw a line in the plot for the requested fluorescence line.
+
+        Parameters
+        ----------
+        element: string
+            IUPAC element abbreviation
+        siegbahn_symbol: string
+            Siegbahn symbol for requested energy transition
+        orientation: ['v','h']
+            Determines if a vertical or horizontal line is drawn
+        **kwargs : dict, optional
+            See bokeh manual for available options.
+        """
+
+        pos = get_emission_line(element, siegbahn_symbol)
+        if orientation == 'v':
+            self.vline(pos,**kwargs)
+        elif orientation == 'h':
+            self.hline(pos,**kwargs)
+        else:
+            raise Exception('Specified line orientation undefined')
 
     def vline(self, pos, **kwargs):
         """

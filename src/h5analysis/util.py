@@ -1,4 +1,7 @@
 # Utility functions
+import pandas as pd
+from importlib import resources as impresources
+from . import static
 
 #########################################################################################
 def check_key_in_dict(key, dic):
@@ -67,3 +70,25 @@ def clean_beamline_info_dict(columns):
             clean[key] = value
 
     return clean
+
+#########################################################################################
+
+def get_emission_line(element,siegbahn_symbol):
+    """ Get the emission energy of a transition given a specific element and Siegbahn symbol
+    
+        Parameters
+        ----------
+        element: string
+            IUPAC element abbreviation
+        siegbahn_symbol: string
+            Siegbahn symbol for requested energy transition
+
+        Returns
+        -------
+        transition_energy: float
+            Energy of the requested transition
+    
+    """
+
+    df = pd.read_pickle(impresources.files(static)/'xraydb')
+    return float(df[(df['element']==element) & (df['siegbahn_symbol']==siegbahn_symbol)]['emission_energy'].iloc[0])
