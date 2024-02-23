@@ -1,6 +1,6 @@
 # Scientific modules
 import numpy as np
-from scipy.interpolate import interp1d, interp2d
+from scipy.interpolate import interp1d, interp2d, LinearNDInterpolator
 from scipy.signal import savgol_filter
 
 # Warnings
@@ -193,17 +193,45 @@ def grid_data_mesh(x_data,y_data,z_data):
     xmax = x_data.max()
     ymin = y_data.min()
     ymax = y_data.max()
-    zmin = z_data.min()
-    zmax = z_data.max()
 
-    # Sort out the unique values on scales
+    # Need to know the number of unique steps in each direction
     # Need this to generate histogram bins
-    xunique = np.unique(x_data)
-    yunique = np.unique(y_data)
+    # Problem: What if np.unique does not work because we are using Encoder Feedback
+    # Answer: Base the number of bins off the largest difference in arrays and back-calculate second scale
+    if np.abs(np.diff(x_data)).max() > np.abs(np.diff(y_data)).max():
+        ybin = len(np.where(np.abs(np.diff(x_data))>0.8*np.abs(np.diff(x_data)).max())[0])+1
+        xbin = int(len(x_data)/ybin)
+    else:
+        xbin = len(np.where(np.abs(np.diff(y_data))>0.8*np.abs(np.diff(y_data)).max())[0])+1
+        ybin = int(len(x_data)/xbin)
 
-    # Determine the number of bins
+    # Problem with Encoder Feedback: Could have empty bins
+    # Solution: Interpolate data on evenly spaced grid, take out non-existent data
+    # Then, determine final bin sizes 
+    interm_x = np.linspace(xmin,xmax,xbin)
+    interm_y = np.linspace(ymin,ymax,ybin)
+
+    # Get the x,y mesh grid with unique data points
+    x,y = np.meshgrid(np.round(interm_x,decimals=4),np.round(interm_y,decimals=4))
+    x_flat = x.flatten()
+    y_flat = y.flatten()
+
+    # Interpolate z-data on new grid and drop NaN data points
+    big_z = LinearNDInterpolator(list(zip(x_data,y_data)),z_data)(x_flat,y_flat)
+    drop = ~np.isnan(big_z)
+    dropped_z = big_z[drop]
+    a = x_flat[drop]
+    b = y_flat[drop]
+
+    # Determine unique points in dropped grid
+    xunique = np.unique(a)
+    yunique = np.unique(b)
+
+    # Determine the number of bins from unique points in dropped grid
     xbin = len(xunique)
     ybin = len(yunique)
+        
+    ### ### ### ### ### ### ###
 
     # Limit array size to 100MB (=104857600 bytes)
     # Numpy float64 array element requires 8 bytes
@@ -217,15 +245,15 @@ def grid_data_mesh(x_data,y_data,z_data):
         warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
     # Calculate histogram
-    new_z, xedge, yedge = np.histogram2d(x_data, y_data, bins=[xbin, ybin], range=[
-                                            [xmin, xmax], [ymin, ymax]], weights=z_data)
+    new_z, xedge, yedge = np.histogram2d(a, b, bins=[xbin, ybin], range=[
+                                            [a.min(), a.max()], [b.min(), b.max()]], weights=dropped_z)
     
     # Need to transpose data, to maintain compatibility with regular matrix notation
     new_z = np.transpose(new_z)
     new_x = np.linspace(xedge.min(),xedge.max(),len(xedge)-1)
     new_y = np.linspace(yedge.min(),yedge.max(),len(yedge)-1)
 
-    return xmin, xmax, ymin, ymax, new_x, new_y, new_z, zmin, zmax
+    return new_x.min(), new_x.max(), new_y.min(), new_y.max(), new_x, new_y, new_z, new_z.min(), new_z.max()
 
 #########################################################################################
 
