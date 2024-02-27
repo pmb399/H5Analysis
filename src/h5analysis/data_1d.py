@@ -95,52 +95,60 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         # and evaluate the expression later
         x_stream_convert = x_stream
 
-        # Work through all contributions of x-stream
-        for i,x in enumerate(contrib_x_stream):
+        x_idx = False
+        if len(contrib_x_stream) == 0:
+            # Add special option to plot against index
+            dim_x = 1
+            x_idx = True
 
-            # Check if x component has ROI
-            if check_key_in_dict(x,rois['x']):
-                # Check that dim(x) = 1
-                try:
-                    if len(np.shape(all_data[rois['x'][x]['req']])) == 1: 
-                        # Check that we only have 1 ROI x-stream to reduce to dim 0
-                        if len(contrib_x_stream) != 1:
-                            raise Exception('Only one ROI x-stream supported.')
-                        if isinstance(rois['x'][x]['roi'],tuple):
-                            # Will reduce dim to 0
-                            dim_x = 0
-                            # Get indices
-                            xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[rois['x'][x]['req']])
+        else:
+
+            # Work through all contributions of x-stream
+            for i,x in enumerate(contrib_x_stream):
+
+                # Check if x component has ROI
+                if check_key_in_dict(x,rois['x']):
+                    # Check that dim(x) = 1
+                    try:
+                        if len(np.shape(all_data[rois['x'][x]['req']])) == 1: 
+                            # Check that we only have 1 ROI x-stream to reduce to dim 0
+                            if len(contrib_x_stream) != 1:
+                                raise Exception('Only one ROI x-stream supported.')
+                            if isinstance(rois['x'][x]['roi'],tuple):
+                                # Will reduce dim to 0
+                                dim_x = 0
+                                # Get indices
+                                xlow,xhigh = get_indices(rois['x'][x]['roi'],all_data[rois['x'][x]['req']])
+                            else:
+                                raise Exception(f"Error in specified ROI {rois['x'][x]['roi']} for {x}")
                         else:
-                            raise Exception(f"Error in specified ROI {rois['x'][x]['roi']} for {x}")
-                    else:
-                        raise Exception(f"Inappropriate dimensions for x-stream ({x})")
-                except Exception as e:
-                    raise Exception(f'x-stream undefined ({x}).\nException: {e}')
+                            raise Exception(f"Inappropriate dimensions for x-stream ({x})")
+                    except Exception as e:
+                        raise Exception(f'x-stream undefined ({x}).\nException: {e}')
+                
+                # If x component has no ROI
+                else:
+                    try:
+                        if len(np.shape(all_data[x])) == 1:
+                            # len(contrix_x_stream) requirement above implicitly verifies that
+                            # we can only have multiple x components if dim=1
+                            dim_x = 1
+
+                            # Add data to locals
+                            locals()[f"s{arg}_val{i}_x"] = all_data[x]
+                            x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
+                        else:
+                            raise Exception(f'x-stream dimensions unsupported ({x})')
+                    except Exception as e:
+                        raise Exception(f'x-stream undefined ({x}).\nException: {e}')
+
+            # Check proper dimensions for x-stream
+            if not (dim_x==0 or dim_x == 1):
+                raise Exception('Error defining x-stream')
             
-            # If x component has no ROI
-            else:
-                try:
-                    if len(np.shape(all_data[x])) == 1:
-                        # len(contrix_x_stream) requirement above implicitly verifies that
-                        # we can only have multiple x components if dim=1
-                        dim_x = 1
-
-                        # Add data to locals
-                        locals()[f"s{arg}_val{i}_x"] = all_data[x]
-                        x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
-                    else:
-                        raise Exception(f'x-stream dimensions unsupported ({x})')
-                except Exception as e:
-                    raise Exception(f'x-stream undefined ({x}).\nException: {e}')
-
-        # Check proper dimensions for x-stream
-        if not (dim_x==0 or dim_x == 1):
-            raise Exception('Error defining x-stream')
-        
-        # If dim_x == 1, can evaluate expression
-        if dim_x == 1:
-            data[arg].x_stream = handle_eval(x_stream_convert,locals())
+            # If dim_x == 1, can evaluate expression
+            if dim_x == 1:
+                data[arg].x_stream = handle_eval(x_stream_convert,locals())
 
         # Set up an y_stream_convert in which we will replace the strings with local data variables
         # and evaluate the expression later
@@ -261,7 +269,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                         # Reduce the MCA over entire scale range
                         elif dim_x == 1:
                             # Reduce with boundaries None,None for entire range
-                            y_data = mca_roi(all_data[y],None,None,1,ind_axis=data[arg].x_stream)
+                            y_data = mca_roi(all_data[y],None,None,1,scale=all_data[f"{y}_scale"])
 
                             # Add data to locals
                             locals()[f"s{arg}_val{i}_y"] = y_data
@@ -295,6 +303,9 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         except Exception as e:
             raise Exception(f"Error determining y stream.\nException: {e}")
         
+        # Calculate the x index based off length of y
+        if x_idx == True:
+            data[arg].x_stream = np.arange(0,len(data[arg].y_stream))
 
         # Get legend items
         try:
