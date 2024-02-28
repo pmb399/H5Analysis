@@ -79,8 +79,8 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         contrib_z_stream = parse(detector)
 
         # Strip the requsitions and sort reqs and rois
-        reqs, rois = strip_roi(contrib_x_stream,'x', reqs, rois)
-        reqs, rois = strip_roi(contrib_z_stream,'z', reqs, rois)
+        reqs, rois = strip_roi(contrib_x_stream,'x', reqs, rois, config)
+        reqs, rois = strip_roi(contrib_z_stream,'z', reqs, rois, config)
 
         # Get the data for all reqs
         all_data = data[arg].Scan(reqs)

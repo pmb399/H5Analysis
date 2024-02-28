@@ -68,7 +68,7 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     contrib_stack = parse(stack)
 
     # Strip the requsitions and sort reqs and rois
-    reqs, rois = strip_roi(contrib_stack,'s', reqs, rois)
+    reqs, rois = strip_roi(contrib_stack,'s', reqs, rois, config)
 
     # Add independent stream to reqs
     reqs.append(ind_stream)

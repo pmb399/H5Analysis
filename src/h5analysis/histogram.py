@@ -74,9 +74,9 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
         contrib_z_stream = parse(z_stream)
 
         # Strip the requsitions and sort reqs and rois
-        reqs, rois = strip_roi(contrib_x_stream,'x', reqs, rois)
-        reqs, rois = strip_roi(contrib_y_stream,'y', reqs, rois)
-        reqs, rois = strip_roi(contrib_z_stream,'z', reqs, rois)
+        reqs, rois = strip_roi(contrib_x_stream,'x', reqs, rois, config)
+        reqs, rois = strip_roi(contrib_y_stream,'y', reqs, rois, config)
+        reqs, rois = strip_roi(contrib_z_stream,'z', reqs, rois, config)
 
         # Get the data for all reqs
         all_data = data[arg].Scan(reqs)

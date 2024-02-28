@@ -128,12 +128,14 @@ def stack_roi(stack,idxLowI,idxHighI,idxLow1,idxHigh1,idxLow2,idxHigh2,integrati
 
 #########################################################################################
 
-def get_roi(roi):
+def get_roi(roi, config):
     """Gets the roi when ':' separated
     
         Parameters
         ----------
         roi: string
+        config: dict
+            h5 configuration
 
         Returns:
         -------
@@ -146,12 +148,14 @@ def get_roi(roi):
     """
 
     ## Helper function
-    def split_roi(roi):
+    def split_roi(roi, config):
         """Helper function
 
             Parameters
             ----------
             roi: single roi string
+            config: dict
+                h5 configuration
 
             Returns
             -------
@@ -183,8 +187,16 @@ def get_roi(roi):
                     roi_low = None
                     roi_high = None
                 else:
-                    roi_low = float(roi)
-                    roi_high = float(roi)
+                    try:
+                        roi_low = float(roi)
+                        roi_high = float(roi)
+                    except:
+                        try:
+                            roi_low = config.roi_dict[roi][0]
+                            roi_high = config.roi_dict[roi][1]
+                        except Exception as e:
+                            warnings.warn("Did not understand ROI type")
+                            raise Exception(e)
                 
             return (roi_low, roi_high)
         
@@ -196,7 +208,7 @@ def get_roi(roi):
     if not ',' in roi:
         # This is for the 2d MCA case
         # Store all ROI information as tuple
-        roi_clean = split_roi(roi)
+        roi_clean = split_roi(roi,config)
     else:
         # This is for the 3d STACK case
         
@@ -211,12 +223,12 @@ def get_roi(roi):
                 search = re.search('\{(.*)\}', roi_tup)
 
                 # Remove curely braces and get regular ROI
-                roi_list.append(split_roi(search.group(1)))
+                roi_list.append(split_roi(search.group(1)),config)
                 # Append those ROIs with curely braces to sum axes
                 sum_axes.append(i+1) # start iterating with index 1 since double indices need to catch axes 1 and 2 of stack, not independent axis 0
 
             else:
-                roi_list.append(split_roi(roi_tup))
+                roi_list.append(split_roi(roi_tup,config))
 
         # Convert sum_axes list to tuple for direct feed to np.sum later
         sum_axes = tuple(sum_axes)
@@ -231,7 +243,7 @@ def get_roi(roi):
 
 #########################################################################################
 
-def strip_roi(contrib_reqs,stream, reqs, rois):
+def strip_roi(contrib_reqs,stream, reqs, rois, config):
     """ Split ROIS out of strings and store
 
         Parameters
@@ -244,6 +256,8 @@ def strip_roi(contrib_reqs,stream, reqs, rois):
             all stripped reqs
         rois: dict
             all info regarding specified ROIs
+        config: dict
+            h5 configuration
 
         Returns
         -------
@@ -262,7 +276,7 @@ def strip_roi(contrib_reqs,stream, reqs, rois):
             # Split the ROI at "[" and "]"
             # Then get the appropriate ROI (tuple or dict)
             strip = reqroi.split("[")[1].rstrip("]")
-            roi = get_roi(strip)
+            roi = get_roi(strip,config)
 
             # Append the split off req name and append
             req = reqroi.split("[")[0]

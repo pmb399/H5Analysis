@@ -7,6 +7,7 @@ class h5Config:
     def __init__(self):
         self.h5dict = dict()
         self.sca_folders = list()
+        self.roi_dict = dict()
         
     def key(self,pattern,scan_var):
         """Set the h5 group structure.
@@ -62,6 +63,23 @@ class h5Config:
             return path
         else:
             return f"{self.get_h5key(scan)}/{path}"
+        
+    def define_roi(self,roi_string,roi_tuple):
+        """Setup dictionary of user-defined ROIs.
+
+        Parameters
+        ----------
+        roi_string: string
+            pre-defined ROI string
+        roi_tuple: tuple
+            associated values as tuples, 
+            i.e. (low_energy,high_energy)
+        """
+
+        if isinstance(roi_string,str) and isinstance(roi_tuple,tuple):
+            self.roi_dict[roi_string] = roi_tuple
+        else:
+            raise Exception("Wrong data type.")
         
     def sca_folder(self,path):
         """Adds a specific path as sca folder for which all scalars will be directly accessible
