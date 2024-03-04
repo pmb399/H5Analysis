@@ -20,6 +20,7 @@ import io
 import shutil
 from .util import COLORP, get_emission_line
 from .datautil import check_dimensions2d, bokeh_image_boundaries
+from .plot_exporter import create_figure, plot_image, plot_lines, save_figure
 
 # Widgets
 import ipywidgets as widgets
@@ -522,6 +523,70 @@ class Load1d:
                             self.exportfile.selected_filename)
         self.export(file)
 
+    def save_plot(self,fname,**kwargs):
+        """ Create a matplotlib plot window
+
+            fname: string
+                path and file name of the exported file
+            kwargs:
+                figsize: tuple
+                    determines size of plot
+                x_minor_ticks: float
+                    distance between minor ticks on primary axis
+                x_major_ticks: float
+                    distance between major ticks on primary axis
+                y_minor_ticks: float
+                    distance between minor ticks on secondary axis
+                y_major_ticks: float
+                    distance between major ticks on secondary axis
+                top: Boolean
+                    Display ticks on top of the plot
+                right: Boolean
+                    Display ticks on the right of the plot
+                fontsize_axes: string or int
+                    Set the fontsize of the axes ticks
+                fontsize_labels: string or int
+                    Set fontsize of the axis labels
+                fontsize_title: string or int
+                    Set fontsize of the title
+                title_pad: int
+                    Padding between title and the top of the plot
+                xlabel: string
+                    Label of the primary axis
+                ylabel: string
+                    Label of the secondary axis
+                title: string
+                    Title displayed at the top of the plot
+                xlim: tuple
+                    Limits the visible x-range
+                ylim: tuple
+                    Limits the visible y-range
+                legend: Boolean
+                    Show/Hide plot legend
+                fontsize_legend: int
+                    Fontsize of the legend entries
+                data_format: string, [pdf,svg,png]
+                    Sets the output data format and matplotlib backend used
+        """
+
+        plot_data_list = list()
+        # Iterate over all "load" calls
+        for i, val in enumerate(self.data):
+            # Iterate over all scans per load call.
+            for k, v in val.items():
+                data = dict()
+                data['x'] = v.x_stream
+                data['y'] = v.y_stream
+                data['yoffset'] = 0
+                data['label'] = v.legend
+                data['linewidth'] = 1
+
+                plot_data_list.append(data)
+
+        fig,ax = create_figure(**kwargs)
+        f = plot_lines(fig,ax,plot_data_list,**kwargs)
+        save_figure(f,fname,**kwargs)
+
 #########################################################################################
 
 class Load2d:
@@ -980,6 +1045,69 @@ class Load2d:
         file = os.path.join(self.exportfile.selected_path,
                             self.exportfile.selected_filename)
         self.export(file)
+
+    def save_plot(self,fname,**kwargs):
+        """ Create a matplotlib plot window
+
+            fname: string
+                path and file name of the exported file
+            kwargs:
+                figsize: tuple
+                    determines size of plot
+                x_minor_ticks: float
+                    distance between minor ticks on primary axis
+                x_major_ticks: float
+                    distance between major ticks on primary axis
+                y_minor_ticks: float
+                    distance between minor ticks on secondary axis
+                y_major_ticks: float
+                    distance between major ticks on secondary axis
+                top: Boolean
+                    Display ticks on top of the plot
+                right: Boolean
+                    Display ticks on the right of the plot
+                fontsize_axes: string or int
+                    Set the fontsize of the axes ticks
+                fontsize_labels: string or int
+                    Set fontsize of the axis labels
+                fontsize_title: string or int
+                    Set fontsize of the title
+                title_pad: int
+                    Padding between title and the top of the plot
+                xlabel: string
+                    Label of the primary axis
+                ylabel: string
+                    Label of the secondary axis
+                title: string
+                    Title displayed at the top of the plot
+                xlim: tuple
+                    Limits the visible x-range
+                ylim: tuple
+                    Limits the visible y-range
+                cmap: string
+                    name of matplotlib colourmap
+                levels: int
+                    determines how many levels the z data should be binned in
+                aspect: [equal, auto]
+                    Set the axis to scale or stretch figszize
+                colorbar: Boolean
+                    Display a colorbar
+                zlabel: string
+                    Label of the colorbar
+                fontsize_colorbar: string or int
+                    Fontsize of the colorbar ticks
+                data_format: string, [pdf,svg,png]
+                    Sets the output data format and matplotlib backend used
+        """
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                fig,ax = create_figure(**kwargs)
+                fig = plot_image(fig,ax,v.new_x,v.new_y,v.new_z,**kwargs)
+                if i == 0:
+                    save_figure(fig,fname,**kwargs)
+                else:
+                    save_figure(fig,f"{fname}_i",**kwargs)
 
 
 #########################################################################################
