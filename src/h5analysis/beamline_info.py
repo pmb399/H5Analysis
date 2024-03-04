@@ -11,7 +11,8 @@ from .util import invert_dict, clean_beamline_info_dict
 from collections import defaultdict
 import warnings
 
-def load_beamline(config, file, key, average=False, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
+
+def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
     """Load beamline meta data.
 
         Parameters
@@ -44,11 +45,22 @@ def load_beamline(config, file, key, average=False, norm=False, xoffset=None, xc
     data[0].filename = file
 
     # Get the scan information from file
-    infoObj = ScanInfo(config,file,key,average)
+    infoObj = ScanInfo(config, file, key, average)
     info = infoObj.info_dict
 
     # Parse data to numpy array
-    info_array = np.array(list(info[key].items()), dtype='float')
+    keys = list()
+    values = list()
+    for key, value in info[key].items():
+        keys.append(key)
+        if not isinstance(value, tuple):
+            values.append(np.average((value)))
+        else:
+            values.append(value[0])  # return the average
+
+    info_array = np.zeros((len(keys), 2))
+    info_array[:, 0] = np.array(keys, dtype='float')
+    info_array[:, 1] = np.array(values, dtype='float')
 
     # Store the data
     data[0].x_stream = info_array[:, 0]
@@ -127,7 +139,7 @@ def get_spreadsheet(config, file, average=True, columns=None):
                 columns['Sample Stage horz'] = 'Endstation/Motors/ssh
                 ...
     """
-        
+
     if columns == None:
         columns = dict()
 
@@ -147,38 +159,39 @@ def get_spreadsheet(config, file, average=True, columns=None):
     # Keep track which values to concatenate
     key_list = list()
     concat_list = list()
-    for idx,key in enumerate(list(columns.values())):
-        if isinstance(key,str):
+    for idx, key in enumerate(list(columns.values())):
+        if isinstance(key, str):
             key_list.append(key)
-        elif isinstance(key,tuple):
+        elif isinstance(key, tuple):
             # these will get concatenated
             concat_list.append(key)
             for k in key:
                 # but append to key_list first, to get individual data
                 key_list.append(k)
-        elif isinstance(key,list):
+        elif isinstance(key, list):
             if len(key) == 2:
                 key_entry = key[0]
             else:
-                raise Exception(f"Wrong number of arguments specified in {key}.")
-            if isinstance(key_entry,str):
+                raise Exception(
+                    f"Wrong number of arguments specified in {key}.")
+            if isinstance(key_entry, str):
                 key_list.append(key_entry)
-            elif isinstance(key_entry,tuple):
+            elif isinstance(key_entry, tuple):
                 # these will get concatenated
                 concat_list.append(key_entry)
                 for k in key_entry:
                     # but append to key_list first, to get individual data
-                    key_list.append(k) 
+                    key_list.append(k)
         else:
             raise Exception("Data type not understood.")
 
     # Get the meta data for all specified dict keys
-    infoObj = ScanInfo(config, file,key_list,average=average)
+    infoObj = ScanInfo(config, file, key_list, average=average)
     info = infoObj.info_dict
 
     concat_info = dict()
     # Combine columns, i.e. keys in dict
-    for idx,concat in enumerate(concat_list):
+    for idx, concat in enumerate(concat_list):
         # Store all dicts with keys in single concat list
         concat_dicts = list()
         # Generate new defaultdict with combined results
@@ -197,55 +210,61 @@ def get_spreadsheet(config, file, average=True, columns=None):
         concat_info[concat] = new_dict
 
     data_info = dict()
-    for key,value in columns.items():
-        if isinstance(value,str):
+    for key, value in columns.items():
+        if isinstance(value, str):
             data_info[value] = info[value]
-        elif isinstance(value,tuple):
+        elif isinstance(value, tuple):
             data_info[value] = concat_info[value]
-        elif isinstance(value,list):
+        elif isinstance(value, list):
             value_entry = value[0]
-            if isinstance(value_entry,str):
+            if isinstance(value_entry, str):
                 data_info[value_entry] = info[value_entry]
-            elif isinstance(value_entry,tuple):
+            elif isinstance(value_entry, tuple):
                 data_info[value_entry] = concat_info[value_entry]
         else:
             raise Exception("Data type not understood.")
-        
+
     # generate pandas data frame to store the entries
-    clean_columns = clean_beamline_info_dict(columns) # returns only first element from values if type is list
-    df = pd.DataFrame(data_info).rename(invert_dict(clean_columns), axis=1).fillna('')
+    # returns only first element from values if type is list
+    clean_columns = clean_beamline_info_dict(columns)
+    df = pd.DataFrame(data_info).rename(
+        invert_dict(clean_columns), axis=1).fillna('')
 
     # Set row labels as scan and name index column
     df.set_axis(list(list(data_info.values())[0].keys()))
     df.index.name = 'Scan'
 
     # Apply rounding
-    for header,decimal_info in columns.items():
-        if isinstance(decimal_info,list):
+    for header, decimal_info in columns.items():
+        if isinstance(decimal_info, list):
             decimals = int(decimal_info[1])
-            if isinstance(decimal_info[0],tuple):
+            if isinstance(decimal_info[0], tuple):
                 try:
-                    df[header] = df[header].apply(lambda x: apply_rounding_tuple(x,decimals))
+                    df[header] = df[header].apply(
+                        lambda x: apply_rounding_tuple(x, decimals))
                 except:
                     warnings.warn(f'Rounding cannot be applied to {header}')
             else:
                 try:
-                    df[header] = df[header].apply(lambda x: apply_rounding(x,decimals))
+                    df[header] = df[header].apply(
+                        lambda x: apply_rounding(x, decimals))
                 except:
                     warnings.warn(f'Rounding cannot be applied to {header}')
 
     return df
 
+
 def apply_rounding(item, decimals):
-    if isinstance(item,tuple):
-        i1_rounded = np.round(item[0],decimals)
-        ii_rounded = np.round(item[1],decimals)
-        if_rounded = np.round(item[2],decimals)
+    if isinstance(item, tuple):
+        i1_rounded = np.round(item[0], decimals)
+        ii_rounded = np.round(item[1], decimals)
+        if_rounded = np.round(item[2], decimals)
         return f"({i1_rounded},{ii_rounded},{if_rounded})"
     else:
-        return np.round(item,decimals)
+        return np.round(item, decimals)
 
-def apply_rounding_tuple(item,decimals):
+
+def apply_rounding_tuple(item, decimals):
     contributions = item.split("; ")
     cont = [x for x in contributions if x != '']
 
@@ -253,15 +272,15 @@ def apply_rounding_tuple(item,decimals):
 
     for x in cont:
         try:
-            r = np.round(float(x),decimals)
+            r = np.round(float(x), decimals)
             item += f"{r}; "
         except:
             try:
                 strtup = x.split("(")[1].rstrip(")").split(',')
                 t = [float(a) for a in strtup]
-                r1 = np.round(t[0],decimals)
-                ri = np.round(t[1],decimals)
-                rf = np.round(t[2],decimals)
+                r1 = np.round(t[0], decimals)
+                ri = np.round(t[1], decimals)
+                rf = np.round(t[2], decimals)
                 item += f"({r1},{ri},{rf}); "
             except Exception as e:
                 item += f"{x}; "
