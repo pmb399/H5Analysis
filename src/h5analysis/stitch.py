@@ -99,7 +99,7 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
     if legend_item != None:
         data[0].legend = legend_item
     else:
-        data[0].legend = f"S{name}_{y_stream}"
+        data[0].legend = f"S{name}_{x_stream}_{y_stream}"
 
     # Normalize data to [0,1]
     if norm == True:

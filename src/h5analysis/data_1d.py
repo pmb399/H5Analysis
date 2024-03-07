@@ -311,7 +311,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         try:
             data[arg].legend = legend_items[arg]
         except:
-            data[arg].legend = f"S{arg}_{y_stream}"
+            data[arg].legend = f"S{arg}_{x_stream}_{y_stream}"
 
         #Bin the data if requested
         if binsize != None:
