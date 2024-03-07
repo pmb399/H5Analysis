@@ -930,7 +930,7 @@ class Load2d:
             if title != None:
                 p.title.text = str(title)
             else:
-                p.title.text = f'{v.zlabel} {kind} for Scan {k}'
+                p.title.text = f'{v.zlabel} {kind} for Scan {v.scan}'
             if xlabel != None:
                 p.xaxis.axis_label = str(xlabel)
             else:

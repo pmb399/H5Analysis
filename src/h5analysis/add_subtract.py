@@ -74,14 +74,14 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
         # Set the first scan as master data
         if i == 0:
             MASTER_y_stream = interp1d(v.x_stream,v.y_stream)(MASTER_x_stream)
-            name = str(k)+'+'
+            name = str(k)
         else:
             # For additional scans, set the first x-scale as master and interpolate all
             # data suczessively to ensure appropriate addition
             interp = interp1d(v.x_stream, v.y_stream)(MASTER_x_stream)
             MASTER_y_stream += interp
 
-            name += "_" + str(k)
+            name += "+" + str(k)
 
     # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
     data = dict()
@@ -409,10 +409,10 @@ def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=
         # Set the first scan as master data
             if i == 0:
                 MASTER_detector = v.new_z
-                name = str(k)+'+'
+                name = str(k)
             else:            
                 MASTER_detector = np.add(MASTER_detector,v.new_z)
-                name += "_" + str(k)
+                name += "+" + str(k)
 
     else:
         # Interpolation required
@@ -449,14 +449,14 @@ def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=
         # Set the first scan as master data
             if i == 0:
                 MASTER_detector = interp2d(v.new_x,v.new_y,v.new_z)(MASTER_x_stream,MASTER_y_stream)
-                name = str(k)+'+'
+                name = str(k)
             else:            
                 interp = interp2d(v.new_x,v.new_y,v.new_z)
                 new_z = interp(MASTER_x_stream,MASTER_y_stream)
 
                 MASTER_detector = np.add(MASTER_detector,new_z)
                 
-                name += "_" + str(k)
+                name += "+" + str(k)
 
     # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
     data = dict()
