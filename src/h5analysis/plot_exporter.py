@@ -159,14 +159,30 @@ def plot_lines(fig, ax, data_list, legend=False, fontsize_legend=12, **kwargs):
         Fontsize of the legend entries
     """
 
+    twin_y = False
+
     # Add all lines to plot
     for data in data_list:
-        ax.plot(data['x'], data['y']+data['yoffset'],
-                label=data['label'], linewidth=data['linewidth'])
+        if data['twin_y'] == True and twin_y == False:
+            twin_y = True
+            ax2 = ax.twinx()
+
+        plot_kwargs = data.copy()
+        plot_kwargs.pop('x')
+        plot_kwargs.pop('y')
+        plot_kwargs.pop('twin_y')
+
+        if data['twin_y'] == False:
+            ax.plot(data['x'], data['y'],**plot_kwargs)
+        else:
+            ax2._get_lines = ax._get_lines
+            ax2.plot(data['x'], data['y'],**plot_kwargs)
 
     # Generate legend if requested
     if legend == True:
-        ax.legend(fontsize=fontsize_legend)
+        handles1, labels1 = ax.get_legend_handles_labels()
+        handles2, labels2 = ax2.get_legend_handles_labels()
+        fig.legend(handles1+handles2,labels1+labels2,fontsize=fontsize_legend)
 
     return fig
 

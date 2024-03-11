@@ -15,7 +15,7 @@ from .readutil import detector_norm
 # Warnings
 import warnings
 
-def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False):
+def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False, matplotlib_props=dict()):
     """Internal function to handle scan addition.
 
         Parameters
@@ -100,6 +100,9 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     else:
         data[0].legend = f"S{name}_{x_stream}_{y_stream}"
 
+    # Set matplotlib props
+    data[0].matplotlib_props = matplotlib_props
+
     # Normalize data to [0,1]
     if norm == True:
         data[0].y_stream = np.interp(
@@ -140,7 +143,7 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
 
     return data
 
-def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False):
+def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False, matplotlib_props=dict()):
     """ Internal function to handle scan subtraction.
 
         Parameters
@@ -220,6 +223,9 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
         data[0].legend = legend_item
     else:
         data[0].legend = f"S{name}_{x_stream}_{y_stream}"
+
+    # Set matplotlib props
+    data[0].matplotlib_props = matplotlib_props
 
     # Normalize data to [0,1]
     if norm == True:

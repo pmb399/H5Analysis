@@ -21,7 +21,7 @@ from .simplemath import apply_offset, grid_data, apply_savgol, bin_data, handle_
 # Warnings
 import warnings
 
-def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}, twin_y = False):
+def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_items={}, twin_y = False, matplotlib_props=dict()):
     """ Internal function to load 1d data
 
         Parameters
@@ -57,6 +57,15 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                 dict[scan number] = description for legend
             twin_y: boolean
                 supports a second y-axis on the right-hand side
+            matplotlib_props: dict
+                dict[scan number] = dict with props
+                props_dict: dict
+                    - linewidth
+                    - color
+                    - linestyle
+                    - marker
+                    - markersize
+                    - etc.
     
     """
 
@@ -312,6 +321,12 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
             data[arg].legend = legend_items[arg]
         except:
             data[arg].legend = f"S{arg}_{x_stream}_{y_stream}"
+
+        # Set matplotlib props
+        try:
+            data[arg].matplotlib_props = matplotlib_props[arg]
+        except:
+            data[arg].matplotlib_props = dict()
 
         #Bin the data if requested
         if binsize != None:

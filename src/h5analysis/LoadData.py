@@ -89,6 +89,15 @@ class Load1d:
                 dict[scan number] = description for legend
             twin_y: boolean
                 supports a second y-axis on the right-hand side
+            matplotlib_props: dict
+                dict[scan number] = dict with props
+                props_dict: dict
+                    - linewidth
+                    - color
+                    - linestyle
+                    - marker
+                    - markersize
+                    - etc.              
         """
 
         # Append all REIXS scan objects to scan list in current object.
@@ -577,9 +586,10 @@ class Load1d:
                 data = dict()
                 data['x'] = v.x_stream
                 data['y'] = v.y_stream
-                data['yoffset'] = 0
                 data['label'] = v.legend
-                data['linewidth'] = 1
+                data['twin_y'] = v.twin_y
+                
+                data = data | v.matplotlib_props
 
                 plot_data_list.append(data)
 

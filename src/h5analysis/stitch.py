@@ -8,7 +8,7 @@ from .data_1d import load_1d
 # Utilities
 from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data, grid_data_mesh
 
-def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False):
+def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False, matplotlib_props=dict()):
     """Internal function to handle scan stitching.
 
         Parameters
@@ -100,6 +100,9 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
         data[0].legend = legend_item
     else:
         data[0].legend = f"S{name}_{x_stream}_{y_stream}"
+
+    # Set matplotlib props
+    data[0].matplotlib_props = matplotlib_props
 
     # Normalize data to [0,1]
     if norm == True:
