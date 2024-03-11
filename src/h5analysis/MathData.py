@@ -8,7 +8,7 @@ import skimage as ski
 from .LoadData import Load1d, Load2d, LoadHistogram
 
 # Import simplemath and datautil
-from .simplemath import grid_data_mesh, handle_eval
+from .simplemath import grid_data_mesh, handle_eval, grid_data, apply_offset, apply_savgol, bin_data
 from .datautil import mca_roi, get_indices, get_indices_polygon
 
 class Object1dAddSubtract(Load1d):
@@ -555,6 +555,77 @@ class Object2dReduce(Load1d):
         data[0].filename = self.MCADataObject.filename
         
         self.data.append(data)
+
+
+    def apply_kwargs(self,norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None):
+        """ Apply math to 1d reduced objects
+
+            kwargs:
+                norm: boolean
+                    normalizes to [0,1]
+                xoffset: list
+                    fitting offset (x-stream)
+                xcoffset: float
+                    constant offset (x-stream)
+                yoffset: list
+                    fitting offset (y-stream)
+                ycoffset: float
+                    constant offset (y-stream)
+                grid_x: list
+                    grid data evenly with [start,stop,delta]
+                savgol: tuple
+                    (window length, polynomial order, derivative)
+                binsize: int
+                    puts data in bins of specified size
+        """
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                #Bin the data if requested
+                if binsize != None:
+                    v.x_stream, v.y_stream = bin_data(v.x_stream,v.y_stream,binsize)
+
+                # Grid the data if specified
+                if grid_x != [None, None, None]:
+                    new_x, new_y = grid_data(
+                        v.x_stream, v.y_stream, grid_x)
+
+                    v.x_stream = new_x
+                    v.y_stream = new_y
+
+                # Apply offsets to x-stream
+                v.x_stream = apply_offset(
+                v.x_stream, xoffset, xcoffset)
+
+                # Apply normalization to [0,1]
+                if norm == True:
+                    v.y_stream = np.interp(
+                        v.y_stream, (v.y_stream.min(), v.y_stream.max()), (0, 1))
+
+                # Apply offset to y-stream
+                v.y_stream = apply_offset(
+                v.y_stream, yoffset, ycoffset)
+                    
+                # Smooth and take derivatives
+                if savgol != None:
+                    if isinstance(savgol,tuple):
+                        if len(savgol) == 2: # Need to provide window length and polynomial order
+                            savgol_deriv = 0 # Then, no derivative is taken
+                        elif len(savgol) == 3:
+                            savgol_deriv = savgol[2] # May also specify additional argument for derivative order
+                        else:
+                            raise TypeError("Savgol smoothing arguments incorrect.")
+                        v.x_stream, v.y_stream = apply_savgol(v.x_stream,v.y_stream,savgol[0],savgol[1],savgol_deriv)
+
+                        if norm == True:
+                            v.y_stream = v.y_stream / \
+                           v.y_stream.max()
+                    else:
+                        raise TypeError("Savgol smoothing arguments incorrect.")
+                    
+                self.data[i][k].x_stream = v.x_stream
+                self.data[i][k].y_stream = v.y_stream
 
 class Object2dTransform(Load2d):
     """Apply transformations to a 2d image"""
