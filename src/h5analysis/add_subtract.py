@@ -98,7 +98,7 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     if legend_item != None:
         data[0].legend = legend_item
     else:
-        data[0].legend = f"S{name}_{x_stream}_{y_stream}"
+        data[0].legend = f"{config.index}-S{name}_{x_stream}_{y_stream}"
 
     # Set matplotlib props
     data[0].matplotlib_props = matplotlib_props
@@ -222,7 +222,7 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
     if legend_item != None:
         data[0].legend = legend_item
     else:
-        data[0].legend = f"S{name}_{x_stream}_{y_stream}"
+        data[0].legend = f"{config.index}-S{name}_{x_stream}_{y_stream}"
 
     # Set matplotlib props
     data[0].matplotlib_props = matplotlib_props

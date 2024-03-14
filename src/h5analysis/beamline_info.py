@@ -44,6 +44,12 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
     data[0].ylabel = key
     data[0].filename = file
 
+    # Get legend items
+    if legend_item != None:
+        data[0].legend = legend_item
+    else:
+        data[0].legend = f"{config.index}-{file}-{key}"
+
     # Get the scan information from file
     infoObj = ScanInfo(config, file, key, average)
     info = infoObj.info_dict
@@ -65,13 +71,7 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
     # Store the data
     data[0].x_stream = info_array[:, 0]
     data[0].y_stream = info_array[:, 1]
-    data[0].scan = key
-
-    # Get legend items
-    if legend_item != None:
-        data[0].legend = legend_item
-    else:
-        data[0].legend = f"{file} - {key}"
+    data[0].scan = 0
 
     # Apply normalization to [0,1]
     if norm == True:

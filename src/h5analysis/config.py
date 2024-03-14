@@ -8,6 +8,7 @@ class h5Config:
         self.h5dict = dict()
         self.sca_folders = list()
         self.roi_dict = dict()
+        self.index = 0
         
     def key(self,pattern,scan_var):
         """Set the h5 group structure.

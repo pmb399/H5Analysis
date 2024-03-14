@@ -100,7 +100,10 @@ class Load1d:
                     - etc.              
         """
 
-        # Append all REIXS scan objects to scan list in current object.
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
+        # Append all scan objects to scan list in current object.
         self.data.append(load_1d(config, file, x_stream, y_stream, *args, **kwargs))
 
     def loadObj(self,obj,line):
@@ -115,7 +118,14 @@ class Load1d:
             Number of the load, add, subtract line (start indexing with 0)
         """
 
-        self.data.append(obj.data[line])
+        d = obj.data[line]
+
+        # Overwrite legend index
+        index = len(self.data) + 1
+        for k,v in d.items():
+            d[k].legend = f"{index}-{v.legend}"
+
+        self.data.append(d)
 
     def background(self,config, file, x_stream, y_stream, arg, **kwargs):
         """ Subtracts the defined data from all loaded data
@@ -187,6 +197,9 @@ class Load1d:
         Adds all scans specified in *args.
         """
 
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ScanAddition(config,
             file, x_stream, y_stream, *args, **kwargs))
@@ -201,6 +214,9 @@ class Load1d:
         Subtracts all scans from the first element. May add scans in first element by specifying list of scans as first *arg.
         """
 
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ScanSubtraction(config,
             file, x_stream, y_stream, minuend, subtrahend, **kwargs))
@@ -214,6 +230,9 @@ class Load1d:
         See loader function.
         Sticthes all scans specified in *args.
         """
+
+        # Add data index to configuration
+        config.index = len(self.data)+1
 
         # Append all REIXS scan objects to scan list in current object.
         self.data.append(ScanStitch(config,
@@ -1455,7 +1474,10 @@ class LoadBeamline(Load1d):
                     default : None
         """
 
-        # Append all REIXS scan objects to scan list in current object.
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
+        # Append all scan objects to scan list in current object.
         self.data.append(load_beamline(config, file, key, **kwargs))
 
     def add(*args):
