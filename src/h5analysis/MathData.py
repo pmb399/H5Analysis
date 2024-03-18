@@ -17,8 +17,11 @@ class Object1dAddSubtract(Load1d):
     def __init__(self):
         self.DataObjectsAdd = list()
         self.DataObjectsSubtract = list()
+        self.x_string = ""
+        self.y_string = ""
+        self.scan_string = "S"
 
-        return Load1d.__init__(self)
+        return Load1d.__init__(self)    
         
     def add(self,obj,line,scan):
         """Loader objects to be added
@@ -33,7 +36,12 @@ class Object1dAddSubtract(Load1d):
                 number of the scan to be accessed
         """
 
-        self.DataObjectsAdd.append(obj.data[line][scan])
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.scan_string += f"_+{scan}"
+
+        self.DataObjectsAdd.append(o)
         
     def subtract(self,obj,line,scan):
         """Loader objects to be subtracted
@@ -47,7 +55,13 @@ class Object1dAddSubtract(Load1d):
             scan: int
                 number of the scan to be accessed
         """
-        self.DataObjectsSubtract.append(obj.data[line][scan])
+
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.scan_string += f"_-{scan}"
+
+        self.DataObjectsSubtract.append(o)
         
     def evaluate(self):
         """Evaluate the request"""
@@ -108,11 +122,12 @@ class Object1dAddSubtract(Load1d):
         data[0] = added_object()
         data[0].x_stream = MASTER_x
         data[0].y_stream = MASTER_y
-        data[0].scan = 'Misc'
-        data[0].legend = 'Addition/Subtraction'
+        data[0].scan = self.scan_string
+        index = len(self.data) + 1
+        data[0].legend = f'{index} - {self.scan_string} - Addition/Subtraction'
 
-        data[0].xlabel = 'x-stream'
-        data[0].ylabel = 'y-stream'
+        data[0].xlabel = self.x_string
+        data[0].ylabel = self.y_string
         data[0].filename = 'Object Math'
         
         self.data.append(data)
@@ -124,6 +139,9 @@ class Object1dStitch(Load1d):
 
     def __init__(self):
         self.DataObjectsStitch = list()
+        self.x_string = ""
+        self.y_string = ""
+        self.scan_string = "S"
 
         return Load1d.__init__(self)
         
@@ -140,7 +158,12 @@ class Object1dStitch(Load1d):
                 number of the scan to be accessed
         """
 
-        self.DataObjectsStitch.append(obj.data[line][scan])
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.scan_string += f"_{scan}"
+
+        self.DataObjectsStitch.append(o)
                 
     def evaluate(self):
         """Evaluate the request"""
@@ -202,11 +225,12 @@ class Object1dStitch(Load1d):
         data[0] = added_object()
         data[0].x_stream = MASTER_x
         data[0].y_stream = MASTER_y
-        data[0].scan = 'Misc'
-        data[0].legend = 'Stitching'
+        data[0].scan = self.scan_string
+        index = len(self.data) + 1
+        data[0].legend = f'{index} - {self.scan_string} - Stitching'
 
-        data[0].xlabel = 'x-stream'
-        data[0].ylabel = 'y-stream'
+        data[0].xlabel = self.x_string
+        data[0].ylabel = self.y_string
         data[0].filename = 'Object Math'
         
         self.data.append(data)
@@ -220,8 +244,15 @@ class Object2dAddSubtract(Load2d):
     def __init__(self):
         self.DataObjectsAdd = list()
         self.DataObjectsSubtract = list()
+        self.x_string = ""
+        self.y_string = ""
+        self.z_string = ""
+        self.scan_string = "S"
 
         return Load2d.__init__(self)
+    
+    def load(self):
+        raise Exception("This method is not defined")
         
     def add(self,obj,line,scan):
         """Loader objects to be added
@@ -235,7 +266,14 @@ class Object2dAddSubtract(Load2d):
             scan: int
                 number of the scan to be accessed
         """
-        self.DataObjectsAdd.append(obj.data[line][scan])
+
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.z_string += f"{o.zlabel}|"
+        self.scan_string += f"_+{scan}"
+
+        self.DataObjectsAdd.append(o)
         
     def subtract(self,obj,line,scan):
         """Loader objects to be subtracted
@@ -249,7 +287,14 @@ class Object2dAddSubtract(Load2d):
             scan: int
                 number of the scan to be accessed
         """
-        self.DataObjectsSubtract.append(obj.data[line][scan])
+
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.z_string += f"{o.zlabel}|"
+        self.scan_string += f"_-{scan}"
+
+        self.DataObjectsSubtract.append(o)
         
     def evaluate(self):
         """Evaluate the request"""
@@ -379,11 +424,12 @@ class Object2dAddSubtract(Load2d):
         data[0].xmax = MASTER_x_stream.max()
         data[0].ymin = MASTER_y_stream.min()
         data[0].ymax = MASTER_y_stream.max()
-        data[0].scan = 'Misc'
-        data[0].legend = 'Addition/Subtraction'
-        data[0].xlabel = 'x-stream'
-        data[0].ylabel = 'y-stream'
-        data[0].zlabel = 'Detector'
+        data[0].scan = self.scan_string
+        index = len(self.data) + 1
+        data[0].legend = f'{index} - {self.scan_string} - Addition/Subtraction'
+        data[0].xlabel = self.x_string
+        data[0].ylabel = self.y_string
+        data[0].zlabel = self.z_string
         data[0].filename = 'Simple Math'
         
         self.data.append(data)
@@ -406,6 +452,21 @@ class Object2dReduce(Load1d):
                 number of the scan to be accessed
         """
         self.MCADataObject = obj.data[line][scan]
+
+    def add(self):
+        raise Exception("This method is not defined")
+    
+    def subtract(self):
+        raise Exception("This method is not defined")
+    
+    def stitch(self):
+        raise Exception("This method is not defined")
+    
+    def background(self):
+        raise Exception("This method is not defined")
+    
+    def loadObj(self):
+        raise Exception("This method is not defined")
 
     def roi(self,integration_axis,roi=(None,None)):
         """ Apply an region of interest (ROI) to one axis
@@ -454,7 +515,8 @@ class Object2dReduce(Load1d):
         data[0].y_stream = sum
         data[0].scan = self.MCADataObject.scan
         data[0].ylabel = f"{self.MCADataObject.zlabel} - ROI"
-        data[0].legend = '2d ROI reduction'
+        index = len(self.data) + 1
+        data[0].legend = f'{index} - S{self.MCADataObject.scan} - 2d ROI reduction'
         data[0].filename = self.MCADataObject.filename
         
         self.data.append(data)
@@ -551,7 +613,8 @@ class Object2dReduce(Load1d):
         data[0].y_stream = sum
         data[0].scan = self.MCADataObject.scan
         data[0].ylabel = f"{self.MCADataObject.zlabel} - ROI"
-        data[0].legend = '2d polygon reduction'
+        index = len(self.data) + 1 
+        data[0].legend = f'{index} - S{self.MCADataObject.scan} - 2d polygon reduction'
         data[0].filename = self.MCADataObject.filename
         
         self.data.append(data)
@@ -733,7 +796,7 @@ class Object2dTransform(Load2d):
                 v.new_y = new_y
                 v.ymin = ymin
                 v.ymax = ymax
-                v.ylabel = 'Transformed Scale'
+                v.ylabel = f'Transformed {v.ylabel}'
 
                 self.data[i][k] = v
 
