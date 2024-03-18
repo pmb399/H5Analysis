@@ -1,5 +1,6 @@
 from h5analysis.LoadData import *
 from h5analysis.MathData import *
+from h5analysis.config import h5Config
 
 class LoadLog:
     def __init__(self):
