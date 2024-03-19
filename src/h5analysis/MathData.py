@@ -1,8 +1,11 @@
 # Scientific modules
 import numpy as np
+import pandas as pd
 from scipy.interpolate import interp1d, interp2d
 from shapely.geometry import Point, Polygon
 import skimage as ski
+import lmfit
+from lmfit.models import GaussianModel, QuadraticModel, ConstantModel, LinearModel, QuadraticModel, PolynomialModel, LorentzianModel, ExponentialModel
 
 # Import Loaders
 from .LoadData import Load1d, Load2d, LoadHistogram
@@ -831,3 +834,578 @@ class Object2dTransform(Load2d):
 
                 # Write back to dict
                 self.data[i][k] = v
+
+#########################################################################################
+                
+class Object1dFit(Load1d):
+    """Apply fit to 1d data"""
+
+    def load(self,obj,line,scan):
+        """Loader for 2d object
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        self.SCADataObject = obj.data[line][scan]
+        data_dict = dict()
+        data_dict[scan] = self.SCADataObject
+        self.data.append(data_dict)
+        self.fitComponents = dict()
+        self.fitSpectra = dict()
+
+    def add(self):
+        raise Exception("This method is not defined")
+    
+    def subtract(self):
+        raise Exception("This method is not defined")
+    
+    def stitch(self):
+        raise Exception("This method is not defined")
+    
+    def background(self):
+        raise Exception("This method is not defined")
+    
+    def loadObj(self):
+        raise Exception("This method is not defined")
+    
+    def add_Gaussian(self,center,amplitude,sigma,center_bounds=(None,None),center_vary=True,amplitude_bounds=(None,None),amplitude_vary=True,sigma_bounds=(None,None),sigma_vary=True):
+        """Add Gaussian LMFit model
+        
+            Parameters
+            ----------
+            center: float
+                Center position of the Gaussian
+            amplitude: float
+                Amplitude of the Gaussian
+            sigma: float
+                The standard deviation of the Gaussian, note that FWHM = 2.355 * sigma
+            center_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            center_vary: Boolean
+                Specify whether the paramter is being fit
+            amplitude_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            amplitude_vary: Boolean
+                Specify whether the paramter is being fit
+            sigma_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            sigma_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+        
+        parameters = dict()
+
+        # Center
+        pars = dict()
+        pars['value'] = center
+        if center_bounds[0] != None:
+            pars['min'] = center_bounds[0]
+        if center_bounds[1] != None:
+            pars['max'] = center_bounds[1]
+        pars['vary'] = center_vary
+        parameters['center'] = pars
+
+        # amplitude
+        pars = dict()
+        pars['value'] = amplitude
+        if amplitude_bounds[0] != None:
+            pars['min'] = amplitude_bounds[0]
+        if amplitude_bounds[1] != None:
+            pars['max'] = amplitude_bounds[1]
+        pars['vary'] = amplitude_vary
+        parameters['amplitude'] = pars
+
+        # sigma
+        pars = dict()
+        pars['value'] = sigma
+        if sigma_bounds[0] != None:
+            pars['min'] = sigma_bounds[0]
+        if sigma_bounds[1] != None:
+            pars['max'] = sigma_bounds[1]
+        pars['vary'] = sigma_vary
+        parameters['sigma'] = pars
+
+        parameters['model'] = GaussianModel
+        self.fitComponents[f"g{len(list(self.fitComponents))}_"] = parameters
+
+
+    def add_Constant(self, constant, constant_bounds=(None,None), constant_vary=True):
+
+        """Add Constant LMFit model
+        
+            Parameters
+            ----------
+            constant: float
+                y-value of the constant
+            constant_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            constant_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+
+        parameters = dict()
+
+        # constant
+        pars = dict()
+        pars['value'] = constant
+        if constant_bounds[0] != None:
+            pars['min'] = constant_bounds[0]
+        if constant_bounds[1] != None:
+            pars['max'] = constant_bounds[1]
+        pars['vary'] = constant_vary
+        parameters['constant'] = pars
+
+        parameters['model'] = ConstantModel
+        self.fitComponents[f"c{len(list(self.fitComponents))}_"] = parameters
+        
+
+    def add_Linear(self,slope,intercept,slope_bounds=(None,None),slope_vary=True,intercept_bounds=(None,None),intercept_vary=True):
+        """Add Linear LMFit model
+        
+            Parameters
+            ----------
+            slope: float
+                Slope of the linear function (m in f(x) = m*x + b)
+            intercept: float
+                y-intercept  (b in f(x) = m*x + b)
+            slope_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            slope_vary: Boolean
+                Specify whether the paramter is being fit
+            intercept_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            intercept_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+
+        parameters = dict()
+
+        # slope
+        pars = dict()
+        pars['value'] = slope
+        if slope_bounds[0] != None:
+            pars['min'] = slope_bounds[0]
+        if slope_bounds[1] != None:
+            pars['max'] = slope_bounds[1]
+        pars['vary'] = slope_vary
+        parameters['slope'] = pars
+
+        # intercept
+        pars = dict()
+        pars['value'] = intercept
+        if intercept_bounds[0] != None:
+            pars['min'] = intercept_bounds[0]
+        if intercept_bounds[1] != None:
+            pars['max'] = intercept_bounds[1]
+        pars['vary'] = intercept_vary
+        parameters['intercept'] = pars
+
+        parameters['model'] = LinearModel
+        self.fitComponents[f"lin{len(list(self.fitComponents))}_"] = parameters
+
+    def add_Quadratic(self,a,b,c,a_bounds=(None,None),a_vary=True,b_bounds=(None,None),b_vary=True,c_bounds=(None,None),c_vary=True):
+        """Add Quadratic LMFit model
+        
+            Parameters
+            ----------
+            a: float
+                Parameter a in f(x) = a*x^2 + b*x + c
+            b: float
+                Parameter b in f(x) = a*x^2 + b*x + c
+            c: float
+                Parameter c in f(x) = a*x^2 + b*x + c
+            a_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            a_vary: Boolean
+                Specify whether the paramter is being fit
+            b_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            b_vary: Boolean
+                Specify whether the paramter is being fit
+            c_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            c_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+
+        parameters = dict()
+
+        # a
+        pars = dict()
+        pars['value'] = a
+        if a_bounds[0] != None:
+            pars['min'] = a_bounds[0]
+        if a_bounds[1] != None:
+            pars['max'] = a_bounds[1]
+        pars['vary'] = a_vary
+        parameters['a'] = pars
+
+        # b
+        pars = dict()
+        pars['value'] = b
+        if b_bounds[0] != None:
+            pars['min'] = b_bounds[0]
+        if b_bounds[1] != None:
+            pars['max'] = b_bounds[1]
+        pars['vary'] = b_vary
+        parameters['b'] = pars
+
+        # c
+        pars = dict()
+        pars['value'] = c
+        if c_bounds[0] != None:
+            pars['min'] = c_bounds[0]
+        if c_bounds[1] != None:
+            pars['max'] = c_bounds[1]
+        pars['vary'] = c_vary
+        parameters['c'] = pars
+
+        parameters['model'] = QuadraticModel
+        self.fitComponents[f"q{len(list(self.fitComponents))}_"] = parameters
+
+    def add_Polynomial(self,c1,c2,c3,c4,c5,c6,c7,c1_bounds=(None,None),c1_vary=True,c2_bounds=(None,None),c2_vary=True,c3_bounds=(None,None),c3_vary=True,c4_bounds=(None,None),c4_vary=True,c5_bounds=(None,None),c5_vary=True,c6_bounds=(None,None),c6_vary=True,c7_bounds=(None,None),c7_vary=True):
+        """Add Polynomial LMFit model
+        
+            Parameters
+            ----------
+            For 1<=i<=7
+            ci: float
+                Parameter in f(x) = sum c_i*x^i
+            ci_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            ci_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+        
+        parameters = dict()
+
+        # c1
+        pars = dict()
+        pars['value'] = c1
+        if c1_bounds[0] != None:
+            pars['min'] = c1_bounds[0]
+        if c1_bounds[1] != None:
+            pars['max'] = c1_bounds[1]
+        pars['vary'] = c1_vary
+        parameters['c1'] = pars
+
+        # c2
+        pars = dict()
+        pars['value'] = c2
+        if c2_bounds[0] != None:
+            pars['min'] = c2_bounds[0]
+        if c2_bounds[1] != None:
+            pars['max'] = c2_bounds[1]
+        pars['vary'] = c2_vary
+        parameters['bc2'] = pars
+
+        # c3
+        pars = dict()
+        pars['value'] = c3
+        if c3_bounds[0] != None:
+            pars['min'] = c3_bounds[0]
+        if c3_bounds[1] != None:
+            pars['max'] = c3_bounds[1]
+        pars['vary'] = c3_vary
+        parameters['c3'] = pars
+
+        # c4
+        pars = dict()
+        pars['value'] = c4
+        if c4_bounds[0] != None:
+            pars['min'] = c4_bounds[0]
+        if c4_bounds[1] != None:
+            pars['max'] = c4_bounds[1]
+        pars['vary'] = c4_vary
+        parameters['c4'] = pars
+
+        # c5
+        pars = dict()
+        pars['value'] = c5
+        if c5_bounds[0] != None:
+            pars['min'] = c5_bounds[0]
+        if c5_bounds[1] != None:
+            pars['max'] = c5_bounds[1]
+        pars['vary'] = c5_vary
+        parameters['c5'] = pars
+
+        # c6
+        pars = dict()
+        pars['value'] = c6
+        if c6_bounds[0] != None:
+            pars['min'] = c6_bounds[0]
+        if c6_bounds[1] != None:
+            pars['max'] = c6_bounds[1]
+        pars['vary'] = c6_vary
+        parameters['c6'] = pars
+
+        # c7
+        pars = dict()
+        pars['value'] = c7
+        if c7_bounds[0] != None:
+            pars['min'] = c7_bounds[0]
+        if c7_bounds[1] != None:
+            pars['max'] = c7_bounds[1]
+        pars['vary'] = c7_vary
+        parameters['c7'] = pars
+
+        parameters['model'] = PolynomialModel
+        self.fitComponents[f"p{len(list(self.fitComponents))}_"] = parameters
+
+
+    def add_Exponential(self,decay,amplitude,decay_bounds=(None,None),decay_vary=True,amplitude_bounds=(None,None),amplitude_vary=True):
+        """Add Exponential LMFit model
+        
+            Parameters
+            ----------
+            decay: float
+                Decay parameter lambda in f(x) = A*e^(-x/lambda)
+            amplitude: float
+                Amplitude paramter A in f(x) = A*e^(-x/lambda)
+            decay_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            decay_vary: Boolean
+                Specify whether the paramter is being fit
+            amplitude_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            amplitude_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+
+        parameters = dict()
+
+        # decay
+        pars = dict()
+        pars['value'] = decay
+        if decay_bounds[0] != None:
+            pars['min'] = decay_bounds[0]
+        if decay_bounds[1] != None:
+            pars['max'] = decay_bounds[1]
+        pars['vary'] = decay_vary
+        parameters['decay'] = pars
+
+        # amplitude
+        pars = dict()
+        pars['value'] = amplitude
+        if amplitude_bounds[0] != None:
+            pars['min'] = amplitude_bounds[0]
+        if amplitude_bounds[1] != None:
+            pars['max'] = amplitude_bounds[1]
+        pars['vary'] = amplitude_vary
+        parameters['amplitude'] = pars
+
+        parameters['model'] = ExponentialModel
+        self.fitComponents[f"e{len(list(self.fitComponents))}_"] = parameters
+
+
+    def add_Lorentzian(self,center,amplitude,sigma,center_bounds=(None,None),center_vary=True,amplitude_bounds=(None,None),amplitude_vary=True,sigma_bounds=(None,None),sigma_vary=True):
+        """Add Lorentzian LMFit model
+        
+            Parameters
+            ----------
+            center: float
+                Center position of the Gaussian
+            amplitude: float
+                Amplitude of the Gaussian
+            sigma: float
+                The standard deviation of the Gaussian, note that FWHM = 2.355 * sigma
+            center_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            center_vary: Boolean
+                Specify whether the paramter is being fit
+            amplitude_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            amplitude_vary: Boolean
+                Specify whether the paramter is being fit
+            sigma_bounds: tuple
+                Specify the lower and upper bounds of the parameter
+            sigma_vary: Boolean
+                Specify whether the paramter is being fit
+        """
+        
+        parameters = dict()
+
+        # Center
+        pars = dict()
+        pars['value'] = center
+        if center_bounds[0] != None:
+            pars['min'] = center_bounds[0]
+        if center_bounds[1] != None:
+            pars['max'] = center_bounds[1]
+        pars['vary'] = center_vary
+        parameters['center'] = pars
+
+        # amplitude
+        pars = dict()
+        pars['value'] = amplitude
+        if amplitude_bounds[0] != None:
+            pars['min'] = amplitude_bounds[0]
+        if amplitude_bounds[1] != None:
+            pars['max'] = amplitude_bounds[1]
+        pars['vary'] = amplitude_vary
+        parameters['amplitude'] = pars
+
+        # sigma
+        pars = dict()
+        pars['value'] = sigma
+        if sigma_bounds[0] != None:
+            pars['min'] = sigma_bounds[0]
+        if sigma_bounds[1] != None:
+            pars['max'] = sigma_bounds[1]
+        pars['vary'] = sigma_vary
+        parameters['sigma'] = pars
+
+        parameters['model'] = LorentzianModel
+        self.fitComponents[f"lo{len(list(self.fitComponents))}_"] = parameters
+
+    def evaluate(self,lower_limit=None,upper_limit=None,fit='best'):
+        """Construct and evaluate composite LMFit model
+        
+            Parameters
+            ----------
+            kwargs:
+                lower_limit: float, None
+                    Lower boundary for the minimizer evaluation, ignored if set to None
+                upper_limit: float, None
+                    Upper boundary for the minimizer evaluation, ignored if set to None
+                fit: string
+                    Options:
+                        * 'best' - displays the best fit
+                        * 'init' - displays the initial components
+                        * 'components' - displays the best fit with the optimized components
+        """
+        
+        # Construct composite model
+        for i,(prefix,parameters) in enumerate(list(self.fitComponents.items())):
+            if i == 0:
+                # Evaluate the model names against lmfit
+                comp_model = parameters['model'](prefix=prefix)
+            else:
+                # Add all contributions to composite model
+                comp_model += parameters['model'](prefix=prefix)
+
+        # Make all necessary parameters and initialize
+        params = comp_model.make_params()
+        
+        # Set the parameters according to the passed dictionary if available
+        for parmodel,par_dict in self.fitComponents.items():
+            # Remove the model key as this is not part of the lmfit required arguments
+            par_dict.pop('model')
+            for parprops,par_props_dict in par_dict.items():
+                # Overwrite initialized pars
+                params[f"{parmodel}{parprops}"].set(**par_props_dict)
+
+        # Get the boundaries
+        if lower_limit != None:
+            idx_low = (np.abs(self.SCADataObject.x_stream-lower_limit)).argmin()
+        else:
+            idx_low = None
+
+        if upper_limit != None:
+            idx_high = (np.abs(self.SCADataObject.x_stream-upper_limit)).argmin()
+        else:
+            idx_high = None
+
+        # Crop the arrays
+        x = self.SCADataObject.x_stream[idx_low:idx_high]
+        y = self.SCADataObject.y_stream[idx_low:idx_high]
+        
+        # Run lmfit minimizer
+        out = comp_model.fit(y, params, x=x)
+                
+        # Prepare data storage
+        class added_object:
+            def __init__(self):
+                pass
+        
+        data = dict()
+
+        # Store the best fit 
+        if fit == 'best':
+
+            # Create dict with objects to be compatible with other loaders
+            data[0] = added_object()
+
+            # Store all pertinent information in object
+            data[0].x_stream = x
+            data[0].y_stream = out.best_fit
+            data[0].scan = self.SCADataObject.scan
+            data[0].xlabel = self.SCADataObject.xlabel
+            data[0].ylabel = f"{self.SCADataObject.ylabel} - Fit"
+            index = len(self.data) + 1 
+            data[0].legend = f'{index} - S{self.SCADataObject.scan} - LMFit (best fit)'
+            data[0].filename = self.SCADataObject.filename
+            
+        # Else, store the initial fit
+        elif fit == 'init':
+            init_components = out.eval_components(params=out.init_params)
+            for i,(prefix,arr) in enumerate(list(init_components.items())):
+
+                # Create dict with objects to be compatible with other loaders
+                data[i] = added_object()
+
+                # Store all pertinent information in object
+                data[i].x_stream = x
+                data[i].y_stream = arr
+                data[i].scan = self.SCADataObject.scan
+                data[i].xlabel = self.SCADataObject.xlabel
+                data[i].ylabel = f"{self.SCADataObject.ylabel} - Initial {prefix}"
+                index = len(self.data) + 1 
+                data[i].legend = f'{index} - S{self.SCADataObject.scan} - Initial {prefix}component'
+                data[i].filename = self.SCADataObject.filename
+
+        # Else, store the final fit alongside the fitted components
+        elif fit == 'components':
+
+            # Append best fit and components
+            # Create dict with objects to be compatible with other loaders
+            data[0] = added_object()
+
+            # Store all pertinent information in object
+            data[0].x_stream = x
+            data[0].y_stream = out.best_fit
+            data[0].scan = self.SCADataObject.scan
+            data[0].xlabel = self.SCADataObject.xlabel
+            data[0].ylabel = f"{self.SCADataObject.ylabel} - Fit"
+            index = len(self.data) + 1 
+            data[0].legend = f'{index} - S{self.SCADataObject.scan} - LMFit (best fit)'
+            data[0].filename = self.SCADataObject.filename
+
+            best_components = out.eval_components()
+            for i,(prefix,arr) in enumerate(list(best_components.items())):
+
+                # Create dict with objects to be compatible with other loaders
+                data[i+1] = added_object()
+
+                # Store all pertinent information in object
+                data[i+1].x_stream = x
+                data[i+1].y_stream = arr
+                data[i+1].scan = self.SCADataObject.scan
+                data[i+1].xlabel = self.SCADataObject.xlabel
+                data[i+1].ylabel = f"{self.SCADataObject.ylabel} - Fit {prefix}"
+                index = len(self.data) + 1 
+                data[i+1].legend = f'{index} - S{self.SCADataObject.scan} - LMFit {prefix}component'
+                data[i+1].filename = self.SCADataObject.filename
+
+        else:
+            raise Exception("Specified fit undefined. Choose <<best>>, <<components>> or <<init>>.")
+
+        self.data.append(data)
+        self.out = out
+
+    def fit_report(self):
+        """Print the fit report"""
+        print(self.out.fit_report())
+
+    def fit_values(self):
+        """Return the best fit values as pandas DataFrame"""
+        df = pd.DataFrame.from_dict(self.out.best_values,orient='index')
+        df.columns = ['Parameters']
+        return df
