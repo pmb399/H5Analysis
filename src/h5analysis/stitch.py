@@ -1,9 +1,11 @@
 # Scientific modules
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, interp2d
 
 # Data loaders
 from .data_1d import load_1d
+from .data_2d import load_2d
+from .histogram import load_histogram
 
 # Utilities
 from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data, grid_data_mesh
@@ -144,3 +146,178 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
 
     return data
 
+def ImageStitch_2d(config, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=None,average=False):
+    """Internal function to handle image stitching in 2d.
+
+            Parameters
+            ----------
+            args: Same as for the Load2d class
+            kwargs: See Load2d class
+
+            Returns
+            -------
+            data: dict
+        """
+
+    # Load all 2d data to be added
+    # Note that this is possible since load2d supports loading multiple scans
+    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=norm_by,)
+
+    return ImageStitch(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,average=average)
+
+def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, average=False):
+    """Internal function to handle image stitching for histogram.
+
+            Parameters
+            ----------
+            args: Same as for the Load2d class
+            kwargs: See Load2d class
+
+            Returns
+            -------
+            data: dict
+        """
+
+    # Load all 2d data to be added
+    # Note that this is possible since load2d supports loading multiple scans
+    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+
+    return ImageStitch(ScanData, file, x_stream, z_stream, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset, average=average)
+
+
+def ImageStitch(ScanData, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,average=False):
+    """Internal function to handle image stitching.
+
+        Parameters
+        ----------
+        args: Same as for the Load2d class
+        kwargs: See Load2d class
+
+        Returns
+        -------
+        data: dict
+    """
+
+    # Define generic object in which all data will be stored
+    class added_object:
+        def __init__(self):
+            pass
+
+    # Ensure we only add a unique scan once
+    for i in args:
+        if args.count(i) > 1:
+            raise ValueError("Cannot add the same scan to itself")
+
+    # Start by getting dimensions
+    min_x = list()
+    max_x = list()
+    min_y = list()
+    max_y = list()
+    diff_x = list()
+    diff_y = list()
+
+    for k,v in ScanData.items():
+        min_x.append(min(v.new_x))
+        max_x.append(max(v.new_x))
+        min_y.append(min(v.new_y))
+        max_y.append(max(v.new_y))
+        diff_x.append(np.abs(np.diff(v.new_x)).min())
+        diff_y.append(np.abs(np.diff(v.new_y)).min())
+
+    # Determine corners
+    lower_x = min(min_x)
+    upper_x = max(max_x)
+    lower_y = min(min_y)
+    upper_y = max(max_y)
+    min_diff_x = min(diff_x)
+    min_diff_y = min(diff_y)
+
+    # Determine number of points from differences
+    numPoints_x = int(np.ceil((upper_x-lower_x)/min_diff_x))
+    numPoints_y = int(np.ceil((upper_y-lower_y)/min_diff_y))
+
+
+    # Limit array size to 100MB (=104857600 bytes)
+    # Numpy float64 array element requires 8 bytes
+    max_steps = 104857600/8
+
+    if numPoints_x*numPoints_y>max_steps:
+        step_norm = int(np.ceil(np.sqrt(numPoints_x*numPoints_y/max_steps)))
+        x_num = int(numPoints_x/step_norm)
+        y_num = int(numPoints_y/step_norm)
+    else:
+        x_num = numPoints_x
+        y_num = numPoints_y
+
+    # Generate new scales
+    new_x = np.linspace(lower_x,upper_x,x_num)
+    new_y = np.linspace(lower_y,upper_y,y_num)
+
+    if average == False:
+        for i,(k,v) in enumerate(ScanData.items()):
+            if i ==0:
+                # Interpolate image on new big image
+                matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+            else:
+                # Do this for all images
+                # Check if no information (NaN) has been added to the composite image, if so, add - else, set addition to 0
+                matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                matrix_nan = np.isnan(matrix)
+                matrix2_nan = np.isnan(matrix2)
+                m_keep_matrix2 = matrix_nan & ~matrix2_nan
+                matrix[m_keep_matrix2] = matrix2[m_keep_matrix2]
+
+    else:
+        for i,(k,v) in enumerate(ScanData.items()):
+            if i ==0:
+                # Interpolate image on new big image
+                # Initilize divisor to track how many contributions per data points
+                # Set the contribution to 1 where added, else 0 - use array masking
+                # Add the new contributions to divisor
+                matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                divisor = np.zeros_like(matrix)
+                ones = np.ones_like(matrix)
+                ones[np.isnan(matrix)] = 0
+                divisor = np.add(divisor,ones)
+            else:
+                # Same as above
+                matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                matrix = np.nansum(np.dstack((matrix,matrix2)),2)
+                ones = np.ones_like(matrix)
+                ones[np.isnan(matrix2)] = 0
+                divisor = np.add(divisor,ones)
+
+        # Divide big matrix by divisor to get average
+        matrix = np.true_divide(matrix,divisor,where=divisor!=0)
+
+    # Remove NaN values and set to 0
+    matrix = np.nan_to_num(matrix,nan=0,posinf=0,neginf=0)
+
+    # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
+    data = dict()
+    data[0] = added_object()
+    data[0].new_x = new_x
+    data[0].new_y = new_y
+    data[0].new_z = matrix
+    data[0].xmin = new_x.min()
+    data[0].xmax = new_x.max()
+    data[0].ymin = new_y.min()
+    data[0].ymax = new_y.max()
+    data[0].xlabel = x_stream
+    data[0].ylabel = 'Scale'
+    data[0].zlabel = detector
+    data[0].filename = file
+
+    data[0].scan = args
+
+    # Apply x offset
+    data[0].new_x = apply_offset(data[0].new_x, xoffset, xcoffset)
+
+    # Apply y offset
+    data[0].new_y = apply_offset(data[0].new_y, yoffset, ycoffset)
+
+    # Normalize data to [0,1]
+    if norm == True:
+        data[0].new_z =  data[0].new_z / data[0].new_z.max()
+
+    return data

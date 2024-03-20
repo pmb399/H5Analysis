@@ -32,8 +32,8 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram
 from .data_3d import load_3d
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, StackAddition, StackSubtraction, HistogramAddition
-from .stitch import ScanStitch
+from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, StackAddition, StackSubtraction
+from .stitch import ScanStitch, ImageStitch_2d, ImageStitch_hist
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -769,6 +769,24 @@ class Load2d:
         self.data.append(ImageSubtraction_2d(config, file, x_stream,
                          detector, *args, **kwargs))
         
+    def stitch(self, config, file, x_stream, detector, *args, **kwargs):
+        """
+        Stitch specified scans for selected image.
+
+        Parameters
+        ----------
+        See loader function.
+        Sticthes all scans specified in *args.
+        """
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+
+        # Append all REIXS scan objects to scan list in current object.
+        self.data.append(ImageStitch_2d(config,
+            file, x_stream, detector, *args, **kwargs))
+        
 
     def xlim(self, lower, upper):
         """
@@ -1218,6 +1236,24 @@ class LoadHistogram(Load2d):
         self.data.append(ImageSubtraction_hist(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
         
+
+    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Stitch specified scans for selected histograms.
+
+        Parameters
+        ----------
+        See loader function.
+        Sticthes all scans specified in *args.
+        """
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+
+        # Append all REIXS scan objects to scan list in current object.
+        self.data.append(ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
+
 
     def plot(self, *args, **kwargs):
         kwargs.setdefault('kind', "Histogram")

@@ -8,7 +8,7 @@ import lmfit
 from lmfit.models import GaussianModel, QuadraticModel, ConstantModel, LinearModel, QuadraticModel, PolynomialModel, LorentzianModel, ExponentialModel
 
 # Import Loaders
-from .LoadData import Load1d, Load2d, LoadHistogram
+from .LoadData import Load1d, Load2d
 
 # Import simplemath and datautil
 from .simplemath import grid_data_mesh, handle_eval, grid_data, apply_offset, apply_savgol, bin_data
@@ -434,6 +434,180 @@ class Object2dAddSubtract(Load2d):
         data[0].ylabel = self.y_string
         data[0].zlabel = self.z_string
         data[0].filename = 'Simple Math'
+        
+        self.data.append(data)
+
+#########################################################################################
+
+
+class Object2dStitch(Load2d):
+    """Apply addition/subtraction on loader objects"""
+
+    def __init__(self):
+        self.DataObjects = list()
+        self.x_string = ""
+        self.y_string = ""
+        self.z_string = ""
+        self.scan_string = "S"
+
+        return Load2d.__init__(self)
+    
+    def load(self):
+        raise Exception("This method is not defined")
+        
+    def add(self):
+        raise Exception("This method is not defined")
+    
+    def subtract(self):
+        raise Exception("This method is not defined")
+        
+    def stitch(self,obj,line,scan):
+        """Loader objects to be stitched
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.z_string += f"{o.zlabel}|"
+        self.scan_string += f"_-{scan}"
+
+        self.DataObjects.append(o)
+        
+    def evaluate(self,average=False):
+        """Evaluate the request
+        
+        Parameters
+        ----------
+        average: Boolean
+            For overlap, whether the first image takes precedence (False) or
+            if overlap is averaged (True)
+        
+        """
+
+        # Make sure there is no other scan loaded
+        if self.data != []:
+            raise UserWarning("Can only load one scan at a time.")
+        
+        if self.DataObjects == []:
+            raise Exception('You need to add at least one scan.')
+        
+        # Define generic object in which all data will be stored
+        class added_object:
+            def __init__(self):
+                pass
+
+        # Start by getting dimensions
+        min_x = list()
+        max_x = list()
+        min_y = list()
+        max_y = list()
+        diff_x = list()
+        diff_y = list()
+
+        # All scans in loaded object
+        for i, v in enumerate(self.DataObjects):
+            min_x.append(min(v.new_x))
+            max_x.append(max(v.new_x))
+            min_y.append(min(v.new_y))
+            max_y.append(max(v.new_y))
+            diff_x.append(np.abs(np.diff(v.new_x)).min())
+            diff_y.append(np.abs(np.diff(v.new_y)).min())
+
+        # Determine corners
+        lower_x = min(min_x)
+        upper_x = max(max_x)
+        lower_y = min(min_y)
+        upper_y = max(max_y)
+        min_diff_x = min(diff_x)
+        min_diff_y = min(diff_y)
+
+        # Determine number of points from differences
+        numPoints_x = int(np.ceil((upper_x-lower_x)/min_diff_x))
+        numPoints_y = int(np.ceil((upper_y-lower_y)/min_diff_y))
+
+        # Limit array size to 100MB (=104857600 bytes)
+        # Numpy float64 array element requires 8 bytes
+        max_steps = 104857600/8
+
+        if numPoints_x*numPoints_y>max_steps:
+            step_norm = int(np.ceil(np.sqrt(numPoints_x*numPoints_y/13107200)))
+            x_num = int(numPoints_x/step_norm)
+            y_num = int(numPoints_y/step_norm)
+        else:
+            x_num = numPoints_x
+            y_num = numPoints_y
+
+        # Generate new scales
+        new_x = np.linspace(lower_x,upper_x,x_num)
+        new_y = np.linspace(lower_y,upper_y,y_num)
+
+
+        if average == False:
+            for i, v in enumerate(self.DataObjects):
+                if i ==0:
+                    # Interpolate image on new big image
+                    matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                else:
+                    # Do this for all images
+                    # Check if no information (NaN) has been added to the composite image, if so, add - else, set addition to 0
+                    matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                    matrix_nan = np.isnan(matrix)
+                    matrix2_nan = np.isnan(matrix2)
+                    m_keep_matrix2 = matrix_nan & ~matrix2_nan
+                    matrix[m_keep_matrix2] = matrix2[m_keep_matrix2]
+
+        else:
+            for i, v in enumerate(self.DataObjects):
+                if i ==0:
+                    # Interpolate image on new big image
+                    # Initilize divisor to track how many contributions per data points
+                    # Set the contribution to 1 where added, else 0 - use array masking
+                    # Add the new contributions to divisor
+                    matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                    divisor = np.zeros_like(matrix)
+                    ones = np.ones_like(matrix)
+                    ones[np.isnan(matrix)] = 0
+                    divisor = np.add(divisor,ones)
+                else:
+                    # Same as above
+                    matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                    matrix = np.nansum(np.dstack((matrix,matrix2)),2)
+                    ones = np.ones_like(matrix)
+                    ones[np.isnan(matrix2)] = 0
+                    divisor = np.add(divisor,ones)
+
+            # Divide big matrix by divisor to get average
+            matrix = np.true_divide(matrix,divisor,where=divisor!=0)
+
+        # Remove NaN values and set to 0
+        matrix = np.nan_to_num(matrix,nan=0,posinf=0,neginf=0)
+
+        # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
+        data = dict()
+        data[0] = added_object()
+        data[0].new_x = new_x
+        data[0].new_y = new_y
+        data[0].new_z = matrix
+        data[0].xmin = new_x.min()
+        data[0].xmax = new_x.max()
+        data[0].ymin = new_y.min()
+        data[0].ymax = new_y.max()
+        data[0].xlabel = self.x_string
+        data[0].ylabel = self.y_string
+        data[0].zlabel = self.z_string
+        data[0].filename = 'Simple Math'
+        data[0].scan = self.scan_string
+        index = len(self.data) + 1
+        data[0].legend = f'{index} - {self.scan_string} - Stitching'
         
         self.data.append(data)
 
