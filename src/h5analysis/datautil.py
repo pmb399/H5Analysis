@@ -137,7 +137,7 @@ def get_roi(roi, config):
         config: dict
             h5 configuration
 
-        Returns:
+        Returns
         -------
         roi: tuple, dict
             tuple for 2d data (low,high)
@@ -304,7 +304,7 @@ def check_idx(idx_low, idx_high):
     """Check the index of an array. Add +1 to allow slicing.
     
         Parameters
-        ---------
+        ----------
         idx_low: int
         idx_high: int
 

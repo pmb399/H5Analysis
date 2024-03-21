@@ -8,7 +8,7 @@ def check_key_in_dict(key, dic):
     """Checks if a specific key is in a dictionary
 
         Parameters
-        ---------
+        ----------
         key: string
         dict: dict
 
