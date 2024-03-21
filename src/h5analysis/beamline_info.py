@@ -122,7 +122,7 @@ def get_single_beamline_value(config, file, keys, *args, average=False):
         print('====================')
 
 
-def get_spreadsheet(config, file, average=True, columns=None):
+def get_spreadsheet(config, file, columns, average=True):
     """Generate spreadsheet with meta data from h5 file.
 
         Parameters
@@ -131,29 +131,15 @@ def get_spreadsheet(config, file, average=True, columns=None):
             h5 data configuration
         file: string
             file name
-        average: Boolean
-            determines if array of values or their average is reported
         columns: dict
             Specify column header and h5 data path to meta datam i.e.
                 columns = dict()
                 columns['Sample Stage horz'] = 'Endstation/Motors/ssh
                 ...
+        average: Boolean
+            determines if array of values or their average is reported
+
     """
-
-    if columns == None:
-        columns = dict()
-
-        columns['Command'] = 'command'
-        columns['Sample Stage (ssh)'] = 'Endstation/Motors/ssh'
-        columns['Sample Stage (ssv)'] = 'Endstation/Motors/ssv'
-        columns['Sample Stage (ssd)'] = 'Endstation/Motors/ssd'
-        columns['Spectrometer (XES dist)'] = 'Endstation/Motors/spd'
-        columns['Spectrometer (XES angl)'] = 'Endstation/Motors/spa'
-        columns['Flux 4-Jaw (mm)'] = 'Beamline/Apertures/4-Jaw_2/horz_gap'
-        columns['Mono Grating'] = '/Beamline/Monochromator/grating'
-        columns['Mono Mirror'] = '/Beamline/Monochromator/mirror'
-        columns['Polarization'] = 'Beamline/Source/EPU/Polarization'
-        columns['Status'] = 'status'
 
     # Store all dictionary values in list
     # Keep track which values to concatenate

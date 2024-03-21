@@ -1522,6 +1522,52 @@ class LoadBeamline(Load1d):
     def subtract(*args):
         raise UserWarning('Undefined')
 
+#########################################################################################
+
+class LoadLog:
+    def __init__(self):
+        """Generate spreadsheet with meta data from h5 file."""
+        pass
+
+    def load(self,config,file,columns,average=True):
+        """Load meta data from h5 file.
+
+        Parameters
+        ----------
+        config: dict,
+            h5 data configuration
+        file: string
+            file name
+        columns: dict
+            Specify column header and h5 data path to meta datam i.e.
+                columns = dict()
+                columns['Sample Stage horz'] = 'Endstation/Motors/ssh
+                ...
+        average: Boolean
+            determines if array of values or their average is reported
+        """
+
+        self.df = get_spreadsheet(config,file,columns,average=average)
+
+    def show(self):
+        """Display the spreadsheet as pandas DataFrame"""
+
+        return self.df
+    
+    def export(self,filename):
+        """Export the created spreadsheet in csv format as log file.
+
+        Parameters
+        ----------
+        filename: string
+            file name of the created csv file
+        """
+
+        self.df.to_csv(f"{filename}.log")
+        return self.df
+
+#########################################################################################
+#########################################################################################
 
 def getBL(config, file, stream, *args, average=False):
     """Load beamline meta data.
@@ -1540,26 +1586,8 @@ def getBL(config, file, stream, *args, average=False):
             average: Boolean
                 determines if array of values or their average is reported
     """
+    
     get_single_beamline_value(config, file, stream, *args, average=average)
-
-def getSpreadsheet(config, file, average=True,columns=None):
-    """Generate spreadsheet with meta data from h5 file.
-
-        Parameters
-        ----------
-        config: dict,
-            h5 data configuration
-        file: string
-            file name
-        average: Boolean
-            determines if array of values or their average is reported
-        columns: dict
-            Specify column header and h5 data path to meta datam i.e.
-                columns = dict()
-                columns['Sample Stage horz'] = 'Endstation/Motors/ssh
-                ...
-    """
-    return get_spreadsheet(config, file, average=average, columns=columns)
 
 #########################################################################################
 #########################################################################################

@@ -2,17 +2,6 @@ from h5analysis.LoadData import *
 from h5analysis.MathData import *
 from h5analysis.config import h5Config
 
-class LoadLog:
-    def __init__(self):
-        pass
-    def load(self,config,file,columns=None):
-        self.df = get_spreadsheet(config,file,columns=columns)
-    def show(self):
-        return self.df
-    def export(self,filename):
-        self.df.to_csv(f"{filename}.log")
-        return self.df
-
 class PlotLoader(Load1d):
     def compare(self,plot_object):
         for i in range(len(plot_object.data)):
