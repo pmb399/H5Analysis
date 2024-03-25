@@ -9,7 +9,7 @@ python:
   install:
     - requirements: docs/requirements.txt
     - method: pip
-      path: src/h5analysis
+      path: .
 
 sphinx:
   configuration: docs/source/conf.py
