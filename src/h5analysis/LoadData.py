@@ -126,7 +126,7 @@ class Load1d:
 
         self.data.append(d)
 
-    def background(self,config, file, x_stream, y_stream, arg, **kwargs):
+    def background(self,config, file, x_stream, y_stream, *args, **kwargs):
         """ Subtracts the defined data from all loaded data
 
         Parameters
@@ -139,8 +139,8 @@ class Load1d:
             h5 key or alias of 1d stream
         y_stream: string
             h5 key or alias of 1d, 2d, or 3d stream
-        arg: int
-            scan
+        *args: int
+            scans
         **kwargs
             norm: boolean
                 normalizes to [0,1]
@@ -163,17 +163,24 @@ class Load1d:
         """
 
         # Get the background data
-        background = load_1d(config, file, x_stream, y_stream, arg, **kwargs)
+        if len(args) == 1:
+            background = load_1d(config, file, x_stream, y_stream, args[0], **kwargs)
+            bg_x = background[args[0]].x_stream
+            bg_y = background[args[0]].y_stream
+        else:
+            background = ScanAddition(config, file, x_stream, y_stream, *args, **kwargs)
+            bg_x = background[0].x_stream
+            bg_y = background[0].y_stream
         
         # Subtract the background from all data objects
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 # Interpolate the x data onto the background
-                new_x = background[arg].x_stream
+                new_x = bg_x
                 int_y = interp1d(v.x_stream,v.y_stream,fill_value='extrapolate')(new_x)
 
                 # Remove data
-                new_y = np.subtract(int_y,background[arg].y_stream)
+                new_y = np.subtract(int_y,bg_y)
 
                 # Overwrite streams in object
                 v.x_stream = new_x
@@ -690,7 +697,7 @@ class Load2d:
         
         self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
 
-    def background(self,config, file, x_stream, detector, arg, **kwargs):
+    def background(self,config, file, x_stream, detector, *args, **kwargs):
         """ Subtracts the defined data from all loaded data
 
         Parameters
@@ -703,8 +710,8 @@ class Load2d:
             h5 key or alias of 1d stream
         detector: string
             alias of the MCA detector
-        arg: int
-            scan
+        *args: int
+            scans
         **kwargs
             norm: boolean
                 normalizes to [0,1]
@@ -727,18 +734,27 @@ class Load2d:
         """
 
         # Get the background data
-        background = load_2d(config, file, x_stream, detector, arg, **kwargs)
+        if len(args) == 1:
+            background = load_2d(config, file, x_stream, detector, args[0], **kwargs)
+            bg_x = background[args[0]].new_x
+            bg_y = background[args[0]].new_y
+            bg_z = background[args[0]].new_z
+        else:
+            background = ImageAddition_2d(config,file, x_stream, detector, *args, **kwargs)
+            bg_x = background[0].new_x
+            bg_y = background[0].new_y
+            bg_z = background[0].new_z
         
         # Subtract the background from all data objects
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 # Interpolate the x,y data onto the background
-                new_x = background[arg].new_x
-                new_y = background[arg].new_y
+                new_x = bg_x
+                new_y = bg_y
                 int_z = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
 
                 # Remove data
-                new_z = np.subtract(int_z,background[arg].new_z)
+                new_z = np.subtract(int_z,bg_z)
 
                 # Overwrite streams in object
                 v.new_x = new_x
