@@ -334,7 +334,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, **kwargs):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, waterfall=None, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -346,6 +346,8 @@ class Load1d:
         ylabel : string, optional
         plot_height : int, optional
         plot_width : int, optional
+        waterfall: float
+            Normalizes plot output to [0,1] and applies offset specified
         kwargs
             all bokeh figure key-word arguments
         """
@@ -354,6 +356,8 @@ class Load1d:
         # Separate data by y-axis (if right-hand side axis requested)
         plot_data = defaultdict(list)
         plot_data_twin = defaultdict(list)
+        waterfall_i = 0
+        waterfall_itwin = 0
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 if len(v.x_stream) != len(v.y_stream):
@@ -361,13 +365,28 @@ class Load1d:
                 if hasattr(v,'twin_y'):
                     if v.twin_y != True:
                         data_default_dict = plot_data
+                        if waterfall == None:
+                            y = v.y_stream
+                        else:
+                            y = waterfall_i*waterfall + np.interp(v.y_stream,(v.y_stream.min(),v.y_stream.max()),(0,1))
+                            waterfall_i+=1
                     else:
                         data_default_dict = plot_data_twin
+                        if waterfall == None:
+                            y = v.y_stream
+                        else:
+                            y = waterfall_itwin*waterfall + np.interp(v.y_stream,(v.y_stream.min(),v.y_stream.max()),(0,1))
+                            waterfall_itwin+=1
                 else:
                     data_default_dict = plot_data
+                    if waterfall == None:
+                        y = v.y_stream
+                    else:
+                        y = waterfall_i*waterfall + np.interp(v.y_stream,(v.y_stream.min(),v.y_stream.max()),(0,1))
+                        waterfall_i+=1
 
                 data_default_dict["x_stream"].append(v.x_stream)
-                data_default_dict["y_stream"].append(v.y_stream)
+                data_default_dict["y_stream"].append(y)
                 data_default_dict['x_name'].append(v.xlabel)
                 data_default_dict['y_name'].append(v.ylabel)
                 data_default_dict['filename'].append(v.filename)
