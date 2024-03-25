@@ -3,12 +3,6 @@ import numpy as np
 from scipy.interpolate import interp1d, interp2d, LinearNDInterpolator
 from scipy.signal import savgol_filter
 
-# Math functions to handle eval
-from numpy import log as ln
-from numpy import log10 as log
-from numpy import exp
-from numpy import max, min
-
 # Warnings
 import warnings
 
@@ -363,6 +357,12 @@ def handle_eval(expr,vars):
         numpy array
 
     """
+
+    # Math functions to handle eval
+    from numpy import log as ln
+    from numpy import log10 as log
+    from numpy import exp
+    from numpy import max, min
 
     # Update the local variables to make everything available needed to perform eval
     locals().update(vars)
