@@ -1563,7 +1563,7 @@ class LoadLog:
             file name of the created csv file
         """
 
-        self.df.to_csv(f"{filename}.log")
+        self.df.to_csv(f"{filename}.csv")
         return self.df
 
 #########################################################################################
