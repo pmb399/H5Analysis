@@ -33,8 +33,9 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
             alias of the MCA detector
         *args: ints
             scan numbers
-        kwargs
-            norm: boolean, None
+        **kwargs
+            norm: boolean
+                normalization to maximum True or False, if None intepreted as False
             xoffset: list of tuples
                 fitted offset (x-stream)
             xcoffset: float

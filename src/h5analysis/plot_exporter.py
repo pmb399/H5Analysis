@@ -94,8 +94,10 @@ def plot_image(fig, ax, x, y, z, cmap='CET_R4', levels=None, aspect='equal', col
     """
     Plots a contourplot in the created figure
 
-    fig: matplotlib Figure object
-    ax: matplotlib Axes object
+    fig: object 
+        matplotlib Figure object
+    ax: object
+        matplotlib Axes object
     x: 1d array
         coordinates of the primary axis
     y: 1d array
@@ -144,8 +146,10 @@ def plot_lines(fig, ax, data_list, legend=False, fontsize_legend=12, **kwargs):
     """
     Plots Line1d objects in the created figure
 
-    fig: matplotlib Figure object
-    ax: matplotlib Axes object
+    fig: object 
+        matplotlib Figure object
+    ax: object
+        matplotlib Axes object
     data_list: list
         list of dictionaries containing the keys
         * x
@@ -191,7 +195,8 @@ def save_figure(fig, fname, data_format='pdf', **kwargs):
     """
     Export displayed data as processed plot
 
-    fig: matplotlib figure object
+    fig: object 
+        matplotlib figure object
     fname: string
         path and file name of the exported file
     data_format: string, [pdf,svg,png]

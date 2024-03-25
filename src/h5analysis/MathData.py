@@ -255,6 +255,7 @@ class Object2dAddSubtract(Load2d):
         return Load2d.__init__(self)
     
     def load(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
         
     def add(self,obj,line,scan):
@@ -453,12 +454,15 @@ class Object2dStitch(Load2d):
         return Load2d.__init__(self)
     
     def load(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
         
     def add(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def subtract(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
         
     def stitch(self,obj,line,scan):
@@ -631,18 +635,23 @@ class Object2dReduce(Load1d):
         self.MCADataObject = obj.data[line][scan]
 
     def add(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def subtract(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def stitch(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def background(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def loadObj(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
 
     def roi(self,integration_axis,roi=(None,None)):
@@ -1035,18 +1044,23 @@ class Object1dFit(Load1d):
         self.fitSpectra = dict()
 
     def add(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def subtract(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def stitch(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def background(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def loadObj(self):
+        """This method is not defined"""
         raise Exception("This method is not defined")
     
     def add_Gaussian(self,center,amplitude,sigma,center_bounds=(None,None),center_vary=True,amplitude_bounds=(None,None),amplitude_vary=True,sigma_bounds=(None,None),sigma_vary=True):

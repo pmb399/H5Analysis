@@ -23,14 +23,16 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
             file name
         key: string
             path to the meta data of interest
-        kwargs: See Load1d class, but additional
+        **kwargs: See Load1d class, but additional
             average: Boolean
                 determines if array of values or their average is reported
             legend_item: string
-
+                Name for legend
+                
         Returns
         -------
         data: dict
+            dict with meta data
     """
 
     # Init the data storage

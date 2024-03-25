@@ -90,14 +90,13 @@ class Load1d:
             twin_y: boolean
                 supports a second y-axis on the right-hand side
             matplotlib_props: dict
-                dict[scan number] = dict with props
-                props_dict: dict
+                dict[scan number] = dict with props that takes keys:
                     - linewidth
                     - color
                     - linestyle
                     - marker
                     - markersize
-                    - etc.              
+                    - etc.
         """
 
         # Add data index to configuration
@@ -645,8 +644,9 @@ class Load2d:
             alias of the MCA detector
         arg: int
             scan number
-        kwargs
-            norm: boolean, None
+        **kwargs
+            norm: boolean
+                Can be boolean or None (as False)
             xoffset: list of tuples
                 fitted offset (x-stream)
             xcoffset: float

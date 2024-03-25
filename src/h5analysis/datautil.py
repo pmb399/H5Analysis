@@ -140,8 +140,7 @@ def get_roi(roi, config):
         Returns
         -------
         roi: tuple, dict
-            tuple for 2d data (low,high)
-            dict for 3d data
+            tuple for 2d data (low,high) or dict for 3d data
                 dict['roi_list] = list with tuples
                 dict['roi_axes] = tuple of integration axes
     

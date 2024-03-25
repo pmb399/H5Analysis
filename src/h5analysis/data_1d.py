@@ -36,7 +36,7 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
             key name or alias
         *args: ints
             scan numbers, comma separated
-        kwargs:
+        **kwargs:
             norm: boolean
                 normalizes to [0,1]
             xoffset: list
@@ -58,15 +58,13 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
             twin_y: boolean
                 supports a second y-axis on the right-hand side
             matplotlib_props: dict
-                dict[scan number] = dict with props
-                props_dict: dict
+                dict[scan number] = dict with props, see keys below
                     - linewidth
                     - color
                     - linestyle
                     - marker
                     - markersize
                     - etc.
-    
     """
 
     # Store all data in data dict
