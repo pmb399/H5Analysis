@@ -12,7 +12,7 @@ from collections import defaultdict
 import warnings
 
 
-def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None):
+def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, legend_item=None, twin_y=False):
     """Load beamline meta data.
 
         Parameters
@@ -28,6 +28,8 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
                 determines if array of values or their average is reported
             legend_item: string
                 Name for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
                 
         Returns
         -------
@@ -45,6 +47,7 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
     data[0].xlabel = 'Scan Number'
     data[0].ylabel = key
     data[0].filename = file
+    data[0].twin_y = twin_y
 
     # Get legend items
     if legend_item != None:
