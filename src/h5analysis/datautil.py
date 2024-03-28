@@ -222,7 +222,7 @@ def get_roi(roi, config):
                 search = re.search('\{(.*)\}', roi_tup)
 
                 # Remove curely braces and get regular ROI
-                roi_list.append(split_roi(search.group(1)),config)
+                roi_list.append(split_roi(search.group(1),config))
                 # Append those ROIs with curely braces to sum axes
                 sum_axes.append(i+1) # start iterating with index 1 since double indices need to catch axes 1 and 2 of stack, not independent axis 0
 
