@@ -409,10 +409,33 @@ class Load1d:
         # Set up the bokeh plot
         p = figure(height=plot_height, width=plot_width,
                    tools="pan,wheel_zoom,box_zoom,reset,crosshair,save", **kwargs)
-        p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
-                     line_width=linewidth, line_color='color', line_alpha=0.6,
-                     hover_line_color='color', hover_line_alpha=1.0,
-                     source=source,y_range_name='default',)
+        
+        # If twinning enabled, calculate left linear axis and disable default
+        # This is because the default axis always scales to maximum range
+        if len(plot_data_twin['x_stream']) != 0 and len(plot_data['x_stream']) != 0:
+            # Determine the range of the axis and add it to plot
+            mins = [min(x) for x in plot_data['y_stream']]
+            maxs = [max(x) for x in plot_data['y_stream']]
+            yrange = max(maxs)-min(mins)
+            ymin = min(mins) - 0.05*yrange
+            ymax = max(maxs) + 0.05*yrange
+
+            # Disable default axis and add custom axis to left
+            p.yaxis.visible = False
+            p.extra_y_ranges['left'] = DataRange1d(bounds=(ymin,ymax))
+            p.add_layout(LinearAxis(y_range_name='left'), 'left')
+
+            default_range = 'left'
+        else:
+            # Else, main axis remains default
+            default_range = 'default'
+
+        # Only try to add plot data to left axis if there is any
+        if len(plot_data['x_stream']) != 0:
+            p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
+                        line_width=linewidth, line_color='color', line_alpha=0.6,
+                        hover_line_color='color', hover_line_alpha=1.0,
+                        source=source,y_range_name=default_range,)
         
         # Plot all data associated with the right side y-axis
         if len(plot_data_twin['x_stream']) != 0:
