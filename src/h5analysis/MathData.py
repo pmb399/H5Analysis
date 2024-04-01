@@ -23,6 +23,8 @@ class Object1dAddSubtract(Load1d):
         self.x_string = ""
         self.y_string = ""
         self.scan_string = "S"
+        self.xaxis_label = list()
+        self.yaxis_label = list()
 
         return Load1d.__init__(self)    
         
@@ -43,6 +45,10 @@ class Object1dAddSubtract(Load1d):
         self.x_string += f"{o.xlabel}|"
         self.y_string += f"{o.ylabel}|"
         self.scan_string += f"_+{scan}"
+        for x in o.xaxis_label:
+            self.xaxis_label.append(x)
+        for y in o.yaxis_label:
+            self.yaxis_label.append(y)
 
         self.DataObjectsAdd.append(o)
         
@@ -63,6 +69,10 @@ class Object1dAddSubtract(Load1d):
         self.x_string += f"{o.xlabel}|"
         self.y_string += f"{o.ylabel}|"
         self.scan_string += f"_-{scan}"
+        for x in o.xaxis_label:
+            self.xaxis_label.append(x)
+        for y in o.yaxis_label:
+            self.yaxis_label.append(y)
 
         self.DataObjectsSubtract.append(o)
         
@@ -131,6 +141,8 @@ class Object1dAddSubtract(Load1d):
 
         data[0].xlabel = self.x_string
         data[0].ylabel = self.y_string
+        data[0].xaxis_label = self.xaxis_label
+        data[0].yaxis_label = self.yaxis_label
         data[0].filename = 'Object Math'
         
         self.data.append(data)
@@ -145,6 +157,8 @@ class Object1dStitch(Load1d):
         self.x_string = ""
         self.y_string = ""
         self.scan_string = "S"
+        self.xaxis_label = list()
+        self.yaxis_label = list()
 
         return Load1d.__init__(self)
         
@@ -165,6 +179,10 @@ class Object1dStitch(Load1d):
         self.x_string += f"{o.xlabel}|"
         self.y_string += f"{o.ylabel}|"
         self.scan_string += f"_{scan}"
+        for x in o.xaxis_label:
+            self.xaxis_label.append(x)
+        for y in o.yaxis_label:
+            self.yaxis_label.append(y)
 
         self.DataObjectsStitch.append(o)
                 
@@ -234,6 +252,8 @@ class Object1dStitch(Load1d):
 
         data[0].xlabel = self.x_string
         data[0].ylabel = self.y_string
+        data[0].xaxis_label = self.xaxis_label
+        data[0].yaxis_label = self.yaxis_label
         data[0].filename = 'Object Math'
         
         self.data.append(data)

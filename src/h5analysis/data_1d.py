@@ -79,6 +79,8 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         data[arg].scan = arg
         data[arg].xlabel = x_stream
         data[arg].ylabel = y_stream
+        data[arg].xaxis_label = list()
+        data[arg].yaxis_label = list()
         data[arg].filename = file
         data[arg].twin_y = twin_y
 
@@ -111,6 +113,11 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
 
                 # Check if x component has ROI
                 if check_key_in_dict(x,rois['x']):
+                    try:
+                        if config.h5dict[rois['x'][x]['req']]['x_label'] != None:
+                            data[arg].xaxis_label.append(config.h5dict[rois['x'][x]['req']]["x_label"])
+                    except:
+                        pass
                     # Check that dim(x) = 1
                     try:
                         if len(np.shape(all_data[rois['x'][x]['req']])) == 1: 
@@ -131,6 +138,11 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                 
                 # If x component has no ROI
                 else:
+                    try:
+                        if config.h5dict[x]['x_label'] != None:
+                            data[arg].xaxis_label.append(config.h5dict[x]['x_label'])
+                    except:
+                        pass
                     try:
                         if len(np.shape(all_data[x])) == 1:
                             # len(contrix_x_stream) requirement above implicitly verifies that
@@ -161,6 +173,11 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         for i,y in enumerate(contrib_y_stream):
             # Check if requisition has ROIs
             if check_key_in_dict(y,rois['y']):
+                try:
+                    if config.h5dict[rois['y'][y]['req']]['y_label'] != None:
+                        data[arg].yaxis_label.append(config.h5dict[rois['y'][y]['req']]['y_label'])
+                except:
+                    pass
                 try:
                     # Check that dim(y) = 2
                     if len(np.shape(all_data[rois['y'][y]['req']])) == 2:
@@ -215,7 +232,12 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                                 else:
                                     # Get number of new x-axis
                                     x_axis = list(x_axis_raw)[0] # convert to single element (from set to list, then slice)
-                                    data[arg].xlabel = f"{rois['y'][y]['req']}_scale{x_axis}"
+                                    if config.h5dict[f"{rois['y'][y]['req']}"][f"label{x_axis}"] != None:
+                                        data[arg].xlabel = config.h5dict[f"{rois['y'][y]['req']}"][f"label{x_axis}"]
+                                        data[arg].xaxis_label.append(config.h5dict[f"{rois['y'][y]['req']}"][f"label{x_axis}"])
+                                    else:
+                                        data[arg].xlabel = f"{rois['y'][y]['req']}_scale{x_axis}"
+                                        data[arg].xaxis_label.append(f"{rois['y'][y]['req']}_scale{x_axis}")
                                     if x_axis == 1:
                                         data[arg].x_stream = scale1[idxLow1:idxHigh1]
                                     elif x_axis == 2:
@@ -245,6 +267,11 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
             # No ROI is specified
             else:
                 try:
+                    if config.h5dict[y]['y_label'] != None:
+                        data[arg].yaxis_label.append(config.h5dict[y]['y_label'])
+                except:
+                    pass
+                try:
                     # stream is 1d
                     if len(np.shape(all_data[y])) == 1:
                         # Ensure we have 1d/1d (x/y) streams
@@ -259,7 +286,12 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
                     elif len(np.shape(all_data[y])) == 2:
                         # Either dim_x is zero, need to define x-stream with scale
                         if dim_x == 0:
-                            data[arg].xlabel = f"{y}_scale"
+                            if config.h5dict[y]["x_label"] != None:
+                                data[arg].xlabel = config.h5dict[y]["x_label"]
+                                data[arg].xaxis_label.append(config.h5dict[y]["x_label"])
+                            else:
+                                data[arg].xlabel = f"{y}_scale"
+                                data[arg].xaxis_label.append(f"{y}_scale")
                             data[arg].x_stream = all_data[f"{y}_scale"]
                             # Apply ROI based off x-indices
                             y_data = mca_roi(all_data[y],xlow,xhigh,0,scale=all_data[f"{y}_scale"])

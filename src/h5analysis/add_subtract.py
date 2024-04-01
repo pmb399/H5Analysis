@@ -69,8 +69,15 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
 
     MASTER_x_stream = np.linspace(s,e,num)
 
+    # Keep track of axis labels
+    xaxis_label = list()
+    yaxis_label = list()
     # Iterate over all loaded scans for interpolation
     for i, (k, v) in enumerate(ScanData.items()):
+        for x in v.xaxis_label:
+            xaxis_label.append(x)
+        for y in v.yaxis_label:
+            yaxis_label.append(y)
         # Set the first scan as master data
         if i == 0:
             MASTER_y_stream = interp1d(v.x_stream,v.y_stream)(MASTER_x_stream)
@@ -88,6 +95,8 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     data[0] = added_object()
     data[0].xlabel = x_stream
     data[0].ylabel = y_stream
+    data[0].xaxis_label = xaxis_label
+    data[0].yaxis_label = yaxis_label
     data[0].filename = file
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
@@ -212,6 +221,8 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
     data[0] = added_object()
     data[0].xlabel = x_stream
     data[0].ylabel = y_stream
+    data[0].xaxis_label = minuendData[0].xaxis_label + subtrahendData[0].xaxis_label
+    data[0].yaxis_label = minuendData[0].yaxis_label + subtrahendData[0].yaxis_label
     data[0].filename = file
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream

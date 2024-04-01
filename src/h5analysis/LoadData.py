@@ -361,8 +361,14 @@ class Load1d:
             all bokeh figure key-word arguments
         """
 
+        # Add a normalization feature to [0,1] for plot only
         if waterfall == None and norm==True:
             waterfall = 0
+
+        # Keep track of 1d x-axis and y-axis labels
+            
+        xaxis_labels = list()
+        yaxis_labels = list()
 
         # Organize all data assosciated with object in sorted dictionary.
         # Separate data by y-axis (if right-hand side axis requested)
@@ -372,8 +378,27 @@ class Load1d:
         waterfall_itwin = 0
         for i, val in enumerate(self.data):
             for k, v in val.items():
+                # Check dimensions
                 if len(v.x_stream) != len(v.y_stream):
                     raise UserWarning(f'Error in line {i+1}. Cannot plot (x,y) arrays with different size.')
+                
+                # Track axis labels
+                # x
+                try:
+                    for label in v.xaxis_label:
+                        if label not in xaxis_labels:
+                            xaxis_labels.append(label)
+                except:
+                    pass
+                # y
+                try:
+                    for label in v.yaxis_label:
+                        if label not in yaxis_labels:
+                            yaxis_labels.append(label)
+                except:
+                    pass
+
+                # Work on twinned axis
                 if hasattr(v,'twin_y'):
                     if v.twin_y != True:
                         data_default_dict = plot_data
@@ -515,8 +540,18 @@ class Load1d:
             p.title.text = str(title)
         if xlabel != None:
             p.xaxis.axis_label = str(xlabel)
+        else:
+            xstring = ""
+            for label in xaxis_labels:
+                xstring+=f"{label}|"
+            p.xaxis.axis_label = str(xstring)
         if ylabel != None:
             p.yaxis.axis_label = str(ylabel)
+        else:
+            ystring = ""
+            for label in yaxis_labels:
+                ystring+=f"{label}|"
+            p.yaxis.axis_label = str(ystring)
         show(p)
 
     def get_data(self):
@@ -1501,11 +1536,11 @@ class Load3d:
                 if xlabel != None:
                     p.xaxis.axis_label = str(xlabel)
                 else:
-                    pass
+                    p.xaxis.axis_label = str(v.xlabel)
                 if ylabel != None:
                     p.yaxis.axis_label = str(ylabel)
                 else:
-                    pass
+                    p.yaxis.axis_label = str(v.ylabel)
 
                 s = show(p, notebook_handle=True)
 

@@ -176,10 +176,16 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
 
                                     # Set the remaining (second) axis as y-data
                                     if y_axis == 1:
-                                        data[arg].ylabel = f"{rois['z'][z]['req']}_scale1"
+                                        if config.h5dict[f"{rois['z'][z]['req']}"]['label1'] != None:
+                                            data[arg].ylabel = config.h5dict[f"{rois['z'][z]['req']}"]['label1']
+                                        else:
+                                            data[arg].ylabel = f"{rois['z'][z]['req']}_scale1"
                                         data[arg].y_data = np.average(all_data[f"{rois['z'][z]['req']}_scale1"],axis=0)[idxLow1:idxHigh1]
                                     elif y_axis == 2:
-                                        data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
+                                        if config.h5dict[f"{rois['z'][z]['req']}"]['label2'] != None:
+                                            data[arg].ylabel = config.h5dict[f"{rois['z'][z]['req']}"]['label2']
+                                        else:
+                                            data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
                                         data[arg].y_data = np.average(all_data[f"{rois['z'][z]['req']}_scale2"],axis=0)[idxLow2:idxHigh2]
                                     else:
                                         raise Exception(f"Wrong axis defined ({z}).")
@@ -217,8 +223,15 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                                 z_stream_convert = z_stream_convert.replace(z,f"s{arg}_val{i}_z")
 
                                 # Assign the scales as x/y
-                                data[arg].xlabel = f"{rois['z'][z]['req']}_scale1"
-                                data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
+                                if config.h5dict[f"{rois['z'][z]['req']}"]['label1'] != None:
+                                    data[arg].xlabel = config.h5dict[f"{rois['z'][z]['req']}"]['label1']
+                                else:
+                                    data[arg].xlabel = f"{rois['z'][z]['req']}_scale1"
+                                
+                                if config.h5dict[f"{rois['z'][z]['req']}"]['label2'] != None:
+                                    data[arg].ylabel = config.h5dict[f"{rois['z'][z]['req']}"]['label2']
+                                else:
+                                    data[arg].ylabel = f"{rois['z'][z]['req']}_scale2"
                                 data[arg].x_data = np.average(all_data[f"{rois['z'][z]['req']}_scale1"],axis=0)[idxLow1:idxHigh1]
                                 data[arg].y_data = np.average(all_data[f"{rois['z'][z]['req']}_scale2"],axis=0)[idxLow2:idxHigh2]
 
@@ -259,7 +272,10 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                 # Need to require MCA data with dim = 2
                 if len(np.shape(all_data[z])) == 2:
                     # Set the corresponding scale as y-data
-                    data[arg].ylabel = f"{z}_scale"
+                    if config.h5dict[z]["y_label"] != None:
+                        data[arg].ylabel = config.h5dict[z]["y_label"]
+                    else:
+                        data[arg].ylabel = f"{z}_scale"
                     data[arg].y_data = all_data[f"{z}_scale"]
 
                     # Add data to locals

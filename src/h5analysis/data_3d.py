@@ -128,6 +128,16 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
 
                     has_stack = True
 
+                    if config.h5dict[s]['label1'] != None:
+                        xlabel = config.h5dict[s]['label1']
+                    else:
+                        xlabel = f"{s}_Scale1"
+
+                    if config.h5dict[s]['label2'] != None:
+                        ylabel = config.h5dict[s]['label2']
+                    else:
+                        ylabel = f"{s}_Scale2"
+
                 else:
                     raise Exception('Can only specify one stack')
 
@@ -182,6 +192,9 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     data[arg].x_max = xmax_list
     data[arg].y_min = ymin_list
     data[arg].y_max = ymax_list
+
+    data[arg].xlabel = xlabel
+    data[arg].ylabel = ylabel
 
     # Check that independent stream dimension is correct
     if len(data[arg].ind_stream) == np.shape(data[arg].stack)[0]:

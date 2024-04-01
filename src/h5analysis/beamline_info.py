@@ -45,6 +45,7 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
     data = dict()
     data[0] = beamline_object()
     data[0].xlabel = 'Scan Number'
+    data[0].xaxis_label = ['Scan Number']
     data[0].ylabel = key
     data[0].filename = file
     data[0].twin_y = twin_y

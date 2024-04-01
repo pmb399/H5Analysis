@@ -93,7 +93,7 @@ class h5Config:
 
         self.sca_folders.append(path)
         
-    def sca(self,alias,path,norm_by=None):
+    def sca(self,alias,path,norm_by=None,x_label=None,y_label=None):
         """Adds a specific alias for SCA data
 
         Parameters
@@ -104,6 +104,10 @@ class h5Config:
             sub group in h5 container, SCA data
         norm_by: string
             sub group in h5 container, SCA data to norm by
+        x_label: string
+            general custom label for the x-stream
+        y_label: string
+            general custom label for the x-stream
         """
 
         # Set up a dict with all relevant data and store in alias db
@@ -111,9 +115,11 @@ class h5Config:
         dataDict['type'] = 'SCA'
         dataDict['SCA_Path'] = path
         dataDict['norm_by'] = norm_by
+        dataDict['x_label'] = x_label
+        dataDict['y_label'] = y_label
         self.h5dict[alias] = dataDict
         
-    def mca(self,alias,path,scale,norm_by=None):
+    def mca(self,alias,path,scale,norm_by=None,x_label=None,y_label=None):
         """Adds a specific alias for MCA data
 
         Parameters
@@ -126,6 +132,10 @@ class h5Config:
             sub group in h5 container, SCA data
         norm_by: string
             sub group in h5 container, SCA data to norm by
+        x_label: string
+            general custom label for the x-stream
+        y_label: string
+            general custom label for the y-stream
         """
 
         # Set up a dict with all relevant data and store in alias db
@@ -134,9 +144,11 @@ class h5Config:
         dataDict['MCA_Path'] = path
         dataDict['MCA_Scale'] = scale
         dataDict['norm_by'] = norm_by
+        dataDict['x_label'] = x_label
+        dataDict['y_label'] = y_label
         self.h5dict[alias] = dataDict
         
-    def stack(self,alias,path,scale1,scale2,norm_by=None):
+    def stack(self,alias,path,scale1,scale2,norm_by=None,label1=None,label2=None):
         """Adds a specific alias for STACK data
 
         Parameters
@@ -151,6 +163,10 @@ class h5Config:
             sub group in h5 container, SCA data
         norm_by: string
             sub group in h5 container, SCA data to norm by
+        label1: string
+            general custom label for the stream
+        label2: string
+            general custom label for the stream
         """
 
         # Set up a dict with all relevant data and store in alias db
@@ -160,4 +176,6 @@ class h5Config:
         dataDict['MCA_Scale'] = scale1
         dataDict['STACK_Scale'] = scale2
         dataDict['norm_by'] = norm_by
+        dataDict['label1'] = label1
+        dataDict['label2'] = label2
         self.h5dict[alias] = dataDict

@@ -66,8 +66,16 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
     MASTER_y_list = list() # y-arrays interpolated to common scale
     MASTER_y_nan_list = list() # where nan values are stored
 
+    # Keep track of axis labels
+    xaxis_label = list()
+    yaxis_label = list()
+
     # Iterate over all loaded scans for interpolation
     for i, (k, v) in enumerate(ScanData.items()):
+        for x in v.xaxis_label:
+            xaxis_label.append(x)
+        for y in v.yaxis_label:
+            yaxis_label.append(y)
         # interpolate to common scale
         item = interp1d(v.x_stream,v.y_stream,bounds_error=False)(MASTER_x_stream)
         # Store results
@@ -94,6 +102,8 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
     data[0].filename = file
     data[0].x_stream = MASTER_x_stream
     data[0].y_stream = MASTER_y_stream
+    data[0].xaxis_label = xaxis_label
+    data[0].yaxis_label = yaxis_label
     data[0].scan = name
     data[0].twin_y = twin_y
 
