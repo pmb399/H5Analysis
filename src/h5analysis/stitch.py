@@ -146,7 +146,7 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
 
     return data
 
-def ImageStitch_2d(config, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=None,average=False):
+def ImageStitch_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=None,average=False):
     """Internal function to handle image stitching in 2d.
 
             Parameters
@@ -165,7 +165,7 @@ def ImageStitch_2d(config, file, x_stream, detector, *args, norm=True, xoffset=N
 
     return ImageStitch(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,average=average)
 
-def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, average=False):
+def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, average=False):
     """Internal function to handle image stitching for histogram.
 
             Parameters

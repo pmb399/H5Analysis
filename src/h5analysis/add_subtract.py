@@ -267,7 +267,7 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
 
     return data
 
-def ImageAddition_2d(config, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageAddition_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -286,7 +286,7 @@ def ImageAddition_2d(config, file, x_stream, detector, *args, norm=True, xoffset
 
     return ImageAddition(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
     """Internal function to handle image subtraction.
 
             Parameters
@@ -313,7 +313,7 @@ def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, n
 
     return ImageSubtraction(minuendData, subtrahendData, file, x_stream, detector, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -332,7 +332,7 @@ def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=T
 
     return ImageAddition(ScanData, file, x_stream, z_stream, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
     """Internal function to handle image subtraction.
 
             Parameters
@@ -360,7 +360,7 @@ def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, s
     return ImageSubtraction(minuendData, subtrahendData, file, x_stream, z_stream, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
 
-def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def ImageAddition(ScanData, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -493,7 +493,7 @@ def ImageAddition(ScanData, file, x_stream, detector, *args, norm=True, xoffset=
 
     return data
 
-def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend, str_subtrahend, norm=True, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def ImageSubtraction(minuend, subtrahend, file, x_stream, detector, str_minuend, str_subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
 
     """ Internal function to handle image subtraction.
 
