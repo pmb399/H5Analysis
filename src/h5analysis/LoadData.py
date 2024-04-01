@@ -341,7 +341,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, waterfall=None, **kwargs):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, norm=False, waterfall=None, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -353,11 +353,16 @@ class Load1d:
         ylabel : string, optional
         plot_height : int, optional
         plot_width : int, optional
+        norm: boolean, optional
+            Normalized plot output to [0,1]
         waterfall: float
             Normalizes plot output to [0,1] and applies offset specified
         kwargs
             all bokeh figure key-word arguments
         """
+
+        if waterfall == None and norm==True:
+            waterfall = 0
 
         # Organize all data assosciated with object in sorted dictionary.
         # Separate data by y-axis (if right-hand side axis requested)
@@ -933,7 +938,7 @@ class Load2d:
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
     def plot(self, title=None, kind='Image', xlabel=None, ylabel=None, plot_height=600, plot_width=600, 
-            vmin=None, vmax=None, colormap = "linear", **kwargs):
+            vmin=None, vmax=None, colormap = "linear", norm=False, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -949,6 +954,8 @@ class Load2d:
         vmax : float, optional
         colormap : string
             Use: "linear" or "log"
+        norm : boolean
+            to normalize the plot to the maximum
         kwargs
             all bokeh figure key-word arguments
         """
@@ -958,6 +965,10 @@ class Load2d:
 
                 # Let's ensure dimensions are matching
                 check_dimensions2d(v.new_x,v.new_y,v.new_z)
+
+                # Check if normalizing the plot is requested
+                if norm==True:
+                    v.new_z = v.new_z/np.max(v.new_z)
 
                 # Create the figure
                 p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
@@ -1397,7 +1408,7 @@ class Load3d:
             self.data.append(StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwargs))
 
 
-    def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, **kwargs):
+    def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, norm=False, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -1408,6 +1419,8 @@ class Load3d:
         ylabel : string, optional
         plot_height : int, optional
         plot_width : int, optional
+        norm: boolean
+            Normalizes to the maximum z-value across all images in the stack
         kwargs
             all bokeh figure key-word arguments
         """
@@ -1428,7 +1441,10 @@ class Load3d:
             plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[f],v.new_y[f],v.x_min[f],v.x_max[f],v.y_min[f],v.y_max[f])
 
             # This is to update bokeh data
-            r.data_source.data['image'] = [v.stack[f]]
+            if norm == True:
+                r.data_source.data['image'] = [v.stack[f]/np.max(v.stack)]
+            else:
+                r.data_source.data['image'] = [v.stack[f]]
             r.data_source.data['x'] = [plot_x_corner]
             r.data_source.data['y'] = [plot_y_corner]
             r.data_source.data['dw'] = [plot_dw]
@@ -1457,7 +1473,12 @@ class Load3d:
                 # since bokeh takes the left bound of the first and right bound of the last pixel
                 plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[0],v.new_y[0],v.x_min[0],v.x_max[0],v.y_min[0],v.y_max[0])
 
-                simage = ColumnDataSource(data=dict(image=[v.stack[0]], x=[plot_x_corner], y=[
+                if norm==True:
+                    init_img = v.stack[0] / np.max(v.stack)
+                else:
+                    init_img = v.stack[0]
+
+                simage = ColumnDataSource(data=dict(image=[init_img], x=[plot_x_corner], y=[
                                           plot_y_corner], dw=[plot_dw], dh=[plot_dh],))
 
                 r = p.image(image='image', source=simage, x='x', y='y',
@@ -1527,8 +1548,8 @@ class Load3d:
                     plt.xlim(xlim)
                 if not isinstance(ylim,type(None)):
                     plt.ylim(ylim)
-                for img in v.stack:
-                    frames.append([plt.imshow(img,animated=True,extent=[v.x_min,v.x_max,v.y_min,v.y_max],aspect=aspect)])
+                for i,img in enumerate(v.stack):
+                    frames.append([plt.imshow(img,animated=True,extent=[v.x_min[i],v.x_max[i],v.y_min[i],v.y_max[i]],aspect=aspect)])
             
                 ani = animation.ArtistAnimation(fig, frames, interval=interval, blit=True,
                                 repeat_delay=10000)
