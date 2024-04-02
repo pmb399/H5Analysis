@@ -2,12 +2,127 @@ from h5analysis.LoadData import *
 from h5analysis.MathData import *
 from h5analysis.config import h5Config
 
+def hdf5FileFixer(hdf5_filename):
+    if hdf5_filename.find('.h5') < 0:
+        file_ext = hdf5_filename.split('.')
+        hdf5_filename = file_ext[0] + '.h5'
+    return hdf5_filename
+
+#REIXS specific log viewer class to truncate or refine the log data
+class LogLoader(LoadLog):
+    #Allow for specific column names to be shown
+    #Allow for any file with the correct basename to function
+    def load(self,config,file,columns,average=True,ncols=[]):
+        """Load meta data from h5 file.
+
+        Parameters
+        ----------
+        config: dict
+            REIXS beamline endstation configuration
+        file: string
+            filename
+        columns: dict
+            Specify column configuration for specific REIXS endstation
+        **kwargs: optional
+            Options:
+                ncols: string list
+                    determines which columns are ecluded in the logbook from columns dictionary
+        """
+        #Fix filename if needed
+        file = hdf5FileFixer(file)
+        if len(ncols):
+           cols_mod = dict()
+           for col in columns:
+                if col in ncols:
+                    pass
+                else:
+                    cols_mod[col] = columns[col]
+        else:
+           cols_mod = columns
+        self.df = get_spreadsheet(config,file,cols_mod,average=average)
+    #Allow the table to reduced to a specific scan range
+    def show(self, scans=[]):
+        """Display the spreadsheet as pandas DataFrame
+        **kwargs: optional
+            Options:
+                scans: int list - one or two entries
+                    determins the lower and upper bound of scan entries, upper not required
+                    NOTE: The export option will override scans option
+        
+        """
+        if len(scans) == 2:
+            #Remove enertries from spreadsheet
+            return self.df.truncate(before = scans[0], after = scans[1])
+        elif len(scans) == 1:
+            return self.df.truncate(before = scans[0])
+        else:
+            return self.df
+        
+#Make plots of metadata as a function of scan
+class BeamlineLoader(LoadBeamline):
+    def load(self, config, file, key, **kwargs):
+        """
+        Load specific metadate stream as a function of scan.
+
+        Parameters
+        ----------
+        config: dict
+            REIXS beamline endstation configuration
+        file: string
+            filename
+        key : string
+        """
+        file = hdf5FileFixer(file)
+        return LoadBeamline.load(self, config, file, key, **kwargs)
+    def plot(self, linewidth = 2, xlabel ='Scan #', ylabel='Value', plot_width = 900, plot_height = 600, **kwargs):
+        return LoadBeamline.plot(self, linewidth= linewidth, xlabel = xlabel, ylabel = ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
+
+class SimpleLoader(Load1d):
+    def load(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.load(self,config,file,'',y_stream,*args,**kwargs)
+    def add(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.add(self,config,file,'',y_stream,*args,**kwargs)
+    def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.subtract(self,config,file,'',y_stream,*args,**kwargs)
+    def stitch(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.stitch(self,config,file,'',y_stream,*args,**kwargs)
+    def background(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.background(self,config,file,'',y_stream,*args,**kwargs)
+    def compare(self,plot_object):
+        for i in range(len(plot_object.data)):
+            SimpleLoader.loadObj(self, plot_object, i)
+        return SimpleLoader
+    def plot(self, linewidth = 2,xlabel ='Point #', ylabel='Value', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, xlabel = xlabel, ylabel = ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
+
+#Making 1-D plots from the REIXS beamline
 class PlotLoader(Load1d):
+    #Fix bad filenames with loading
+    def load(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.load(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def add(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.add(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def subtract(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.subtract(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def background(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.background(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def stitch(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load1d.stitch(self,config,file,x_stream,y_stream,*args,**kwargs)
     def compare(self,plot_object):
         for i in range(len(plot_object.data)):
             PlotLoader.loadObj(self, plot_object, i)
         return PlotLoader
-    def plot(self, **kwargs):
+    def plot(self, linewidth = 2, xlabel = '', ylabel = 'Value', plot_width = 900, plot_height = 600,**kwargs):
         total_xlabel = ''
         for i in range(len(self.data)):
             for j in self.data[i].keys():
@@ -15,28 +130,57 @@ class PlotLoader(Load1d):
                     if len(total_xlabel) > 0:
                          total_xlabel += '/ '
                     total_xlabel += self.data[i][j].xlabel + ' '
-        return Load1d.plot(self, xlabel = total_xlabel, ylabel = 'Value', plot_width = 1200, plot_height = 800,**kwargs)
-        
-class BeamlineLoader(LoadBeamline):
+        if len(xlabel) == 0:
+            xlabel = total_xlabel
+        return Load1d.plot(self, linewidth = linewidth, xlabel = xlabel, ylabel = ylabel, plot_width = plot_width, plot_height = plot_height, **kwargs)
+
+class ImageLoader(Load2d):
+    #Fix bad filenames with loading
+    def load(self,config,file,x_stream, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        return Load2d.load(self,config,file,x_stream,y_stream, *args, **kwargs)
+    def add(self,config,file,x_stream, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        return Load2d.add(self,config,file,x_stream,y_stream,*args, **kwargs)
+    def subtract(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load2d.subtract(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def background(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load2d.background(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def stitch(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load2d.stitch(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def plot(self, plot_width = 900, plot_height = 600,**kwargs):
+        return Load2d.plot(self, plot_width = plot_width, plot_height = plot_height, **kwargs) 
+    
+class StackLoader(Load3d):
+    #Fix bad filenames with loading
+    def load(self,config,file,x_stream, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        return Load3d.load(self,config,file,x_stream,y_stream, *args, **kwargs)
+    def add(self,config,file,x_stream, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        return Load3d.add(self,config,file,x_stream,y_stream,*args, **kwargs)
+    def subtract(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load3d.subtract(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def background(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load3d.background(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def stitch(self,config,file,x_stream, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load3d.stitch(self,config,file,x_stream,y_stream,*args,**kwargs)
+    def plot(self, plot_width = 900, plot_height = 600,**kwargs):
+        return Load3d.plot(self, plot_width = plot_width, plot_height = plot_height, **kwargs) 
+    
+class MESHLoader(LoadHistogram):
     def plot(self, **kwargs):
-        return LoadBeamline.plot(self, xlabel ='Scan #', ylabel='Value', plot_width = 1200, plot_height = 800,**kwargs)
-    def compare(self,plot_object):
-        for i in range(len(plot_object.data)):
-            BeamlineLoader.loadObj(self, plot_object, i)
-        return BeamlineLoader
-        
-class SimpleLoader(Load1d):
-    def load(self,config,file,y_stream,*args,**kwargs):
-        return Load1d.load(self,config,file,'',y_stream,*args,**kwargs)
-    def plot(self, **kwargs):
-        return Load1d.plot(self, xlabel ='Point #', ylabel='Value', plot_width = 1200, plot_height = 800,**kwargs)
-    def compare(self,plot_object):
-        for i in range(len(plot_object.data)):
-            SimpleLoader.loadObj(self, plot_object, i)
-        return SimpleLoader
+        return LoadHistogram.plot(self, plot_width = 900, plot_height = 600,**kwargs)
 
 class XESLoader(Load1d):
     def load(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -46,6 +190,7 @@ class XESLoader(Load1d):
             x_stream = '[None]'
         return Load1d.load(self,config,file,x_stream,y_stream,*args,**kwargs)
     def add(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -56,6 +201,7 @@ class XESLoader(Load1d):
             x_stream = '[None]'
         return Load1d.add(self,config,file,x_stream,y_stream,*args,**kwargs)
     def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -65,6 +211,7 @@ class XESLoader(Load1d):
             x_stream = '[None]'
         return Load1d.subtract(self,config,file,x_stream,y_stream,*args,**kwargs)
     def background(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -77,11 +224,12 @@ class XESLoader(Load1d):
         for i in range(len(plot_object.data)):
             XESLoader.loadObj(self, plot_object, i)
         return XESLoader
-    def plot(self, **kwargs):
-        return Load1d.plot(self, x_axis_label='Emission Energy [eV]', y_axis_label='Counts', plot_width = 1200, plot_height = 800,**kwargs)
+    def plot(self, linewidth = 2, x_axis_label='Emission Energy [eV]', y_axis_label='Counts', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
         
 class XEOLLoader(Load1d):
     def load(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -91,6 +239,7 @@ class XEOLLoader(Load1d):
             x_stream = '[None]' 
         return Load1d.load(self,config,file,x_stream,y_stream,*args,**kwargs)
     def add(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -100,6 +249,7 @@ class XEOLLoader(Load1d):
             x_stream = '[None]' 
         return Load1d.add(self,config,file,x_stream,y_stream,*args,**kwargs)
     def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -109,6 +259,7 @@ class XEOLLoader(Load1d):
             x_stream = '[None]' 
         return Load1d.subtract(self,config,file,x_stream,y_stream,*args,**kwargs)
     def background(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -117,50 +268,62 @@ class XEOLLoader(Load1d):
         else:
             x_stream = '[None]' 
         return Load1d.background(self,config,file,x_stream,y_stream,*args,**kwargs)
-    def plot(self, **kwargs):
-        XESLoader.plot_legend(self,'top_left')
-        return Load1d.plot(self, x_axis_label='Wavelength [nm]', y_axis_label='Counts', plot_width = 1200, plot_height = 800,**kwargs)
+    def compare(self,plot_object):
+        for i in range(len(plot_object.data)):
+            XEOLLoader.loadObj(self, plot_object, i)
+        return XEOLLoader
+    def plot(self, linewidth = 2, x_axis_label='Wavelength [nm]', y_axis_label='Counts', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
    
     
 class XASLoader(Load1d):
-    def load(self,config,file,y_stream,*args,**kwargs):
+    def load(self,config,file,y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
         return Load1d.load(self,config,file,'Energy',y_stream,*args,**kwargs)
     def add(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load1d.add(self,config,file,'Energy',y_stream,*args,**kwargs)
     def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load1d.subtract(self,config,file,'Energy',y_stream,*args,**kwargs)
     def background(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load1d.background(self,config,file,'Energy',y_stream,*args,**kwargs)
     def compare(self,plot_object):
         for i in range(len(plot_object.data)):
             XASLoader.loadObj(self, plot_object, i)
         return XASLoader
-    def plot(self, **kwargs):
-        return Load1d.plot(self, x_axis_label='Excitation Energy [eV]', y_axis_label='Intensity', plot_width = 1200, plot_height = 800,**kwargs)
+    def plot(self, linewidth = 2, x_axis_label='Excitation Energy [eV]', y_axis_label='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
     
 class PFYLoader(Object2dReduce):
     def load(self,config,file, y_stream,*args, **kwargs):
-        PFY_Image = Load2d()
-        data_args = y_stream.split('[')
-        if(len(data_args) > 1):
-            data_args2 = data_args[1].split(']')
-            y_stream_mod = data_args[0] + data_args2[1]
-        PFY_Image.load(config,file,'Energy',y_stream_mod,*args,**kwargs)
-        if(len(data_args2) > 1):
-            data_args3 = data_args2[0].split(',')
-            y_range1 = data_args3[0].split(':')
-            y_min1 = float(min(y_range1))
-            y_max1 = float(max(y_range1))
-            x_min = float(min(PFY_Image.data[0][args[0]].new_x))
-            y_range2 = data_args3[1].split(':')
-            y_min2 = float(min(y_range2))
-            y_max2 = float(max(y_range2))
-            x_max = float(max(PFY_Image.data[0][args[0]].new_x))
-        Object2dReduce.load(self, PFY_Image,0,*args)
-        Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
-        self.data[len(self.data)-1][0].legend = 'S' + str(args[0]) + str(y_stream)
+        file = hdf5FileFixer(file)
+        object_i = 0
+        for scan_i in args:
+            PFY_Image = Load2d()
+            data_args = y_stream.split('[')
+            if(len(data_args) > 1):
+                data_args2 = data_args[1].split(']')
+                y_stream_mod = data_args[0] + data_args2[1]
+            PFY_Image.load(config,file,'Energy',y_stream_mod,scan_i, **kwargs)
+            if(len(data_args2) > 1):
+                data_args3 = data_args2[0].split(',')
+                y_range1 = data_args3[0].split(':')
+                y_min1 = float(min(y_range1))
+                y_max1 = float(max(y_range1))
+                x_min = float(min(PFY_Image.data[0][scan_i].new_x))
+                y_range2 = data_args3[1].split(':')
+                y_min2 = float(min(y_range2))
+                y_max2 = float(max(y_range2))
+                x_max = float(max(PFY_Image.data[0][scan_i].new_x))
+            Object2dReduce.load(self, PFY_Image,0,scan_i)
+            Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
+            self.data[len(self.data)-1][0].legend = str(len(self.data)) + '-S' + str(scan_i) + str(y_stream)
+            object_i+=1
         return Object2dReduce
     def add(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
         PFY_Image = Load2d()
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
@@ -180,12 +343,13 @@ class PFYLoader(Object2dReduce):
         #PFY_Spectrum = Object2dReduce()
         Object2dReduce.load(self, PFY_Image,0,0)
         Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
-        self.data[len(self.data)-1][0].legend = 'S' + str(args[0])
+        self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
         for i in range(1, len(args)):
             self.data[len(self.data)-1][0].legend += '+' + str(args[i])
         self.data[len(self.data)-1][0].legend += str(y_stream)
         return Object2dReduce
     def subtract(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
         PFY_Image = Load2d()
         data_args = y_stream.split('[')
         if(len(data_args) > 1):
@@ -214,27 +378,28 @@ class PFYLoader(Object2dReduce):
         for i in range(len(plot_object.data)):
             PFYLoader.loadObj(self, plot_object, i)
         return PFYLoader
-    def plot(self, x_axis_label='Excitation Energy [eV]', y_axis_label='Intensity', plot_width = 1200, plot_height = 800, **kwargs):
-        return Object2dReduce.plot(self, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height, **kwargs)
+    def plot(self, linewidth = 2, x_axis_label='Excitation Energy [eV]', y_axis_label='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
 
 class EEMSLoader(Load2d):
     def load(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load2d.load(self,config,file,'Energy',y_stream,*args,**kwargs)
     def add(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load2d.add(self,config,file,'Energy',y_stream,*args,**kwargs)
     def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load2d.subtract(self,config,file,'Energy',y_stream,*args,**kwargs)
     def background(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         return Load2d.background(self,config,file,'Energy',y_stream,*args,**kwargs)
     def plot(self, **kwargs):
         return Load2d.plot(self, xlabel='Excitation Energy [eV]', ylabel='Emission Energy [eV]', plot_width = 1200, plot_height = 800,**kwargs)
-        
-class MESHLoader(LoadHistogram):
-    def plot(self, **kwargs):
-        return LoadHistogram.plot(self, plot_width = 1200, plot_height = 800,**kwargs)
  
 class RIXSMapper(Object2dTransform):
     def load(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream = data_args[0]
         Object2dTransform.load(self,config,file,'Energy',y_stream,*args,**kwargs)
@@ -249,6 +414,7 @@ class RIXSMapper(Object2dTransform):
     
 class ELOSSLoader(Object2dReduce):
     def load(self,config,file, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream = data_args[0]
         RIXS_Image = Object2dTransform()
@@ -266,6 +432,7 @@ class ELOSSLoader(Object2dReduce):
     
 class ETLoader(Object2dReduce):
     def load(self,config,file, y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream = data_args[0]
         RIXS_Image = Object2dTransform()
@@ -284,14 +451,17 @@ class ETLoader(Object2dReduce):
     
 class MCPLoader(Load2d):
     def load(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         y_stream = y_stream + '[None:None,None:None]'
         x_stream = '[None]'
         return Load2d.load(self,config,file,x_stream,y_stream,*args,**kwargs)
     def add(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         y_stream = y_stream + '[None:None,None:None]'
         x_stream = '[None]'
         return Load2d.add(self,config,file,x_stream,y_stream,*args,**kwargs)
     def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
         y_stream = y_stream + '[None:None,None:None]'
         x_stream = '[None]'
         return Load2d.subtract(self,config,file,x_stream,y_stream,*args,**kwargs)
@@ -316,14 +486,16 @@ RSXS.mca('SDDA_N','Data/sdd_arm_mca','Data/sdd_arm_scale','Data/i0')
 
 #IMAGE Detectors
 RSXS.stack('mcpIMG','Data/mcp_a_img','Data/mcp_tth_scale','Data/mcp_detz_scale',None)
+RSXS.stack('mcpIMG_N','Data/mcp_a_img',None,None,None)
 
 
 
-#Log Book for RIXS ES
+#Log Book for RSXS ES
 rsxs_log = dict()
 rsxs_log['Command'] = 'command'
-rsxs_log['Sample'] = 'Endstation/Sample/Name'
-rsxs_log['Comments'] = ('comment_01','comment_02','comment_03','comment_04','comment_05','comment_06','comment_07','comment_08','comment_09','comment_10')
+#rsxs_log['Sample'] = 'Endstation/Sample/Name'
+rsxs_log['Comments'] = ('comment_01','comment_02','comment_03','comment_04','comment_05',
+                        'comment_06','comment_07','comment_08','comment_09','comment_10')
 rsxs_log['X'] = ['Endstation/Motors/x', 3]
 rsxs_log['Y'] = ['Endstation/Motors/y', 3]
 rsxs_log['Z'] = ['Endstation/Motors/z', 3]
@@ -332,13 +504,18 @@ rsxs_log['2Theta'] = ['Endstation/Motors/tth', 3]
 rsxs_log['Chi'] = ['Endstation/Motors/chi',3]
 rsxs_log['Phi'] = ['Endstation/Motors/phi',3]
 rsxs_log['Detz'] = ['Endstation/Motors/detz',3]
+rsxs_log['H'] = ['Endstation/Motors/H', 4]
+rsxs_log['K'] = ['Endstation/Motors/K', 4]
+rsxs_log['L'] = ['Endstation/Motors/L', 4]
 rsxs_log['Temperature'] = ['Endstation/Counters/t_k', 2]
 rsxs_log['Energy'] = ['Beamline/Monochromator/beam',2]
 rsxs_log['Exit Slit'] = ['Beamline/Apertures/Exit_Slit/vert_gap',1]
 rsxs_log['Flux'] = 'Beamline/flux'
 rsxs_log['Dwell'] = ['Endstation/Counters/sec', 1]
-rsxs_log['Mirror/Grating'] = ('/Beamline/Monochromator/grating','/Beamline/Monochromator/mirror')
-rsxs_log['Polar/Harmonic'] = ('Beamline/Source/EPU/polarization', 'Beamline/Source/EPU/harmonic')
+rsxs_log['Mirror/Grating'] = ('/Beamline/Monochromator/grating',
+                              '/Beamline/Monochromator/mirror')
+rsxs_log['Polar/Harmonic'] = ('Beamline/Source/EPU/polarization', 
+                              'Beamline/Source/EPU/harmonic')
 rsxs_log['Status'] = 'status'
 rsxs_log['Date'] = 'date'
 
@@ -374,7 +551,8 @@ rixs_log = dict()
 
 rixs_log['Command'] = 'command'
 rixs_log['Sample'] = 'Endstation/Sample/Name'
-rixs_log['Comments'] = ('comment_01','comment_02','comment_03','comment_04','comment_05','comment_06','comment_07','comment_08','comment_09','comment_10')
+rixs_log['Comments'] = ('comment_01','comment_02','comment_03','comment_04','comment_05',
+                        'comment_06','comment_07','comment_08','comment_09','comment_10')
 rixs_log['Horz (ssh)'] = ['Endstation/Motors/ssh',2]
 rixs_log['Vert (ssv)'] = ['Endstation/Motors/ssv',2]
 rixs_log['Depth (ssd)'] = ['Endstation/Motors/ssd',2]
@@ -384,8 +562,10 @@ rixs_log['Energy'] = ['Beamline/Monochromator/beam',2]
 rixs_log['Exit Slit'] = ['Beamline/Apertures/Exit_Slit/vert_gap',1]
 rixs_log['Flux'] = 'Beamline/flux'
 rixs_log['Dwell'] = ['Endstation/Counters/sec', 1]
-rixs_log['Mirror/Grating'] = ('/Beamline/Monochromator/grating','/Beamline/Monochromator/mirror')
-rixs_log['Polar/Harmonic'] = ('Beamline/Source/EPU/polarization', 'Beamline/Source/EPU/harmonic')
+rixs_log['Mirror/Grating'] = ('/Beamline/Monochromator/grating',
+                              '/Beamline/Monochromator/mirror')
+rixs_log['Polar/Harmonic'] = ('Beamline/Source/EPU/polarization', 
+                              'Beamline/Source/EPU/harmonic')
 rixs_log['XES Energy'] = ['Endstation/Detectors/XES/mcp_mca_xes_energy', 2]
 rixs_log['XES Grating'] = 'Endstation/Detectors/XES/mcp_mca_xes_grating'
 rixs_log['XES Offset'] = ['Endstation/Detectors/XES/mcp_mca_xes_offset', 1]
