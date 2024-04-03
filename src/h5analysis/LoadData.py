@@ -591,26 +591,36 @@ class Load1d:
 
         return dfT, files
 
-    def export(self, filename):
+    def export(self, filename, split_files=False):
         """
         Export and write data to specified file.
 
         Parameters
         ----------
         filename : string
+        split_files: Boolean
+            Sets whether scans are exported appended to one file (False), or separately (True)
         """
         dfT, files = self.get_data()
 
-        # Open file.
-        with open(f"{filename}.csv", 'w') as f:
-            string = '# '
-            # Generate list of files for legend.
-            for idx, file in enumerate(files):
-                string += f"F{idx+1} {file},"
-            string += '\n'
-            f.write(string)
-            # Write pandas dataframe to file.
-            dfT.to_csv(f, index=False, lineterminator='\n')
+        if split_files == False:
+
+            # Open file.
+            with open(f"{filename}.csv", 'w') as f:
+                string = '# '
+                # Generate list of files for legend.
+                for idx, file in enumerate(files):
+                    string += f"F{idx+1} {file},"
+                string += '\n'
+                f.write(string)
+                # Write pandas dataframe to file.
+                dfT.to_csv(f, index=False, lineterminator='\n')
+
+        else:
+            for i in range(0,int(len(dfT.columns)/2)):
+                j = i+1
+                df2 = dfT[[dfT.columns[2*i],dfT.columns[2*i+1]]]
+                df2.to_csv(f'{filename}_{j}.csv',index=False, lineterminator='\n')
 
         print(f"Successfully wrote DataFrame to {filename}.csv")
 
@@ -1108,12 +1118,15 @@ class Load2d:
             Actual gridded detector image.
             1) Rewind memory with g.seek(0)
             2) Load with numpy.genfromtxt(g,skip_header=4)
+        raw_data: list
+            List of lists with series data, series header, and matrix_data
         """
         # Set up the data frame and the two string objects for export
         f = io.StringIO()
         g = io.StringIO()
         series_data = list()
         series_header = list()
+        matrix_data = list()
 
         for i, val in enumerate(self.data):
             for k, v in val.items():
@@ -1146,29 +1159,44 @@ class Load2d:
 
                 g.write(f"=== {v.zlabel} ===\n")
                 np.savetxt(g, v.new_z, fmt="%.9g")
+                matrix_data.append(v.new_z)
 
-            return f, g
+            
+        raw_data = [series_data,series_header,matrix_data]
 
-    def export(self, filename):
+        return f, g, raw_data
+
+    def export(self, filename, split_files=False):
         """
         Export and write data to specified file.
 
         Parameters
         ----------
         filename : string
+        split_files: Boolean
+            Sets whether scans are exported appended to one file (False), or separately (True)
         """
-        f, g, = self.get_data()
+        f, g, raw_data = self.get_data()
 
-        # Dump both strings in file.
-        # Need to rewind memory location of String.IO to move to beginning.
-        # Copy string content to file with shutil.
-        with open(f"{filename}.txt_scale", "a") as scales:
-            f.seek(0)
-            shutil.copyfileobj(f, scales)
+        if split_files == False:
+            # Dump both strings in file.
+            # Need to rewind memory location of String.IO to move to beginning.
+            # Copy string content to file with shutil.
+            with open(f"{filename}.txt_scale", "a") as scales:
+                f.seek(0)
+                shutil.copyfileobj(f, scales)
 
-        with open(f"{filename}.txt_matrix", "a") as matrix:
-            g.seek(0)
-            shutil.copyfileobj(g, matrix)
+            with open(f"{filename}.txt_matrix", "a") as matrix:
+                g.seek(0)
+                shutil.copyfileobj(g, matrix)
+
+        else:
+            # iterate over matrices
+            for i,m in enumerate(raw_data[2]):
+                j = i+1
+                np.savetxt(f"{filename}_{j}.txt_matrix", m)
+                np.savetxt(f"{filename}_{j}.txt_scale1", raw_data[0][2*i],header=raw_data[1][2*i])
+                np.savetxt(f"{filename}_{j}.txt_scale2", raw_data[0][2*i+1],header=raw_data[1][2*i+1])
 
         print(f"Successfully wrote Image data to {filename}.txt")
 
