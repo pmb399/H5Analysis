@@ -267,13 +267,13 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                 else:
                     raise Exception(f"Wrong z dimensions ({z})")
                 
-            # There are no ROI specified
+            # There are no ROIs specified
             else:
                 # Need to require MCA data with dim = 2
                 if len(np.shape(all_data[z])) == 2:
                     # Set the corresponding scale as y-data
-                    if config.h5dict[z]["y_label"] != None:
-                        data[arg].ylabel = config.h5dict[z]["y_label"]
+                    if config.h5dict[z]["x_label"] != None:
+                        data[arg].ylabel = config.h5dict[z]["x_label"]
                     else:
                         data[arg].ylabel = f"{z}_scale"
                     data[arg].y_data = all_data[f"{z}_scale"]
