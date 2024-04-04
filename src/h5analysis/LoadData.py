@@ -175,15 +175,13 @@ class Load1d:
         # Subtract the background from all data objects
         for i, val in enumerate(self.data):
             for k, v in val.items():
-                # Interpolate the x data onto the background
-                new_x = bg_x
-                int_y = interp1d(v.x_stream,v.y_stream,fill_value='extrapolate')(new_x)
+                # Interpolate the background onto the x data
+                int_y = interp1d(bg_x,bg_y,fill_value=0,bounds_error=False)(v.x_stream)
 
                 # Remove data
-                new_y = np.subtract(int_y,bg_y)
+                new_y = np.subtract(v.y_stream,int_y)
 
                 # Overwrite streams in object
-                v.x_stream = new_x
                 v.y_stream = new_y
 
                 # Update dictionary with new object
@@ -770,7 +768,7 @@ class Load2d:
         
         self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
 
-    def background(self,config, file, x_stream, detector, *args, **kwargs):
+    def background(self,config, file, x_stream, y_stream, *args, axis='y', **kwargs):
         """ Subtracts the defined data from all loaded data
 
         Parameters
@@ -781,11 +779,13 @@ class Load2d:
             file name
         x_stream: string
             h5 key or alias of 1d stream
-        detector: string
-            alias of the MCA detector
+        y_stream: string
+            h5 key or alias of 1d stream
         *args: int
             scans
         **kwargs
+            axis: string
+                <<x>> or <<y>> axis for subtraction direction
             norm: boolean
                 normalizes to [0,1]
             xoffset: list
@@ -808,37 +808,61 @@ class Load2d:
 
         # Get the background data
         if len(args) == 1:
-            background = load_2d(config, file, x_stream, detector, args[0], **kwargs)
-            bg_x = background[args[0]].new_x
-            bg_y = background[args[0]].new_y
-            bg_z = background[args[0]].new_z
+            background = load_1d(config, file, x_stream, y_stream, args[0], **kwargs)
+            bg_x = background[args[0]].x_stream
+            bg_y = background[args[0]].y_stream
         else:
-            background = ImageAddition_2d(config,file, x_stream, detector, *args, **kwargs)
-            bg_x = background[0].new_x
-            bg_y = background[0].new_y
-            bg_z = background[0].new_z
+            background = ScanAddition(config, file, x_stream, y_stream, *args, **kwargs)
+            bg_x = background[0].x_stream
+            bg_y = background[0].y_stream
+
+        if axis == 'y':
+            # Subtract the background from all data objects
+            for i, val in enumerate(self.data):
+                for k, v in val.items():
+                    
+                    # Interpolate background and generate 2d array
+                    int_axis = v.new_y
+                    arr_subtract = interp1d(bg_x,bg_y,fill_value=0,bounds_error=False)(int_axis)
+                    img_subtract = np.transpose(np.repeat(arr_subtract[None,...],len(v.new_x),axis=0))
+                    
+                    # Remove data
+                    new_z = np.subtract(v.new_z,img_subtract)
+
+                    # Overwrite streams in object
+                    v.new_z = new_z
+                    
+                    # Update dictionary with new object
+                    val[k] = v
+
+                # Update data list with updated dictionary
+                self.data[i] = val
+
+        elif axis == 'x':
+            # Subtract the background from all data objects
+            for i, val in enumerate(self.data):
+                for k, v in val.items():
+                    
+                    # Interpolate background and generate 2d array
+                    int_axis = v.new_x
+                    arr_subtract = interp1d(bg_x,bg_y,fill_value=0,bounds_error=False)(int_axis)
+                    img_subtract = np.repeat(arr_subtract[None,...],len(v.new_y),axis=0)
+                    
+                    # Remove data
+                    new_z = np.subtract(v.new_z,img_subtract)
+
+                    # Overwrite streams in object
+                    v.new_z = new_z
+                    
+                    # Update dictionary with new object
+                    val[k] = v
+
+                # Update data list with updated dictionary
+                self.data[i] = val
+
+        else:
+            raise Exception(f"Specified axis {axis} unknown.")
         
-        # Subtract the background from all data objects
-        for i, val in enumerate(self.data):
-            for k, v in val.items():
-                # Interpolate the x,y data onto the background
-                new_x = bg_x
-                new_y = bg_y
-                int_z = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
-
-                # Remove data
-                new_z = np.subtract(int_z,bg_z)
-
-                # Overwrite streams in object
-                v.new_x = new_x
-                v.new_y = new_y
-                v.new_z = new_z
-
-                # Update dictionary with new object
-                val[k] = v
-
-            # Update data list with updated dictionary
-            self.data[i] = val
 
     def add(self, config, file, x_stream, detector, *args, **kwargs):
         """
