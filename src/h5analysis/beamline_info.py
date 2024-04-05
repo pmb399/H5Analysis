@@ -235,13 +235,13 @@ def get_spreadsheet(config, file, columns, average=True):
                     df[header] = df[header].apply(
                         lambda x: apply_rounding_tuple(x, decimals))
                 except:
-                    warnings.warn(f'Rounding cannot be applied to {header}')
+                    pass
             else:
                 try:
                     df[header] = df[header].apply(
                         lambda x: apply_rounding(x, decimals))
                 except:
-                    warnings.warn(f'Rounding cannot be applied to {header}')
+                    pass
 
     return df
 
