@@ -11,7 +11,7 @@ from lmfit.models import GaussianModel, QuadraticModel, ConstantModel, LinearMod
 from .LoadData import Load1d, Load2d
 
 # Import simplemath and datautil
-from .simplemath import grid_data_mesh, handle_eval, grid_data, apply_offset, apply_savgol, bin_data
+from .simplemath import handle_eval, grid_data, apply_offset, apply_savgol, bin_data
 from .datautil import mca_roi, get_indices, get_indices_polygon
 
 class Object1dAddSubtract(Load1d):
@@ -706,12 +706,14 @@ class Object2dReduce(Load1d):
             sum = mca_roi(z,idx_low,idx_high,1)
             MASTER_x = y
             data[0].xlabel = self.MCADataObject.ylabel
+            data[0].xaxis_label = [self.MCADataObject.ylabel]
 
         elif integration_axis == 'y':
             idx_low, idx_high = get_indices(roi,y)
             sum = mca_roi(z,idx_low,idx_high,0)
             MASTER_x = x
             data[0].xlabel = self.MCADataObject.xlabel
+            data[0].xaxis_label = [self.MCADataObject.xlabel]
 
         else:
             raise Exception('Specified integration axis not defined.')
@@ -721,6 +723,7 @@ class Object2dReduce(Load1d):
         data[0].y_stream = sum
         data[0].scan = self.MCADataObject.scan
         data[0].ylabel = f"{self.MCADataObject.zlabel} - ROI"
+        data[0].yaxis_label = [f"{self.MCADataObject.zlabel} - ROI"]
         index = len(self.data) + 1
         data[0].legend = f'{index} - S{self.MCADataObject.scan} - 2d ROI reduction'
         data[0].filename = self.MCADataObject.filename
@@ -787,6 +790,7 @@ class Object2dReduce(Load1d):
 
             # Set labels and independent data stream
             data[0].xlabel = self.MCADataObject.ylabel
+            data[0].xaxis_label = [self.MCADataObject.ylabel]
             MASTER_x = y
 
         elif integration_axis == 'y':
@@ -808,7 +812,8 @@ class Object2dReduce(Load1d):
 
                 sum = np.array(pXES)
 
-            data[0].xlabel = self.MCADataObject.xlabel                
+            data[0].xlabel = self.MCADataObject.xlabel
+            data[0].xaxis_label = [self.MCADataObject.xlabel]                
             MASTER_x = x
 
         else:
@@ -819,6 +824,7 @@ class Object2dReduce(Load1d):
         data[0].y_stream = sum
         data[0].scan = self.MCADataObject.scan
         data[0].ylabel = f"{self.MCADataObject.zlabel} - ROI"
+        data[0].yaxis_label = [f"{self.MCADataObject.zlabel} - ROI"]
         index = len(self.data) + 1 
         data[0].legend = f'{index} - S{self.MCADataObject.scan} - 2d polygon reduction'
         data[0].filename = self.MCADataObject.filename
