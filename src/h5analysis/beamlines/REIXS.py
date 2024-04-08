@@ -174,7 +174,19 @@ class StackLoader(Load3d):
     def plot(self, plot_width = 900, plot_height = 600,**kwargs):
         return Load3d.plot(self, plot_width = plot_width, plot_height = plot_height, **kwargs) 
     
-class MESHLoader(LoadHistogram):
+class MeshLoader(LoadHistogram):
+    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        file = hdf5FileFixer(file)
+        return LoadHistogram.load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+    def add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        file = hdf5FileFixer(file)
+        return LoadHistogram.add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+    def subtract(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        file = hdf5FileFixer(file)
+        return LoadHistogram.subtract(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        file = hdf5FileFixer(file)
+        return LoadHistogram.stitch(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs)
     def plot(self, **kwargs):
         return LoadHistogram.plot(self, plot_width = 900, plot_height = 600,**kwargs)
 
@@ -224,8 +236,8 @@ class XESLoader(Load1d):
         for i in range(len(plot_object.data)):
             XESLoader.loadObj(self, plot_object, i)
         return XESLoader
-    def plot(self, linewidth = 2, x_axis_label='Emission Energy [eV]', y_axis_label='Counts', plot_width = 900, plot_height = 600, **kwargs):
-        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
+    def plot(self, linewidth = 2, xlabel='Emission Energy [eV]', ylabel='Counts', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, xlabel=xlabel, ylabel=ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
         
 class XEOLLoader(Load1d):
     def load(self,config,file,y_stream,*args,**kwargs):
@@ -272,8 +284,8 @@ class XEOLLoader(Load1d):
         for i in range(len(plot_object.data)):
             XEOLLoader.loadObj(self, plot_object, i)
         return XEOLLoader
-    def plot(self, linewidth = 2, x_axis_label='Wavelength [nm]', y_axis_label='Counts', plot_width = 900, plot_height = 600, **kwargs):
-        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
+    def plot(self, linewidth = 2, xlabel='Wavelength [nm]', ylabel='Counts', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, xlabel=xlabel, ylabel=ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
    
     
 class XASLoader(Load1d):
@@ -293,101 +305,397 @@ class XASLoader(Load1d):
         for i in range(len(plot_object.data)):
             XASLoader.loadObj(self, plot_object, i)
         return XASLoader
-    def plot(self, linewidth = 2, x_axis_label='Excitation Energy [eV]', y_axis_label='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
-        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
+    def plot(self, linewidth = 2, xlabel='Excitation Energy [eV]', ylabel='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, xlabel=xlabel, ylabel=ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
     
 class PFYLoader(Object2dReduce):
     def load(self,config,file, y_stream,*args, **kwargs):
         file = hdf5FileFixer(file)
-        object_i = 0
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
         for scan_i in args:
+            #Load Image for processing
             PFY_Image = Load2d()
-            data_args = y_stream.split('[')
+            PFY_Image.load(config,file,'Energy',y_stream,scan_i, **kwargs)
+            #Load total 1D spectra for intensity comparison
+            PFY_Spectra = Load1d()
+            PFY_Spectra.load(config,file,'Energy',y_stream,scan_i)
+            #Make another image, but use it for normalization
+            XAS_Image = Object2dReduce()
+            XAS_Image.load(PFY_Image,0,scan_i)
+            #Reference is the max of the 1D data
+            max_old = PFY_Spectra.data[0][scan_i].y_stream.max()
+            #Mx of  the interopolated image and compare for 1D max
+            XAS_Image.roi('y', roi = (None,None))
+            max_new = XAS_Image.data[0][0].y_stream.max()
+            Object2dReduce.load(self, PFY_Image,0,scan_i)
             if(len(data_args) > 1):
-                data_args2 = data_args[1].split(']')
-                y_stream_mod = data_args[0] + data_args2[1]
-            PFY_Image.load(config,file,'Energy',y_stream_mod,scan_i, **kwargs)
+                data_args2 = data_args1[0].split(',')
+                if(len(data_args2) > 1):
+                    y_range1 = data_args2[0].split(':')
+                    y_min1 = float(min(y_range1))
+                    y_max1 = float(max(y_range1))
+                    x_min = float(min(PFY_Image.data[0][scan_i].new_x))
+                    y_range2 = data_args2[1].split(':')
+                    y_min2 = float(min(y_range2))
+                    y_max2 = float(max(y_range2))
+                    x_max = float(max(PFY_Image.data[0][scan_i].new_x))
+                    Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
+                else:
+                    y_range = data_args2[0].split(':')
+                    y_min = float(min(y_range))
+                    y_max = float(max(y_range))
+                    Object2dReduce.roi(self,'y', roi =  (y_min,y_max))
+            else:
+                Object2dReduce.roi(self,'y', roi =  (None,None))
+            scale_fact = max_old/max_new
+            self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+            self.data[len(self.data)-1][0].legend = str(len(self.data)) + '-S' + str(scan_i) + '_Energy_' + str(y_stream_orig)
+        return Object2dReduce
+    def stitch(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        #Load Image for processing
+        PFY_Image = Load2d()
+        PFY_Image.stitch(config,file,'Energy',y_stream, *args, **kwargs)
+        #Load total 1D spectra for intensity comparison
+        PFY_Spectra = Load1d()
+        PFY_Spectra.stitch(config,file,'Energy',y_stream, *args)
+        #Make another image, but use it for normalization
+        XAS_Image = Object2dReduce()
+        XAS_Image.load(PFY_Image,0,0)
+        #Reference is the max of the 1D data
+        max_old = max(PFY_Spectra.data[0][0].y_stream)
+        #Mx of  the interopolated image and compare for 1D max
+        XAS_Image.roi('y', roi = (None,None))
+        max_new = XAS_Image.data[0][0].y_stream.max()
+        Object2dReduce.load(self, PFY_Image,0,0)
+        if(len(data_args) > 1):
+            data_args2 = data_args1[0].split(',')
             if(len(data_args2) > 1):
-                data_args3 = data_args2[0].split(',')
-                y_range1 = data_args3[0].split(':')
+                y_range1 = data_args2[0].split(':')
                 y_min1 = float(min(y_range1))
                 y_max1 = float(max(y_range1))
-                x_min = float(min(PFY_Image.data[0][scan_i].new_x))
-                y_range2 = data_args3[1].split(':')
+                x_min = float(min(PFY_Image.data[0][0].new_x))
+                y_range2 = data_args2[1].split(':')
                 y_min2 = float(min(y_range2))
                 y_max2 = float(max(y_range2))
-                x_max = float(max(PFY_Image.data[0][scan_i].new_x))
-            Object2dReduce.load(self, PFY_Image,0,scan_i)
-            Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
-            self.data[len(self.data)-1][0].legend = str(len(self.data)) + '-S' + str(scan_i) + str(y_stream)
-            object_i+=1
-        return Object2dReduce
-    def add(self,config,file, y_stream,*args, **kwargs):
-        file = hdf5FileFixer(file)
-        PFY_Image = Load2d()
-        data_args = y_stream.split('[')
-        if(len(data_args) > 1):
-            data_args2 = data_args[1].split(']')
-            y_stream_mod = data_args[0] + data_args2[1]
-        PFY_Image.add(config,file,'Energy',y_stream_mod,*args,**kwargs)
-        if(len(data_args2) > 1):
-            data_args3 = data_args2[0].split(',')
-            y_range1 = data_args3[0].split(':')
-            y_min1 = float(min(y_range1))
-            y_max1 = float(max(y_range1))
-            x_min = float(min(PFY_Image.data[0][0].new_x))
-            y_range2 = data_args3[1].split(':')
-            y_min2 = float(min(y_range2))
-            y_max2 = float(max(y_range2))
-            x_max = float(max(PFY_Image.data[0][0].new_x))
-        #PFY_Spectrum = Object2dReduce()
-        Object2dReduce.load(self, PFY_Image,0,0)
-        Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
+                x_max = float(max(PFY_Image.data[0][0].new_x))
+                Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
+            else:
+                y_range = data_args2[0].split(':')
+                y_min = float(min(y_range))
+                y_max = float(max(y_range))
+                Object2dReduce.roi(self,'y', roi =  (y_min,y_max))
+        else:
+            Object2dReduce.roi(self,'y', roi =  (None,None))
+        scale_fact = max_old/max_new
+        self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
         self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
         for i in range(1, len(args)):
             self.data[len(self.data)-1][0].legend += '+' + str(args[i])
-        self.data[len(self.data)-1][0].legend += str(y_stream)
+        self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
+        return Object2dReduce
+    def add(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        #Load Image for processing
+        PFY_Image = Load2d()
+        PFY_Image.add(config,file,'Energy',y_stream, *args, **kwargs)
+        #Load total 1D spectra for intensity comparison
+        PFY_Spectra = Load1d()
+        PFY_Spectra.add(config,file,'Energy',y_stream, *args)
+        #Make another image, but use it for normalization
+        XAS_Image = Object2dReduce()
+        XAS_Image.load(PFY_Image,0,0)
+        #Reference is the max of the 1D data
+        max_old = PFY_Spectra.data[0][0].y_stream.max()
+        #Mx of  the interopolated image and compare for 1D max
+        XAS_Image.roi('y', roi = (None,None))
+        max_new = XAS_Image.data[0][0].y_stream.max()
+        Object2dReduce.load(self, PFY_Image,0,0)
+        if(len(data_args) > 1):
+            data_args2 = data_args1[0].split(',')
+            if(len(data_args2) > 1):
+                y_range1 = data_args2[0].split(':')
+                y_min1 = float(min(y_range1))
+                y_max1 = float(max(y_range1))
+                x_min = float(min(PFY_Image.data[0][0].new_x))
+                y_range2 = data_args2[1].split(':')
+                y_min2 = float(min(y_range2))
+                y_max2 = float(max(y_range2))
+                x_max = float(max(PFY_Image.data[0][0].new_x))
+                Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
+            else:
+                y_range = data_args2[0].split(':')
+                y_min = float(min(y_range))
+                y_max = float(max(y_range))
+                Object2dReduce.roi(self,'y', roi =  (y_min,y_max))
+        else:
+            Object2dReduce.roi(self,'y', roi =  (None,None))
+        scale_fact = max_old/max_new
+        self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+        self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
+        for i in range(1, len(args)):
+            self.data[len(self.data)-1][0].legend += '+' + str(args[i])
+        self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
         return Object2dReduce
     def subtract(self,config,file, y_stream,*args, **kwargs):
         file = hdf5FileFixer(file)
-        PFY_Image = Load2d()
         data_args = y_stream.split('[')
+        y_stream_orig = y_stream
         if(len(data_args) > 1):
-            data_args2 = data_args[1].split(']')
-            y_stream_mod = data_args[0] + data_args2[1]
-        PFY_Image.subtract(config,file,'Energy',y_stream_mod,*args,**kwargs)
-        if(len(data_args2) > 1):
-            data_args3 = data_args2[0].split(',')
-            y_range1 = data_args3[0].split(':')
-            y_min1 = float(min(y_range1))
-            y_max1 = float(max(y_range1))
-            x_min = float(min(PFY_Image.data[0][0].new_x))
-            y_range2 = data_args3[1].split(':')
-            y_min2 = float(min(y_range2))
-            y_max2 = float(max(y_range2))
-            x_max = float(max(PFY_Image.data[0][0].new_x))
-        #PFY_Spectrum = Object2dReduce()
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        #Load Image for processing
+        PFY_Image = Load2d()
+        PFY_Image.subtract(config,file,'Energy',y_stream, *args, **kwargs)
+        #Load total 1D spectra for intensity comparison
+        PFY_Spectra = Load1d()
+        PFY_Spectra.subtract(config,file,'Energy',y_stream, *args)
+        #Make another image, but use it for normalization
+        XAS_Image = Object2dReduce()
+        XAS_Image.load(PFY_Image,0,0)
+        #Reference is the max of the 1D data
+        max_old = PFY_Spectra.data[0][0].y_stream.max()
+        #Mx of  the interopolated image and compare for 1D max
+        XAS_Image.roi('y', roi = (None,None))
+        max_new = XAS_Image.data[0][0].y_stream.max()
         Object2dReduce.load(self, PFY_Image,0,0)
-        Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
-        self.data[len(self.data)-1][0].legend = 'S' + str(args[0])
+        if(len(data_args) > 1):
+            data_args2 = data_args1[0].split(',')
+            if(len(data_args2) > 1):
+                y_range1 = data_args2[0].split(':')
+                y_min1 = float(min(y_range1))
+                y_max1 = float(max(y_range1))
+                x_min = float(min(PFY_Image.data[0][0].new_x))
+                y_range2 = data_args2[1].split(':')
+                y_min2 = float(min(y_range2))
+                y_max2 = float(max(y_range2))
+                x_max = float(max(PFY_Image.data[0][0].new_x))
+                Object2dReduce.polygon(self, 'y', [(x_min,y_min1),(x_min,y_max1),(x_max, y_max2),(x_max,y_min2)], exact = False)
+            else:
+                y_range = data_args2[0].split(':')
+                y_min = float(min(y_range))
+                y_max = float(max(y_range))
+                Object2dReduce.roi(self,'y', roi =  (y_min,y_max))
+        else:
+            Object2dReduce.roi(self,'y', roi =  (None,None))
+        scale_fact = max_old/max_new
+        self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+        self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
         for i in range(1, len(args)):
             self.data[len(self.data)-1][0].legend += '-' + str(args[i])
-        self.data[len(self.data)-1][0].legend += str(y_stream)
+        self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
         return Object2dReduce
     def compare(self,plot_object):
         for i in range(len(plot_object.data)):
-            PFYLoader.loadObj(self, plot_object, i)
-        return PFYLoader
-    def plot(self, linewidth = 2, x_axis_label='Excitation Energy [eV]', y_axis_label='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
-        return Load1d.plot(self, linewidth = linewidth, x_axis_label=x_axis_label, y_axis_label=y_axis_label, plot_width = plot_width, plot_height = plot_height,**kwargs)
+            Load1d.loadObj(self, plot_object, i)
+        return Load1d
+    def plot(self, linewidth = 2, xlabel='Excitation Energy [eV]', ylabel='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, xlabel=xlabel, ylabel=ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
 
-class EEMSLoader(Load2d):
+
+class ELOSSLoader(Object2dReduce):
+    def load(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        for scan_i in args:
+            #Load Image for processing
+            RIXS_Image = Object2dTransform()
+            RIXS_Image.load(config,file,'Energy',y_stream,scan_i, **kwargs)
+            #Load total 1D spectra for intensity comparison
+            RIXS_Spectra = Load1d()
+            RIXS_Spectra.load(config,file,'[None]',y_stream,scan_i)
+            #Make another image, but use it for normalization
+            XES_Image = Object2dReduce()
+            XES_Image.load(RIXS_Image,0,scan_i)
+            #Reference is the max of the 1D data
+            max_old = RIXS_Spectra.data[0][scan_i].y_stream.max()
+            #Mx of  the interopolated image and compare for 1D max
+            XES_Image.roi('x', roi = (None,None))
+            max_new = XES_Image.data[0][0].y_stream.max()
+            if(len(data_args) > 1):
+                data_args2 = data_args1[0].split(':')
+                x_min = float(min(data_args2))
+                x_max = float(max(data_args2))
+                RIXS_Image.transform('x-y', xlim = (x_min,x_max))
+                Object2dReduce.load(self, RIXS_Image,0, scan_i)
+                Object2dReduce.roi(self,'x', roi =  (x_min,x_max))
+            else:
+                RIXS_Image.transform('x-y')
+                Object2dReduce.load(self, RIXS_Image,0, scan_i)
+                Object2dReduce.roi(self,'x', roi =  (None,None))
+            scale_fact = max_old/max_new
+            self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+            self.data[len(self.data)-1][0].legend = str(len(self.data)) + '-S' + str(scan_i) + '_Energy_' + str(y_stream_orig)
+        return Object2dReduce
+    def stitch(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        #Load Image for processing
+        RIXS_Image = Object2dTransform()
+        RIXS_Image.stitch(config,file,'Energy',y_stream,*args, **kwargs)
+        #Load total 1D spectra for intensity comparison
+        RIXS_Spectra = Load1d()
+        RIXS_Spectra.stitch(config,file,'[None]',y_stream,*args)
+        #Make another image, but use it for normalization
+        XES_Image = Object2dReduce()
+        XES_Image.load(RIXS_Image,0,0)
+        #Reference is the max of the 1D data
+        max_old = max(RIXS_Spectra.data[0][0].y_stream)
+        #Mx of  the interopolated image and compare for 1D max
+        XES_Image.roi('x', roi = (None,None))
+        max_new = XES_Image.data[0][0].y_stream.max()
+        if(len(data_args) > 1):
+            data_args2 = data_args1[0].split(':')
+            x_min = float(min(data_args2))
+            x_max = float(max(data_args2))
+            RIXS_Image.transform('x-y', xlim = (x_min,x_max))
+            Object2dReduce.load(self, RIXS_Image,0, 0)
+            Object2dReduce.roi(self,'x', roi =  (x_min,x_max))
+        else:
+            RIXS_Image.transform('x-y')
+            Object2dReduce.load(self, RIXS_Image,0, 0)
+            Object2dReduce.roi(self,'x', roi =  (None,None))
+        scale_fact = max_old/max_new
+        self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+        self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
+        for i in range(1, len(args)):
+            self.data[len(self.data)-1][0].legend += '+' + str(args[i])
+        self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
+        return Object2dReduce
+    def add(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        #Load Image for processing
+        RIXS_Image = Object2dTransform()
+        RIXS_Image.add(config,file,'Energy',y_stream,*args, **kwargs)
+        #Load total 1D spectra for intensity comparison
+        RIXS_Spectra = Load1d()
+        RIXS_Spectra.add(config,file,'[None]',y_stream,*args)
+        #Make another image, but use it for normalization
+        XES_Image = Object2dReduce()
+        XES_Image.load(RIXS_Image,0,0)
+        #Reference is the max of the 1D data
+        max_old = RIXS_Spectra.data[0][0].y_stream.max()
+        #Mx of  the interopolated image and compare for 1D max
+        XES_Image.roi('x', roi = (None,None))
+        max_new = XES_Image.data[0][0].y_stream.max()
+        if(len(data_args) > 1):
+            data_args2 = data_args1[0].split(':')
+            x_min = float(min(data_args2))
+            x_max = float(max(data_args2))
+            RIXS_Image.transform('x-y', xlim = (x_min,x_max))
+            Object2dReduce.load(self, RIXS_Image,0, 0)
+            Object2dReduce.roi(self,'x', roi =  (x_min,x_max))
+        else:
+            RIXS_Image.transform('x-y')
+            Object2dReduce.load(self, RIXS_Image,0, 0)
+            Object2dReduce.roi(self,'x', roi =  (None,None))
+        scale_fact = max_old/max_new
+        self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+        self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
+        for i in range(1, len(args)):
+            self.data[len(self.data)-1][0].legend += '+' + str(args[i])
+        self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
+        return Object2dReduce
+    def subtract(self,config,file, y_stream,*args, **kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        #Load Image for processing
+        RIXS_Image = Object2dTransform()
+        RIXS_Image.subtract(config,file,'Energy',y_stream,*args, **kwargs)
+        #Load total 1D spectra for intensity comparison
+        RIXS_Spectra = Load1d()
+        RIXS_Spectra.subtract(config,file,'[None]',y_stream,*args)
+        #Make another image, but use it for normalization
+        XES_Image = Object2dReduce()
+        XES_Image.load(RIXS_Image,0,0)
+        #Reference is the max of the 1D data
+        max_old = RIXS_Spectra.data[0][0].y_stream.max()
+        #Mx of  the interopolated image and compare for 1D max
+        XES_Image.roi('x', roi = (None,None))
+        max_new = XES_Image.data[0][0].y_stream.max()
+        if(len(data_args) > 1):
+            data_args2 = data_args1[0].split(':')
+            x_min = float(min(data_args2))
+            x_max = float(max(data_args2))
+            RIXS_Image.transform('x-y', xlim = (x_min,x_max))
+            Object2dReduce.load(self, RIXS_Image,0, 0)
+            Object2dReduce.roi(self,'x', roi =  (x_min,x_max))
+        else:
+            RIXS_Image.transform('x-y')
+            Object2dReduce.load(self, RIXS_Image,0, 0)
+            Object2dReduce.roi(self,'x', roi =  (None,None))
+        scale_fact = max_old/max_new
+        self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
+        self.data[len(self.data)-1][0].legend = str(len(self.data))+'-S' + str(args[0])
+        for i in range(1, len(args)):
+            self.data[len(self.data)-1][0].legend += '-' + str(args[i])
+        self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
+        return Object2dReduce
+    def compare(self,plot_object):
+        for i in range(len(plot_object.data)):
+            Load1d.loadObj(self, plot_object, i)
+        return Load1d
+    def plot(self, linewidth = 2, xlabel='Energy Loss [eV]', ylabel='Relative Intensity', plot_width = 900, plot_height = 600, **kwargs):
+        return Load1d.plot(self, linewidth = linewidth, xlabel=xlabel, ylabel=ylabel, plot_width = plot_width, plot_height = plot_height,**kwargs)
+
+
+class EEMSMapper(Load2d):
     def load(self,config,file,y_stream,*args,**kwargs):
         file = hdf5FileFixer(file)
         return Load2d.load(self,config,file,'Energy',y_stream,*args,**kwargs)
     def add(self,config,file,y_stream,*args,**kwargs):
         file = hdf5FileFixer(file)
         return Load2d.add(self,config,file,'Energy',y_stream,*args,**kwargs)
+    def stitch(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        return Load2d.stitch(self,config,file,'Energy',y_stream,*args,**kwargs)
     def subtract(self,config,file,y_stream,*args,**kwargs):
         file = hdf5FileFixer(file)
         return Load2d.subtract(self,config,file,'Energy',y_stream,*args,**kwargs)
@@ -395,13 +703,18 @@ class EEMSLoader(Load2d):
         file = hdf5FileFixer(file)
         return Load2d.background(self,config,file,'Energy',y_stream,*args,**kwargs)
     def plot(self, **kwargs):
-        return Load2d.plot(self, xlabel='Excitation Energy [eV]', ylabel='Emission Energy [eV]', plot_width = 1200, plot_height = 800,**kwargs)
+        return Load2d.plot(self, xlabel='Excitation Energy [eV]', ylabel='Emission Energy [eV]', plot_width = 900, plot_height = 600,**kwargs)
  
 class RIXSMapper(Object2dTransform):
     def load(self,config,file,y_stream,*args,**kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
-        y_stream = data_args[0]
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
         Object2dTransform.load(self,config,file,'Energy',y_stream,*args,**kwargs)
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
@@ -411,42 +724,62 @@ class RIXSMapper(Object2dTransform):
         else:
             Object2dTransform.transform(self,'x-y')
         return Object2dTransform.transpose(self)
-    
-class ELOSSLoader(Object2dReduce):
-    def load(self,config,file, y_stream,*args,**kwargs):
+    def stitch(self,config,file,y_stream,*args,**kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
-        y_stream = data_args[0]
-        RIXS_Image = Object2dTransform()
-        RIXS_Image.load(config,file,'Energy',y_stream,*args,**kwargs)
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        Object2dTransform.stitch(self,config,file,'Energy',y_stream,*args,**kwargs)
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
             data_args3 = data_args2[0].split(':')
             x_range = (float(data_args3[0]), float(data_args3[1]))
-            RIXS_Image.transform('x-y', xlim = x_range)
+            Object2dTransform.transform(self,'x-y', xlim = x_range)
         else:
-            RIXS_Image.transform('x-y')    
-        RIXS_Image.transpose()
-        Object2dReduce.load(self, RIXS_Image,0,*args)
-        return Object2dReduce.roi(self, 'y', roi =  x_range)
-    
-class ETLoader(Object2dReduce):
-    def load(self,config,file, y_stream,*args,**kwargs):
+            Object2dTransform.transform(self,'x-y')
+        return Object2dTransform.transpose(self)
+    def add(self,config,file,y_stream,*args,**kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
-        y_stream = data_args[0]
-        RIXS_Image = Object2dTransform()
-        RIXS_Image.load(config,file,'Energy',y_stream,*args,**kwargs)
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        Object2dTransform.add(self,config,file,'Energy',y_stream,*args,**kwargs)
         if(len(data_args) > 1):
             data_args2 = data_args[1].split(']')
             data_args3 = data_args2[0].split(':')
-            y_range = (float(data_args3[0]), float(data_args3[1]))
-            RIXS_Image.transform('x-y', ylim = y_range)
+            x_range = (float(data_args3[0]), float(data_args3[1]))
+            Object2dTransform.transform(self,'x-y', xlim = x_range)
         else:
-            RIXS_Image.transform('x-y')    
-        RIXS_Image.transpose()
-        Object2dReduce.load(self, RIXS_Image,0,*args)
-        return Object2dReduce.roi(self, 'x', roi =  y_range)
+            Object2dTransform.transform(self,'x-y')
+        return Object2dTransform.transpose(self)
+    def subtract(self,config,file,y_stream,*args,**kwargs):
+        file = hdf5FileFixer(file)
+        data_args = y_stream.split('[')
+        y_stream_orig = y_stream
+        if(len(data_args) > 1):
+            data_args1 = data_args[1].split(']')
+            y_stream = data_args[0] + data_args1[1]
+        else:
+            y_stream = data_args[0]
+        Object2dTransform.subtract(self,config,file,'Energy',y_stream,*args,**kwargs)
+        if(len(data_args) > 1):
+            data_args2 = data_args[1].split(']')
+            data_args3 = data_args2[0].split(':')
+            x_range = (float(data_args3[0]), float(data_args3[1]))
+            Object2dTransform.transform(self,'x-y', xlim = x_range)
+        else:
+            Object2dTransform.transform(self,'x-y')
+        return Object2dTransform.transpose(self)
+    def plot(self, **kwargs):
+        return Load2d.plot(self, xlabel='Energy Loss [eV]', ylabel='Excitation Energy [eV]', plot_width = 900, plot_height = 600,**kwargs)    
     
     
 class MCPLoader(Load2d):
@@ -525,7 +858,7 @@ RIXS.sca_folder('Data')
 RIXS.key("SCAN_{scan:03d}",'scan')
 
 #Aliases
-RIXS.sca('Energy','Data/beam')
+RIXS.sca('Energy','Data/beam', x_label= 'Excitation Energy [eV]')
 RIXS.sca('TEY','Data/tey')
 RIXS.sca('I0','Data/i0')
 RIXS.sca('TEY_N','Data/tey', norm_by = 'Data/i0')
