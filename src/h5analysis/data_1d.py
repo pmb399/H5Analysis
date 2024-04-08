@@ -113,11 +113,6 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
 
                 # Check if x component has ROI
                 if check_key_in_dict(x,rois['x']):
-                    try:
-                        if config.h5dict[rois['x'][x]['req']]['x_label'] != None:
-                            data[arg].xaxis_label.append(config.h5dict[rois['x'][x]['req']]["x_label"])
-                    except:
-                        pass
                     # Check that dim(x) = 1
                     try:
                         if len(np.shape(all_data[rois['x'][x]['req']])) == 1: 
