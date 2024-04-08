@@ -540,15 +540,19 @@ class Load1d:
             p.xaxis.axis_label = str(xlabel)
         else:
             xstring = ""
-            for label in xaxis_labels:
-                xstring+=f"{label}|"
+            for i,label in enumerate(xaxis_labels):
+                if i != 0:
+                    xstring+=f"|"
+                xstring+=f"{label}"
             p.xaxis.axis_label = str(xstring)
         if ylabel != None:
             p.yaxis.axis_label = str(ylabel)
         else:
             ystring = ""
-            for label in yaxis_labels:
-                ystring+=f"{label}|"
+            for i,label in enumerate(yaxis_labels):
+                if i != 0:
+                    ystring+=f"|"
+                ystring+=f"{label}"
             p.yaxis.axis_label = str(ystring)
         show(p)
 
