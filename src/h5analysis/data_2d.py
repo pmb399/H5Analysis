@@ -128,8 +128,11 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                         # Add data to locals
                         locals()[f"s{arg}_val{i}_x"] = all_data[x]
                         x_stream_convert = x_stream_convert.replace(x,f"s{arg}_val{i}_x")
-                        if config.h5dict[x]['x_label'] != None:
+                        try:
+                            if config.h5dict[x]['x_label'] != None:
                                     data[arg].xlabel = config.h5dict[x]['x_label']
+                        except:
+                            pass
                     else:
                         raise Exception(f"Wrong input dimension: {x}")
 

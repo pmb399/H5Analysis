@@ -762,6 +762,10 @@ class Load2d:
                 grid equally spaced in y with [start, stop, delta]
             norm_by: string
                 norm MCA by defined h5 key or SCA alias
+            binsize_x: int
+                puts data in bins of specified size in the horizontal direction
+            binsize: int
+                puts data in bins of specified size in the vertical direction
         """
 
         # Ensure that only one scan is loaded.
@@ -772,7 +776,7 @@ class Load2d:
         
         self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
 
-    def background(self,config, file, x_stream, y_stream, *args, axis='y', **kwargs):
+    def background_1d(self,config, file, x_stream, y_stream, *args, axis='y', **kwargs):
         """ Subtracts the defined data from all loaded data
 
         Parameters
@@ -867,6 +871,75 @@ class Load2d:
         else:
             raise Exception(f"Specified axis {axis} unknown.")
         
+    def background_2d(self,config, file, x_stream, detector, *args, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        detector: string
+            alias of the MCA detector
+        *args: int
+            scans
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+            binsize_x: int
+                puts data in bins of specified size in the horizontal direction
+            binsize: int
+                puts data in bins of specified size in the vertical direction
+        """
+
+        # Get the background data
+        if len(args) == 1:
+            background = load_2d(config, file, x_stream, detector, args[0], **kwargs)
+            bg_x = background[args[0]].new_x
+            bg_y = background[args[0]].new_y
+            bg_z = background[args[0]].new_z
+        else:
+            background = ImageAddition_2d(config,file, x_stream, detector, *args, **kwargs)
+            bg_x = background[0].new_x
+            bg_y = background[0].new_y
+            bg_z = background[0].new_z
+        
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                # Interpolate the x,y data onto the background
+                int_z = interp2d(bg_x,bg_y,bg_z,fill_value=0,bounds_error=False)(v.new_x,v.new_y)
+
+                # Remove data
+                new_z = np.subtract(v.new_z,int_z)
+
+                # Overwrite streams in object
+                v.new_z = new_z
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
     def add(self, config, file, x_stream, detector, *args, **kwargs):
         """
