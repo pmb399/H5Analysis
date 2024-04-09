@@ -8,7 +8,7 @@ from .data_2d import load_2d
 from .histogram import load_histogram
 
 # Utilities
-from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data, grid_data_mesh
+from .simplemath import apply_offset, apply_savgol, grid_data, bin_data
 
 def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False, matplotlib_props=dict()):
     """Internal function to handle scan stitching.
@@ -156,7 +156,7 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
 
     return data
 
-def ImageStitch_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=None,average=False):
+def ImageStitch_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=None,average=False, binsize_x=None,binsize_y=None):
     """Internal function to handle image stitching in 2d.
 
             Parameters
@@ -171,11 +171,11 @@ def ImageStitch_2d(config, file, x_stream, detector, *args, norm=False, xoffset=
 
     # Load all 2d data to be added
     # Note that this is possible since load2d supports loading multiple scans
-    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=norm_by,)
+    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,norm_by=norm_by,binsize_x=binsize_x,binsize_y=binsize_y)
 
     return ImageStitch(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset,average=average)
 
-def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, average=False):
+def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, average=False, binsize_x=None, binsize_y=None):
     """Internal function to handle image stitching for histogram.
 
             Parameters
@@ -190,7 +190,7 @@ def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=Fal
 
     # Load all 2d data to be added
     # Note that this is possible since load2d supports loading multiple scans
-    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=binsize_x, binsize_y=binsize_y)
 
     return ImageStitch(ScanData, file, x_stream, z_stream, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset, average=average)
 

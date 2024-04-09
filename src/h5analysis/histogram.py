@@ -18,7 +18,7 @@ from .util import check_key_in_dict
 # Simple math OPs
 from .simplemath import grid_data_mesh, apply_offset, handle_eval
 
-def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None):
     """ Internal function to generate scatter plots for (x,y,z) SCA data
 
         Parameters
@@ -46,6 +46,10 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
                 fitting offset (y-stream)
             ycoffset: float
                 constant offset (y-stream)
+            binsize_x: int
+                puts x-data in bins of specified size
+            binsize_y: int
+                puts y-data in bins of specified size
 
         Returns
         -------
@@ -106,7 +110,7 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
             raise Exception("Error in x-y-z stream lengths.")
 
         # Calculate the 2d histogram
-        xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(data[arg].x_data,data[arg].y_data,data[arg].z_data)
+        xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(data[arg].x_data,data[arg].y_data,data[arg].z_data,binsize_x,binsize_y)
         data[arg].xmin = xmin
         data[arg].xmax = xmax
         data[arg].ymin = ymin

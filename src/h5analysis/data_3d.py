@@ -172,7 +172,8 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     ymin_list = list()
     ymax_list = list()
     for i,img in enumerate(my_stack):
-        xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], img, grid_x=grid_x,grid_y=grid_y)
+        # Note that the image is transposed, need to apply np.transpose to have it in matrix form
+        xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], np.transpose(img), grid_x=grid_x,grid_y=grid_y)
         stack_grid.append(new_z)
         new_x_list.append(new_x)
         new_y_list.append(new_y)

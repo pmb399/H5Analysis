@@ -9,8 +9,7 @@ from .data_3d import load_3d
 from .histogram import load_histogram
 
 # Utilities
-from .simplemath import apply_offset, apply_savgol, grid_data2d, grid_data, bin_data, grid_data_mesh
-from .readutil import detector_norm
+from .simplemath import apply_offset, apply_savgol, grid_data, bin_data
 
 # Warnings
 import warnings
@@ -278,7 +277,7 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
 
     return data
 
-def ImageAddition_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageAddition_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None,binsize_x=None,binsize_y=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -293,11 +292,11 @@ def ImageAddition_2d(config, file, x_stream, detector, *args, norm=False, xoffse
 
     # Load all 2d data to be added
     # Note that this is possible since load2d supports loading multiple scans
-    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
+    ScanData = load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,binsize_x=binsize_x,binsize_y=binsize_y)
 
     return ImageAddition(ScanData, file, x_stream, detector, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None,binsize_x=None,binsize_y=None):
     """Internal function to handle image subtraction.
 
             Parameters
@@ -319,12 +318,12 @@ def ImageSubtraction_2d(config, file, x_stream, detector, minuend, subtrahend, n
     # Define minuend and subtrahend
     # Add images of all scans specified in respective lists,
     # then subtract
-    minuendData = ImageAddition_2d(config, file, x_stream, detector, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
-    subtrahendData = ImageAddition_2d(config, file, x_stream, detector, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,)
+    minuendData = ImageAddition_2d(config, file, x_stream, detector, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,binsize_x=binsize_x,binsize_y=binsize_y)
+    subtrahendData = ImageAddition_2d(config, file, x_stream, detector, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=grid_x,grid_y=grid_y,norm_by=norm_by,binsize_x=binsize_x,binsize_y=binsize_y)
 
     return ImageSubtraction(minuendData, subtrahendData, file, x_stream, detector, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None):
     """Internal function to handle image addition.
 
             Parameters
@@ -339,11 +338,11 @@ def ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *args, norm=F
 
     # Load all 2d data to be added
     # Note that this is possible since load2d supports loading multiple scans
-    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=binsize_x, binsize_y=binsize_y)
 
     return ImageAddition(ScanData, file, x_stream, z_stream, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 
-def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None):
+def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None):
     """Internal function to handle image subtraction.
 
             Parameters
@@ -365,8 +364,8 @@ def ImageSubtraction_hist(config, file, x_stream, y_stream, z_stream, minuend, s
     # Define minuend and subtrahend
     # Add images of all scans specified in respective lists,
     # then subtract
-    minuendData = ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
-    subtrahendData = ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None)
+    minuendData = ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=binsize_x, binsize_y=binsize_y)
+    subtrahendData = ImageAddition_hist(config, file, x_stream, y_stream, z_stream, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=binsize_x, binsize_y=binsize_y)
 
     return ImageSubtraction(minuendData, subtrahendData, file, x_stream, z_stream, minuend, subtrahend, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset)
 

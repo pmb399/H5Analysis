@@ -151,7 +151,7 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
         warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
     # Interpolate the data with given grid
-    f = interp2d(x_data, y_data, np.transpose(detector))
+    f = interp2d(x_data, y_data, detector)
 
     new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
     new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
@@ -163,7 +163,7 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
     
 #########################################################################################
 
-def grid_data_mesh(x_data,y_data,z_data):
+def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y):
     """Internal function to generate scatter histogram for 3 independent SCA streams.
     
         Parameters
@@ -171,6 +171,10 @@ def grid_data_mesh(x_data,y_data,z_data):
         x_data: numpy array
         y_data: numpy array
         z_data: numpy array
+        binsize_x: int
+            puts x-data in bins of specified size
+        binsize_y: int
+            puts y-data in bins of specified size
     
         Returns
         -------
@@ -230,6 +234,12 @@ def grid_data_mesh(x_data,y_data,z_data):
     # Determine the number of bins from unique points in dropped grid
     xbin = len(xunique)
     ybin = len(yunique)
+
+    # Apply the binning if requested
+    if isinstance(binsize_x,int):
+        xbin = int(np.ceil(xbin/binsize_x))
+    if isinstance(binsize_y,int):
+        ybin = int(np.ceil(ybin/binsize_y))
         
     ### ### ### ### ### ### ###
 
@@ -289,15 +299,62 @@ def bin_data(x_data,y_data,binsize):
         warnings.warn("Could not split specified quantity in equally split subarrays. Adjust the bin size.")
         raise Exception(e)
 
-    new_x = list()
-    new_y = list()
-
     # Calculate the mean for all x and y values, respectively, in the bin
-    for idx,val in enumerate(x_splits):
-        new_x.append(np.mean(val))
-        new_y.append(np.mean(y_splits[idx]))
+    new_x = np.mean(x_splits,axis=1)
+    new_y = np.mean(y_splits,axis=1)
 
     return np.array(new_x), np.array(new_y)
+
+def bin_shape_1d(arr,width):
+    """ Bins 1d arrays by truncating the array at the end if necessary and calculating the mean in each bin
+
+        Parameters
+        ----------
+        arr: numpy array
+            1d array with data to be binned
+        width: int
+            Binsize, how many data points per bin
+            
+        Returns
+        -------
+        arr: numpy array
+            Binned 1d data
+    """
+    return np.mean(np.split(arr[0:int(np.floor(np.shape(arr)[0]/width)*width)],int(np.floor(np.shape(arr)[0]/width))),axis=1)
+
+def bin_shape_x(arr,width):
+    """ Bins 2d matrices in the x direction, i.e. it maintains the number of rows, by truncating the matrix at the end if necessary and calculating the mean in each bin
+
+        Parameters
+        ----------
+        arr: numpy array
+            2d array with data to be binned
+        width: int
+            Binsize, how many data points per bin
+            
+        Returns
+        -------
+        arr: numpy array
+            Binned 2d data
+    """
+    return arr[:,0:int(np.floor(np.shape(arr)[1]/width)*width)].reshape(-1,width).mean(axis=1).reshape(np.shape(arr)[0],int(np.floor(np.shape(arr)[1]/width)))
+
+def bin_shape_y(arr,width):
+    """ Bins 2d matrices in the y direction, i.e. it maintains the number of columns, by truncating the matrix at the end if necessary and calculating the mean in each bin
+
+        Parameters
+        ----------
+        arr: numpy array
+            2d array with data to be binned
+        width: int
+            Binsize, how many data points per bin
+            
+        Returns
+        -------
+        arr: numpy array
+            Binned 2d data
+    """
+    return np.transpose(np.transpose(arr[0:int(np.floor(np.shape(arr)[0]/width)*width),:]).reshape(-1,width).mean(axis=1).reshape(np.shape(arr)[1],int(np.floor(np.shape(arr)[0]/width))))
 
 #########################################################################################
 

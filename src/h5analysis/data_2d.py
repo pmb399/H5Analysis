@@ -8,13 +8,13 @@ from .ReadData import Data
 from .parser import parse
 from .datautil import get_roi, get_indices, mca_roi, strip_roi, stack_roi
 from .util import check_key_in_dict
-from .simplemath import apply_offset, grid_data2d, handle_eval
+from .simplemath import apply_offset, grid_data2d, handle_eval, bin_shape_1d, bin_shape_x, bin_shape_y
 from .readutil import detector_norm
 
 # Warnings
 import warnings
 
-def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None,):
+def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None,binsize_x=None,binsize_y=None):
     """ Internal function to load 2d MCA data
 
         Parameters
@@ -46,6 +46,10 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                 grid equally spaced in y with [start, stop, delta]
             norm_by: string
                 norm MCA by defined h5 key or SCA alias
+            binsize_x: int
+                puts data in bins of specified size in the horizontal direction
+            binsize: int
+                puts data in bins of specified size in the vertical direction
 
         Returns
         -------
@@ -319,6 +323,18 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         # Normalize if requested
         if norm == True:
             data[arg].detector = data[arg].detector/np.max(data[arg].detector)
+
+        # Note that the detector image is transposed
+        data[arg].detector = np.transpose(data[arg].detector)
+
+        # Apply the binning
+        if isinstance(binsize_x,int):
+            data[arg].x_data = bin_shape_1d(data[arg].x_data,binsize_x)
+            data[arg].detector = bin_shape_x(data[arg].detector,binsize_x)
+
+        if isinstance(binsize_y,int):
+            data[arg].y_data = bin_shape_1d(data[arg].y_data,binsize_y)
+            data[arg].detector = bin_shape_y(data[arg].detector,binsize_y)
 
         # Grid data to image
         xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(data[arg].x_data, data[arg].y_data, data[arg].detector, grid_x=grid_x,grid_y=grid_y)
