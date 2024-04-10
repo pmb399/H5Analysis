@@ -30,13 +30,16 @@ release = '0.0.1'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc','sphinx.ext.autosummary','sphinx.ext.napoleon','numpydoc'
+extensions = ['sphinx.ext.autodoc','sphinx.ext.autosummary','sphinx.ext.napoleon','numpydoc',"myst_parser","sphinx_design",
+
 ]
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
+
+myst_enable_extensions = ["colon_fence"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
