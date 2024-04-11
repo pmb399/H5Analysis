@@ -1,3 +1,5 @@
+"""Triggers the matplotlib engine for plot exports"""
+
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 from matplotlib import cm
@@ -7,6 +9,9 @@ import colorcet
 def create_figure(figsize=None, x_minor_ticks=None, x_major_ticks=None, y_minor_ticks=None, y_major_ticks=None, top=True, right=True, fontsize_axes='medium', fontsize_labels='medium', fontsize_title='medium', title_pad=8, xlabel="", ylabel="", title="", xlim=None, ylim=None, **kwargs):
     """
     Create a matplotlib plot window
+
+    Parameters
+    ----------
 
     figsize: tuple
         determines size of plot
@@ -94,6 +99,9 @@ def plot_image(fig, ax, x, y, z, cmap='CET_R4', levels=None, aspect='equal', col
     """
     Plots a contourplot in the created figure
 
+    Parameters
+    ----------
+
     fig: object 
         matplotlib Figure object
     ax: object
@@ -146,6 +154,9 @@ def plot_lines(fig, ax, data_list, legend=False, fontsize_legend=12, **kwargs):
     """
     Plots Line1d objects in the created figure
 
+    Parameters
+    ----------
+
     fig: object 
         matplotlib Figure object
     ax: object
@@ -194,6 +205,9 @@ def plot_lines(fig, ax, data_list, legend=False, fontsize_legend=12, **kwargs):
 def save_figure(fig, fname, data_format='pdf', **kwargs):
     """
     Export displayed data as processed plot
+
+    Parameters
+    ----------
 
     fig: object 
         matplotlib figure object

@@ -1,3 +1,5 @@
+"""Various utility functions for plain python operations"""
+
 # Utility functions
 import pandas as pd
 from importlib import resources as impresources

@@ -1,3 +1,5 @@
+"""Collection of simple math operations that may be applied to data"""
+
 # Scientific modules
 import numpy as np
 from scipy.interpolate import interp1d, interp2d, LinearNDInterpolator

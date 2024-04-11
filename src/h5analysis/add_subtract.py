@@ -1,3 +1,5 @@
+"""Adds support for addition and subtraction of scans"""
+
 # Scientific modules
 import numpy as np
 from scipy.interpolate import interp1d, interp2d

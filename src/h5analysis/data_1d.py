@@ -1,3 +1,5 @@
+"""Processing of 1d data"""
+
 # Scientific modules and functions
 import numpy as np
 

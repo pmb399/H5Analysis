@@ -1,3 +1,5 @@
+"""Processing of (x,y,z) scatter data as histogram"""
+
 # Scientific modules
 import numpy as np
 

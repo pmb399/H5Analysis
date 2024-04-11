@@ -1,3 +1,5 @@
+"""Internal functions to retrieve and handle meta data"""
+
 # Scientific modules
 import numpy as np
 import pandas as pd
@@ -247,6 +249,7 @@ def get_spreadsheet(config, file, columns, average=True):
 
 
 def apply_rounding(item, decimals):
+    """Apply rounding to meta data"""
     if isinstance(item, tuple):
         i1_rounded = np.round(item[0], decimals)
         ii_rounded = np.round(item[1], decimals)
@@ -257,6 +260,7 @@ def apply_rounding(item, decimals):
 
 
 def apply_rounding_tuple(item, decimals):
+    """Apply rounding to a meta data tuple"""
     contributions = item.split("; ")
     cont = [x for x in contributions if x != '']
 

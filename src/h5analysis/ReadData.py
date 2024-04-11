@@ -1,3 +1,5 @@
+"""Tools to read in requested HDF5 data as object"""
+
 # Scientific modules
 import pandas as pd
 import numpy as np
@@ -174,6 +176,7 @@ class Data:
         return req_data
 
 class ScanInfo:
+    """Standard data class to store h5 meta data"""
 
     def __init__(self, config, file, keys, average):
         """Load specific scan from data file and retrieve meta data

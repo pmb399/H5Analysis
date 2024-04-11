@@ -1,3 +1,5 @@
+"""Tools for the configuration of the data structure"""
+
 # Import parse module
 import parse
 
@@ -5,6 +7,7 @@ class h5Config:
     """Internal function to configure data streams."""
 
     def __init__(self):
+        """Initialize variables and data containers"""
         self.h5dict = dict()
         self.sca_folders = list()
         self.roi_dict = dict()

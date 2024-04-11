@@ -1,3 +1,5 @@
+"""Evaluation of user-defined input strings"""
+
 # Import re search module
 import re
 

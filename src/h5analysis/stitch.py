@@ -1,3 +1,5 @@
+"""Stitches multiple scans of data together, averages the overlap."""
+
 # Scientific modules
 import numpy as np
 from scipy.interpolate import interp1d, interp2d

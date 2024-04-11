@@ -1,3 +1,5 @@
+"""Loader classes for the performance of math operations on data - to be used by users."""
+
 # Scientific modules
 import numpy as np
 import pandas as pd
@@ -128,6 +130,7 @@ class Object1dAddSubtract(Load1d):
         # Store data
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
         
         # Create dict with objects to be compatible with other loaders
@@ -239,6 +242,7 @@ class Object1dStitch(Load1d):
         # Store data
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
         
         # Create dict with objects to be compatible with other loaders
@@ -437,6 +441,7 @@ class Object2dAddSubtract(Load2d):
         # Store data
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
         
         data = dict()
@@ -527,6 +532,7 @@ class Object2dStitch(Load2d):
         # Define generic object in which all data will be stored
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
 
         # Start by getting dimensions
@@ -693,6 +699,7 @@ class Object2dReduce(Load1d):
         # Prepare data storage
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
         
         # Create dict with objects to be compatible with other loaders
@@ -753,6 +760,7 @@ class Object2dReduce(Load1d):
         # Prepare data storage
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
         
         # Create dict with objects to be compatible with other loaders
@@ -1537,6 +1545,7 @@ class Object1dFit(Load1d):
         # Prepare data storage
         class added_object:
             def __init__(self):
+                """Initialize data container"""
                 pass
         
         data = dict()

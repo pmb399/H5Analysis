@@ -1,3 +1,5 @@
+"""Utility functions for data processing and reduction"""
+
 import numpy as np
 import warnings
 import re

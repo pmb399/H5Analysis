@@ -1,3 +1,5 @@
+"""Loader classes for 1d, 2d, and 3d data - to be used by users."""
+
 # Scientific Modules
 import numpy as np
 import pandas as pd
@@ -44,6 +46,7 @@ class Load1d:
     """Class to load generic 1d (x,y) data."""
 
     def __init__(self):
+        """Initialize variables and data containers"""
         self.data = list()
         self.plot_lim_x = [":", ":"]
         self.plot_lim_y = [":", ":"]
@@ -645,8 +648,8 @@ class Load1d:
         button.on_click(self.exportWidgetStep)
         display(self.exportfile, button)
 
-    def exportWidgetStep(self, my):
-        # Helper function for exporter widget.
+    def exportWidgetStep(self):
+        """Helper function for exporter widget."""
         file = os.path.join(self.exportfile.selected_path,
                             self.exportfile.selected_filename)
         self.export(file)
@@ -722,6 +725,7 @@ class Load2d:
     """Class to load generic 2d (x,y,z) image data of a detector."""
 
     def __init__(self):
+        """Initialize variables and data containers"""
         self.data = list()
         self.plot_lim_x = [":", ":"]
         self.plot_lim_y = [":", ":"]
@@ -1320,8 +1324,8 @@ class Load2d:
         button.on_click(self.exportWidgetStep)
         display(self.exportfile, button)
 
-    def exportWidgetStep(self, my):
-        # Helper function for exporter widget
+    def exportWidgetStep(self):
+        """Helper function for exporter widget."""
         file = os.path.join(self.exportfile.selected_path,
                             self.exportfile.selected_filename)
         self.export(file)
@@ -1496,7 +1500,10 @@ class LoadHistogram(Load2d):
 #########################################################################################
         
 class Load3d:
+    """Object to hold a 3d stack of images"""
+
     def __init__(self):
+        """Initialize variables and data containers"""
         self.data = list()
 
     def load(self, config, file, ind_stream, stack, arg,**kwargs):
@@ -1721,6 +1728,7 @@ class Load3d:
 
 #########################################################################################
 class LoadBeamline(Load1d):
+    """Load meta data as 1d data stream."""
     def load(self, config, file, key, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
@@ -1768,8 +1776,9 @@ class LoadBeamline(Load1d):
 #########################################################################################
 
 class LoadLog:
+    """Generate spreadsheet with meta data from h5 file."""
     def __init__(self):
-        """Generate spreadsheet with meta data from h5 file."""
+        """Initialize variables and data containers"""
         pass
 
     def load(self,config,file,columns,average=True):

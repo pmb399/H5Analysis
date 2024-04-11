@@ -1,3 +1,5 @@
+"""Functions for data processing during read-in"""
+
 # Scientific modules
 import numpy as np
 
