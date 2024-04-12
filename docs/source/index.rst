@@ -1,4 +1,4 @@
-Welcome - Documentation for h5analysis's
+Welcome - Documentation for h5analysis
 ===========================================
 
 This is a library to analyse, plot, and export HDF5 data. The package is meant to provide a framework to load data into jupyter notebooks and enable data interaction.
