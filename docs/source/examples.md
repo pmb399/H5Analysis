@@ -8,7 +8,7 @@ sca = Load1d()
 sca.load(config,'FileName.h5','x_stream','y_stream',1,2,3,4)  # Loads multiple scans individually
 sca.loadObj(object,line_number) # to load a previously loaded 1d object
 sca.add(config,'FileName.h5','x_stream','y_stream',1,2,3,4)  # Adds multiple scans
-sca.subtract(config,'FileName.h5','x_stream','y_stream',1,2,3,4,norm=False) # Subtracts scans from the first scan
+sca.subtract(config,'FileName.h5','x_stream','y_stream',[1,2],[3,4],norm=False) # Subtracts scans (add scans in brackets, then perform subtraction between both brackets)
 sca.stitch(config,'FileName.h5','x_stream','y_stream',*args, **kwargs) # Stitches multiple scans together, calculates average in overlap region.
 sca.background(config,'FileName.h5','x_stream','y_stream',*args, **kwargs) # Subtracts a 1d background from all previously loaded scans (may specify multiple scans to create composite background)
 sca.xlim(lower_lim,upper_lim) # Sets the horizontal axis plot region

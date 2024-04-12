@@ -15,6 +15,7 @@ Before you start, you will need to import the required h5analysis package, and e
 ```
 ## Setup necessarry inputs
 from h5analysis.LoadData import *
+from h5analysis.MathData import *
 from h5analysis.config import h5Config
 from bokeh.io import show, output_notebook
 output_notebook(hide_banner=True)
