@@ -97,10 +97,7 @@ w.plot()
 
 ## Object2dStitch
 
-.. image:: img/2d_stitch.png
-  :width: 600
-  :align: center
-  :alt: Stitching 2d histograms together.
+![Stitching 2d histograms together.](img/2d_stitch.png "Stitching 2d histograms together.")
 
 Similar to the 1d case, this allows stitching of 2d images.
 
@@ -162,10 +159,7 @@ Note, that the key-word argument exact may be defined. Exact evaluation processe
 
 ## Object2dTransform
 
-.. image:: img/2d_transform.png
-  :width: 600
-  :align: center
-  :alt: Transforming an excitation-emission map to energy loss scale.
+![Transforming an excitation-emission map to energy loss scale.](img/2d_transform.png "Transforming an excitation-emission map to energy loss scale.")
 
 This allows to apply math operations on a 2d object on a per data point basis. All data points on the second axis may be recalculated based on an equation provided the independent primary axis. Additionally, the transpose of an image may be calculated.
 
@@ -192,10 +186,7 @@ For most transformations, the output dimensions are cropped to maximize the 'y' 
 
 ## Object1dFit
 
-.. image:: img/1d_fit.png
-  :width: 600
-  :align: center
-  :alt: Fitting a composite Gaussian model to experimental x-ray emission data.
+![Fitting a composite Gaussian model to experimental x-ray emission data.](img/1d_fit.png "Fitting a composite Gaussian model to experimental x-ray emission data.")
 
 It is often useful to fit to spectral features. For 1d data, a simple fitting routine relying on the ```lmfit``` package is accessible and is exosed to users through easy syntax in this fitting class. A composite fit model may be build with the following available lineshapes which are built-in ```lmfit``` models:
 

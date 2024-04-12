@@ -4,10 +4,7 @@ Meta data is important information that is not directly captured from a measurem
 
 ## Meta Data Plot
 
-.. image:: img/meta_data.png
-  :width: 600
-  :align: center
-  :alt: Plot of the meta data capturing the sample stage position over time (scan numbers).
+![Plot of the meta data capturing the sample stage position over time (scan numbers).](img/meta_data.png "Plot of the meta data capturing the sample stage position over time (scan numbers).")
 
 Given that multiple scans are stored per file, we can plot meta data as a function of scan number
 
@@ -26,10 +23,7 @@ bl.plot()
 
 ## Spreadsheet/Logbook
 
-.. image:: img/spreadsheet.png
-  :width: 600
-  :align: center
-  :alt: Example of an experiment log book.
+![Example of an experiment log book.](img/spreadsheet.png "Example of an experiment log book.")
 
 ```
 df = LoadLog()
