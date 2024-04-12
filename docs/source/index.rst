@@ -3,7 +3,7 @@ Welcome - Documentation for h5analysis's
 
 This is a library to analyse, plot, and export HDF5 data. The package is meant to provide a framework to load data into jupyter notebooks and enable data interaction.
 
-.. image:: _static/home.png
+.. image:: /img/home.png
   :width: 600
   :align: center
   :alt: Example of 2d data visualization
@@ -32,3 +32,11 @@ The package and its source code are availabe under the `MIT license <https://git
    :caption: API Documentation
 
    api
+
+.. toctree::
+   :hidden:
+   :caption: Resources
+
+   Python Wheel <https://pypi.org/project/h5analysis>
+   Source Code <https://github.com/pmb399/H5Analysis>
+   Issues <https://github.com/pmb399/H5Analysis/issues>

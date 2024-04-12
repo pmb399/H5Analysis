@@ -12,18 +12,20 @@
 #
 import os
 import sys
+import datetime
 sys.path.insert(0, os.path.abspath('../../src'))
 
+current_year = datetime.date.today().year
+from h5analysis.__init__ import __version__,__author__
 
 # -- Project information -----------------------------------------------------
 
 project = 'h5analysis'
-copyright = '2024, Patrick Braun'
-author = 'Patrick Braun'
+copyright = f'2023-{current_year}, {__author__}'
+author = f"{__author__}"
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
-
+release = f'{__version__}'
 
 # -- General configuration ---------------------------------------------------
 
