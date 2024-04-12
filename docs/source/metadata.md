@@ -4,6 +4,11 @@ Meta data is important information that is not directly captured from a measurem
 
 ## Meta Data Plot
 
+.. image:: img/meta_data.png
+  :width: 600
+  :align: center
+  :alt: Plot of the meta data capturing the sample stage position over time (scan numbers).
+
 Given that multiple scans are stored per file, we can plot meta data as a function of scan number
 
 ```
@@ -19,7 +24,12 @@ bl.plot()
 3. Options for **path to variable** quantities include:
 - All directory paths within the specified h5 file
 
-## Spreadsheet
+## Spreadsheet/Logbook
+
+.. image:: img/spreadsheet.png
+  :width: 600
+  :align: center
+  :alt: Example of an experiment log book.
 
 ```
 df = LoadLog()
@@ -48,7 +58,6 @@ columns['Flux 4-Jaw (mm)'] = 'Beamline/Apertures/4-Jaw_2/horz_gap'
 columns['Mono Grating'] = '/Beamline/Monochromator/grating'
 columns['Mono Mirror'] = '/Beamline/Monochromator/mirror'
 columns['Polarization'] = 'Beamline/Source/EPU/Polarization'
-#columns['Comment'] = 'command'
 columns['Status'] = 'status'
 ```
 

@@ -1,6 +1,12 @@
 # Example plots
 
 ## 1d plots
+
+.. image:: img/1d_plot.png
+  :width: 600
+  :align: center
+  :alt: Example of 1d data visualization
+
 This allows to make 1d plots from SCA's or reduced MCA's.
 
 ```
@@ -66,6 +72,12 @@ For further documentation regarding available methods and key-word arguments, pl
 Note: This loader only supports to process and load one scan at a time!
 
 ### MCA detector data
+
+.. image:: img/2d_plot.png
+  :width: 600
+  :align: center
+  :alt: Example of 2d data visualization
+
 This is to display 2d detector data.
 
 ```
@@ -107,6 +119,12 @@ load2d.exporter()
 Further methods are available, please see API documentation.
 
 ### 2d histogram
+
+.. image:: img/2d_histogram.png
+  :width: 600
+  :align: center
+  :alt: Example of 2d histogram visualization
+
 This class inherits from the general Load2d but overrides data loading and processing for (x,y,z) scatter data until an image is calculated.
 
 ```
@@ -153,6 +171,11 @@ mesh.exporter()
 Further methods are available, please see API documentation.
 
 ## 3d Image Stacks
+
+.. image:: img/3d_stack.png
+  :width: 600
+  :align: center
+  :alt: Example of 3d data visualization
 
 Note: Can only load one scan at a time!
 

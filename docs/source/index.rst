@@ -3,7 +3,7 @@ Welcome - Documentation for h5analysis's
 
 This is a library to analyse, plot, and export HDF5 data. The package is meant to provide a framework to load data into jupyter notebooks and enable data interaction.
 
-.. image:: /img/home.png
+.. image:: img/home.png
   :width: 600
   :align: center
   :alt: Example of 2d data visualization
