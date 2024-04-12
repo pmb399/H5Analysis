@@ -48,8 +48,6 @@ class Load1d:
     def __init__(self):
         """Initialize variables and data containers"""
         self.data = list()
-        self.plot_lim_x = [":", ":"]
-        self.plot_lim_y = [":", ":"]
         self.legend_loc = 'outside'
         self.plot_vlines = list()
         self.plot_hlines = list()
@@ -247,27 +245,53 @@ class Load1d:
 
     def xlim(self, lower, upper):
         """
-        Set x-axis plot window limits.
+        Set x-axis limits applied to data stream.
 
         Parameters
         ----------
         lower : float
         upper : float
         """
-        self.plot_lim_x[0] = lower
-        self.plot_lim_x[1] = upper
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                x = v.x_stream
+                y = v.y_stream
+
+                # Truncate arrays to limits
+                v.x_stream = x[(lower<=x) & (x<=upper)]
+                v.y_stream = y[(lower<=x) & (x<=upper)]
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
     def ylim(self, lower, upper):
         """
-        Set y-axis plot window limits.
+        Set y-axis limits applied to data stream.
 
         Parameters
         ----------
         lower : float
         upper : float
         """
-        self.plot_lim_y[0] = lower
-        self.plot_lim_y[1] = upper
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                x = v.x_stream
+                y = v.y_stream
+
+                # Truncate arrays to limits
+                v.y_stream = y[(lower<=y) & (y<=upper)]
+                v.x_stream = x[(lower<=y) & (y<=upper)]
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
     def plot_legend(self, pos):
         """
@@ -509,16 +533,6 @@ class Load1d:
         else:
             p.legend.location = self.legend_loc
 
-        if self.plot_lim_y[0] != ':':
-            p.y_range.start = self.plot_lim_y[0]
-        if self.plot_lim_y[1] != ':':
-            p.y_range.end = self.plot_lim_y[1]
-
-        if self.plot_lim_x[0] != ':':
-            p.x_range.start = self.plot_lim_x[0]
-        if self.plot_lim_x[1] != ':':
-            p.x_range.end = self.plot_lim_x[1]
-
         if len(self.plot_hlines) > 0:
             for line_props in self.plot_hlines:
                 line = Span(location=line_props[0],
@@ -727,8 +741,6 @@ class Load2d:
     def __init__(self):
         """Initialize variables and data containers"""
         self.data = list()
-        self.plot_lim_x = [":", ":"]
-        self.plot_lim_y = [":", ":"]
         self.plot_vlines = list()
         self.plot_hlines = list()
         self.plot_labels = list()
@@ -1003,27 +1015,61 @@ class Load2d:
 
     def xlim(self, lower, upper):
         """
-        Set x-axis plot window limits.
+        Set x-axis limits applied to data stream.
 
         Parameters
         ----------
         lower : float
         upper : float
         """
-        self.plot_lim_x[0] = lower
-        self.plot_lim_x[1] = upper
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                x = v.new_x
+                z = v.new_z
+
+                # Truncate arrays to limits
+                v.new_x = x[(lower<=x) & (x<=upper)]
+                v.new_z = z[:,np.where((lower<=x) & (x<=upper))[0]]
+
+                # Set new limits
+                v.xmin = v.new_x.min()
+                v.xmax = v.new_x.max()
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
     def ylim(self, lower, upper):
         """
-        Set y-axis plot window limits.
+        Set y-axis limits applied to data stream.
 
         Parameters
         ----------
         lower : float
         upper : float
         """
-        self.plot_lim_y[0] = lower
-        self.plot_lim_y[1] = upper
+        
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                y = v.new_y
+                z = v.new_z
+
+                # Truncate arrays to limits
+                v.new_y = y[(lower<=y) & (y<=upper)]
+                v.new_z = z[np.where((lower<=y) & (y<=upper))[0],:]
+
+                # Set new limits
+                v.ymin = v.new_y.min()
+                v.ymax = v.new_y.max()
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
     def show_fluorescence(self, element, siegbahn_symbol, orientation='v', **kwargs):
         """
@@ -1165,15 +1211,6 @@ class Load2d:
                 p.add_layout(color_bar, 'right')
 
                 # Overwrite plot properties if selected.
-                if self.plot_lim_y[0] != ':':
-                    p.y_range.start = self.plot_lim_y[0]
-                if self.plot_lim_y[1] != ':':
-                    p.y_range.end = self.plot_lim_y[1]
-
-                if self.plot_lim_x[0] != ':':
-                    p.x_range.start = self.plot_lim_x[0]
-                if self.plot_lim_x[1] != ':':
-                    p.x_range.end = self.plot_lim_x[1]
 
                 if len(self.plot_hlines) > 0:
                     for line_props in self.plot_hlines:
