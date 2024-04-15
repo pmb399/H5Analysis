@@ -449,10 +449,6 @@ class Object2dAddSubtract(Load2d):
         data[0].new_x = MASTER_x_stream
         data[0].new_y = MASTER_y_stream
         data[0].new_z = MASTER_detector
-        data[0].xmin = MASTER_x_stream.min()
-        data[0].xmax = MASTER_x_stream.max()
-        data[0].ymin = MASTER_y_stream.min()
-        data[0].ymax = MASTER_y_stream.max()
         data[0].scan = self.scan_string
         index = len(self.data) + 1
         data[0].legend = f'{index} - {self.scan_string} - Addition/Subtraction'
@@ -627,10 +623,6 @@ class Object2dStitch(Load2d):
         data[0].new_x = new_x
         data[0].new_y = new_y
         data[0].new_z = matrix
-        data[0].xmin = new_x.min()
-        data[0].xmax = new_x.max()
-        data[0].ymin = new_y.min()
-        data[0].ymax = new_y.max()
         data[0].xlabel = self.x_string
         data[0].ylabel = self.y_string
         data[0].zlabel = self.z_string
@@ -947,8 +939,6 @@ class Object2dTransform(Load2d):
 
                 # Adjust the scale and image
                 v.new_x = v.new_x[xlow:xhigh]
-                v.xmin = min(v.new_x)
-                v.xmax = max(v.new_x)
                 z = z[:,xlow:xhigh]
 
                 # Store the axes modified for each data point
@@ -992,8 +982,6 @@ class Object2dTransform(Load2d):
                     # works because we iterate over x when checking the y-scales
                     xindices = list(ydict.keys())                        
                     v.new_x = v.new_x[xindices]
-                    v.xmin = min(v.new_x)
-                    v.xmax = max(v.new_x)
 
                     # Also crop down matrix accordingly
                     z = z[:,xindices]
@@ -1014,8 +1002,6 @@ class Object2dTransform(Load2d):
                 # Update data as calculated above
                 v.new_z = scatter_z
                 v.new_y = new_y
-                v.ymin = ymin
-                v.ymax = ymax
                 v.ylabel = f'Transformed {v.ylabel}'
 
                 self.data[i][k] = v
@@ -1033,20 +1019,12 @@ class Object2dTransform(Load2d):
                 # update the axes and labels
                 new_x = v.new_y
                 new_y = v.new_x
-                xmin = v.ymin
-                xmax = v.ymax
                 xlabel = v.ylabel
-                ymin = v.xmin
-                ymax = v.xmax
                 ylabel = v.xlabel
 
                 v.new_x = new_x
                 v.new_y = new_y
-                v.xmin = xmin
-                v.xmax = xmax
                 v.xlabel = xlabel
-                v.ymin = ymin
-                v.ymax = ymax
                 v.ylabel = ylabel
 
                 # Write back to dict

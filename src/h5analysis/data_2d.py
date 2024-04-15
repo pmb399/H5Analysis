@@ -342,11 +342,7 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
             data[arg].detector = bin_shape_y(data[arg].detector,binsize_y)
 
         # Grid data to image
-        xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(data[arg].x_data, data[arg].y_data, data[arg].detector, grid_x=grid_x,grid_y=grid_y)
-        data[arg].xmin = xmin
-        data[arg].xmax = xmax
-        data[arg].ymin = ymin
-        data[arg].ymax = ymax
+        new_x, new_y, new_z = grid_data2d(data[arg].x_data, data[arg].y_data, data[arg].detector, grid_x=grid_x,grid_y=grid_y)
         data[arg].new_x = new_x
         data[arg].new_y = new_y
         data[arg].new_z = new_z

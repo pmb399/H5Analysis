@@ -169,20 +169,12 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     stack_grid = list()
     new_x_list = list()
     new_y_list = list()
-    xmin_list = list()
-    xmax_list = list()
-    ymin_list = list()
-    ymax_list = list()
     for i,img in enumerate(my_stack):
         # Note that the image is transposed, need to apply np.transpose to have it in matrix form
-        xmin, xmax, ymin, ymax, new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], np.transpose(img), grid_x=grid_x,grid_y=grid_y)
+        new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], np.transpose(img), grid_x=grid_x,grid_y=grid_y)
         stack_grid.append(new_z)
         new_x_list.append(new_x)
         new_y_list.append(new_y)
-        xmin_list.append(xmin)
-        xmax_list.append(xmax)
-        ymin_list.append(ymin)
-        ymax_list.append(ymax)
 
     # Generate 3d stack from gridded z-data in stack_grid list
     # Store all data in dict
@@ -191,10 +183,6 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     data[arg].str_ind_stream = ind_stream
     data[arg].new_x = new_x_list
     data[arg].new_y = new_y_list
-    data[arg].x_min = xmin_list
-    data[arg].x_max = xmax_list
-    data[arg].y_min = ymin_list
-    data[arg].y_max = ymax_list
 
     data[arg].xlabel = xlabel
     data[arg].ylabel = ylabel

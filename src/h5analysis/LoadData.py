@@ -1032,10 +1032,6 @@ class Load2d:
                 v.new_x = x[(lower<=x) & (x<=upper)]
                 v.new_z = z[:,np.where((lower<=x) & (x<=upper))[0]]
 
-                # Set new limits
-                v.xmin = v.new_x.min()
-                v.xmax = v.new_x.max()
-
                 # Update dictionary with new object
                 val[k] = v
 
@@ -1060,10 +1056,6 @@ class Load2d:
                 # Truncate arrays to limits
                 v.new_y = y[(lower<=y) & (y<=upper)]
                 v.new_z = z[np.where((lower<=y) & (y<=upper))[0],:]
-
-                # Set new limits
-                v.ymin = v.new_y.min()
-                v.ymax = v.new_y.max()
 
                 # Update dictionary with new object
                 val[k] = v
@@ -1196,7 +1188,7 @@ class Load2d:
                 # Calculate boundaries and shape of image for plotter
                 # so that pixels are centred at their given values
                 # since bokeh takes the left bound of the first and right bound of the last pixel
-                plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x,v.new_y,v.xmin,v.xmax,v.ymin,v.ymax)
+                plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x,v.new_y)
 
                 # Plot image and use limits as given by even grid.
                 p.image(image=[v.new_z], x=plot_x_corner, y=plot_y_corner, dw=plot_dw,
@@ -1646,7 +1638,7 @@ class Load3d:
             check_dimensions2d(v.new_x[f],v.new_y[f],v.stack[f])
 
             # Get data
-            plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[f],v.new_y[f],v.x_min[f],v.x_max[f],v.y_min[f],v.y_max[f])
+            plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[f],v.new_y[f])
 
             # This is to update bokeh data
             if norm == True:
@@ -1679,7 +1671,7 @@ class Load3d:
                 # Calculate boundaries and shape of image for plotter
                 # so that pixels are centred at their given values
                 # since bokeh takes the left bound of the first and right bound of the last pixel
-                plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[0],v.new_y[0],v.x_min[0],v.x_max[0],v.y_min[0],v.y_max[0])
+                plot_x_corner,plot_y_corner, plot_dw,plot_dh = bokeh_image_boundaries(v.new_x[0],v.new_y[0])
 
                 if norm==True:
                     init_img = v.stack[0] / np.max(v.stack)

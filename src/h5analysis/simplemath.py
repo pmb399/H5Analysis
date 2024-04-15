@@ -106,10 +106,6 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
 
         Returns
         -------
-        xmin: float
-        xmax: float
-        ymin: float
-        ymax: float
         new_x: numpy array
         new_y: numpy array
         new_z: numpy array
@@ -161,7 +157,7 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
     # Evaluate image on evenly-spaced grid
     new_z = f(new_x, new_y)
 
-    return xmin, xmax, ymin, ymax, new_x, new_y, new_z
+    return new_x, new_y, new_z
     
 #########################################################################################
 
@@ -180,18 +176,12 @@ def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y):
     
         Returns
         -------
-        xmin: float
-        xmax: float
-        ymin: float
-        ymax: float
         xedge: numpy array
             xedges as returned from numpy histogram2d
         yedge: numpy array
             yedges as returned from numpy histogram2d
         new_z: numpy array
             2d matrix data
-        zmin: float
-        zmax: float
     """
 
     # Get the min/max data
@@ -265,7 +255,7 @@ def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y):
     new_x = np.linspace(xedge.min(),xedge.max(),len(xedge)-1)
     new_y = np.linspace(yedge.min(),yedge.max(),len(yedge)-1)
 
-    return new_x.min(), new_x.max(), new_y.min(), new_y.max(), new_x, new_y, new_z, new_z.min(), new_z.max()
+    return new_x, new_y, new_z
 
 #########################################################################################
 

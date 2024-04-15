@@ -112,16 +112,10 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
             raise Exception("Error in x-y-z stream lengths.")
 
         # Calculate the 2d histogram
-        xmin, xmax, ymin, ymax, xedge, yedge, new_z, zmin, zmax = grid_data_mesh(data[arg].x_data,data[arg].y_data,data[arg].z_data,binsize_x,binsize_y)
-        data[arg].xmin = xmin
-        data[arg].xmax = xmax
-        data[arg].ymin = ymin
-        data[arg].ymax = ymax
+        xedge, yedge, new_z = grid_data_mesh(data[arg].x_data,data[arg].y_data,data[arg].z_data,binsize_x,binsize_y)
         data[arg].new_x = xedge
         data[arg].new_y = yedge
         data[arg].new_z = new_z
-        data[arg].zmin = zmin
-        data[arg].zmax = zmax
         data[arg].xlabel = x_stream
         data[arg].ylabel = y_stream
         data[arg].zlabel = z_stream

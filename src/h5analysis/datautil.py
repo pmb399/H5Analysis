@@ -417,17 +417,13 @@ def check_dimensions2d(x,y,z):
     
 #########################################################################################
     
-def bokeh_image_boundaries(x,y,xmin,xmax,ymin,ymax):
+def bokeh_image_boundaries(x,y):
     """Calculates the boundaries and width for the displayed image
     
     Parameters
     ----------
     x: 1d array
     y: 1d array
-    xmin: minimum of x
-    xmax: maximum of x
-    ymin: minimum of y
-    ymax: maximum of y
 
     Returns
     -------
@@ -436,7 +432,14 @@ def bokeh_image_boundaries(x,y,xmin,xmax,ymin,ymax):
     plot_dw: with of the plot (in data coordinates)
     plot_df: height of the plot (in data coordinates)
     """
+    
+    # Get the scale limits
+    xmin = x.min()
+    xmax = x.max()
+    ymin = y.min()
+    ymax = y.max()
 
+    # Calculate bokeh boundaries
     diff_x  = x[1]-x[0]
     diff_y  =y[1]-y[0]
     plot_x_corner = xmin-diff_x/2

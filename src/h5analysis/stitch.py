@@ -311,10 +311,6 @@ def ImageStitch(ScanData, file, x_stream, detector, *args, norm=False, xoffset=N
     data[0].new_x = new_x
     data[0].new_y = new_y
     data[0].new_z = matrix
-    data[0].xmin = new_x.min()
-    data[0].xmax = new_x.max()
-    data[0].ymin = new_y.min()
-    data[0].ymax = new_y.max()
     data[0].xlabel = x_stream
     data[0].ylabel = 'Scale'
     data[0].zlabel = detector
