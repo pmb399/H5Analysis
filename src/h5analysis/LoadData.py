@@ -176,13 +176,22 @@ class Load1d:
         # Subtract the background from all data objects
         for i, val in enumerate(self.data):
             for k, v in val.items():
+
+                # Determine biggest overlap between background and data
+                s = max(v.x_stream.min(),bg_x.min())
+                e = min(v.x_stream.max(),bg_x.max())
+
+                x_stream_int = v.x_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+                y_stream_int = v.y_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+
                 # Interpolate the background onto the x data
-                int_y = interp1d(bg_x,bg_y,fill_value=0,bounds_error=False)(v.x_stream)
+                int_y = interp1d(bg_x,bg_y)(x_stream_int)
 
                 # Remove data
-                new_y = np.subtract(v.y_stream,int_y)
+                new_y = np.subtract(y_stream_int,int_y)
 
                 # Overwrite streams in object
+                v.x_stream = x_stream_int
                 v.y_stream = new_y
 
                 # Update dictionary with new object
@@ -844,16 +853,24 @@ class Load2d:
             # Subtract the background from all data objects
             for i, val in enumerate(self.data):
                 for k, v in val.items():
+
+                    # Determine biggest overlap between background and data
+                    s = max(v.new_y.min(),bg_x.min())
+                    e = min(v.new_y.max(),bg_x.max())
+                    d = np.diff(v.new_y).min()
+                    ds = int((e-s)/d)+1
+                    new_y = np.linspace(s,e,ds)
                     
                     # Interpolate background and generate 2d array
-                    int_axis = v.new_y
-                    arr_subtract = interp1d(bg_x,bg_y,fill_value=0,bounds_error=False)(int_axis)
+                    img_int = interp2d(v.new_x,v.new_y,v.new_z)(v.new_x,new_y)
+                    arr_subtract = interp1d(bg_x,bg_y)(new_y)
                     img_subtract = np.transpose(np.repeat(arr_subtract[None,...],len(v.new_x),axis=0))
                     
                     # Remove data
-                    new_z = np.subtract(v.new_z,img_subtract)
+                    new_z = np.subtract(img_int,img_subtract)
 
                     # Overwrite streams in object
+                    v.new_y = new_y
                     v.new_z = new_z
                     
                     # Update dictionary with new object
@@ -866,16 +883,23 @@ class Load2d:
             # Subtract the background from all data objects
             for i, val in enumerate(self.data):
                 for k, v in val.items():
+                    # Determine biggest overlap between background and data
+                    s = max(v.new_x.min(),bg_x.min())
+                    e = min(v.new_x.max(),bg_x.max())
+                    d = np.diff(v.new_x).min()
+                    ds = int((e-s)/d)+1
+                    new_x = np.linspace(s,e,ds)
                     
                     # Interpolate background and generate 2d array
-                    int_axis = v.new_x
-                    arr_subtract = interp1d(bg_x,bg_y,fill_value=0,bounds_error=False)(int_axis)
+                    img_int = interp2d(v.new_x,v.new_y,v.new_z)(new_x,v.new_y)
+                    arr_subtract = interp1d(bg_x,bg_y)(new_x)
                     img_subtract = np.repeat(arr_subtract[None,...],len(v.new_y),axis=0)
                     
                     # Remove data
-                    new_z = np.subtract(v.new_z,img_subtract)
+                    new_z = np.subtract(img_int,img_subtract)
 
                     # Overwrite streams in object
+                    v.new_x = new_x
                     v.new_z = new_z
                     
                     # Update dictionary with new object
@@ -942,13 +966,29 @@ class Load2d:
         # Subtract the background from all data objects
         for i, val in enumerate(self.data):
             for k, v in val.items():
+                # Determine biggest overlap between background and data
+                s_x = max(v.new_x.min(),bg_x.min())
+                e_x = min(v.new_x.max(),bg_x.max())
+                d_x = np.diff(v.new_x).min()
+                ds_x = int((e_x-s_x)/d_x)+1
+                s_y = max(v.new_y.min(),bg_y.min())
+                e_y = min(v.new_y.max(),bg_y.max())
+                d_y = np.diff(v.new_y).min()
+                ds_y = int((e_y-s_y)/d_y)+1
+
+                new_x = np.linspace(s_x,e_x,ds_x)
+                new_y = np.linspace(s_y,e_y,ds_y)
+
                 # Interpolate the x,y data onto the background
-                int_z = interp2d(bg_x,bg_y,bg_z,fill_value=0,bounds_error=False)(v.new_x,v.new_y)
+                bg_z_int = interp2d(bg_x,bg_y,bg_z)(new_x,new_y)
+                im_z_int = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
 
                 # Remove data
-                new_z = np.subtract(v.new_z,int_z)
+                new_z = np.subtract(im_z_int,bg_z_int)
 
                 # Overwrite streams in object
+                v.new_x = new_x
+                v.new_y = new_y
                 v.new_z = new_z
 
                 # Update dictionary with new object
