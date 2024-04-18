@@ -8,7 +8,7 @@ import pandas as pd
 from .ReadData import ScanInfo
 
 # Util functions
-from .simplemath import apply_offset
+from .data_1d import apply_kwargs_1d
 from .util import invert_dict, clean_beamline_info_dict
 from collections import defaultdict
 import warnings
@@ -81,14 +81,8 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
     data[0].y_stream = info_array[:, 1]
     data[0].scan = 0
 
-    # Apply normalization to [0,1]
-    if norm == True:
-        data[0].y_stream = np.interp(
-            data[0].y_stream, (data[0].y_stream.min(), data[0].y_stream.max()), (0, 1))
-
-    # Apply offset to x and y-stream
-    data[0].x_stream = apply_offset(data[0].x_stream, xoffset, xcoffset)
-    data[0].y_stream = apply_offset(data[0].y_stream, yoffset, ycoffset)
+    # Apply kwargs
+    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,[None, None, None],None,None)
 
     return data
 

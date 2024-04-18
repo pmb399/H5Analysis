@@ -5,12 +5,9 @@ import numpy as np
 from scipy.interpolate import interp1d, interp2d
 
 # Data loaders
-from .data_1d import load_1d
-from .data_2d import load_2d
+from .data_1d import load_1d, apply_kwargs_1d
+from .data_2d import load_2d, apply_kwargs_2d
 from .histogram import load_histogram
-
-# Utilities
-from .simplemath import apply_offset, apply_savgol, grid_data, bin_data
 
 def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False, matplotlib_props=dict()):
     """Internal function to handle scan stitching.
@@ -118,43 +115,8 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
     # Set matplotlib props
     data[0].matplotlib_props = matplotlib_props
 
-    # Normalize data to [0,1]
-    if norm == True:
-        data[0].y_stream = np.interp(
-            data[0].y_stream, (data[0].y_stream.min(), data[0].y_stream.max()), (0, 1))
-        
-    # Grid the data if specified
-    if grid_x != [None, None, None]:
-        new_x, new_y = grid_data(
-            data[0].x_stream, data[0].y_stream, grid_x)
-
-        data[0].x_stream = new_x
-        data[0].y_stream = new_y
-
-    # May apply constant and polynomial offset
-    data[0].x_stream = apply_offset(data[0].x_stream, xoffset, xcoffset)
-    data[0].y_stream = apply_offset(data[0].y_stream, yoffset, ycoffset)
-
-    #Bin the data if requested
-    if binsize != None:
-        data[0].x_stream, data[0].y_stream = bin_data(data[0].x_stream,data[0].y_stream,binsize)
-
-    # Apply smoothing and derivatives
-    if savgol != None:
-        if isinstance(savgol,tuple):
-            if len(savgol) == 2:
-                savgol_deriv = 0
-            elif len(savgol) == 3:
-                savgol_deriv = savgol[2]
-            else:
-                raise TypeError("Savgol smoothing arguments incorrect.")
-            data[0].x_stream, data[0].y_stream = apply_savgol(data[0].x_stream,data[0].y_stream,savgol[0],savgol[1],savgol_deriv)
-
-            if norm == True:
-                data[0].y_stream = data[0].y_stream / \
-                data[0].y_stream.max()
-        else:
-            raise TypeError("Savgol smoothing arguments incorrect.")
+    # Apply kwargs
+    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize)
 
     return data
 
@@ -318,14 +280,7 @@ def ImageStitch(ScanData, file, x_stream, detector, *args, norm=False, xoffset=N
 
     data[0].scan = args
 
-    # Apply x offset
-    data[0].new_x = apply_offset(data[0].new_x, xoffset, xcoffset)
-
-    # Apply y offset
-    data[0].new_y = apply_offset(data[0].new_y, yoffset, ycoffset)
-
-    # Normalize data to [0,1]
-    if norm == True:
-        data[0].new_z =  data[0].new_z / data[0].new_z.max()
+    # Apply kwargs
+    data[0].new_x,data[0].new_y,data[0].new_z = apply_kwargs_2d(data[0].new_x,data[0].new_y,data[0].new_z,norm,xoffset,xcoffset,yoffset,ycoffset,None,None)
 
     return data

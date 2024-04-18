@@ -351,46 +351,83 @@ def load_1d(config, file, x_stream, y_stream, *args, norm=False, xoffset=None, x
         except:
             data[arg].matplotlib_props = dict()
 
-        #Bin the data if requested
-        if binsize != None:
-            data[arg].x_stream, data[arg].y_stream = bin_data(data[arg].x_stream,data[arg].y_stream,binsize)
-
-        # Grid the data if specified
-        if grid_x != [None, None, None]:
-            new_x, new_y = grid_data(
-                data[arg].x_stream, data[arg].y_stream, grid_x)
-
-            data[arg].x_stream = new_x
-            data[arg].y_stream = new_y
-
-        # Apply offsets to x-stream
-        data[arg].x_stream = apply_offset(
-        data[arg].x_stream, xoffset, xcoffset)
-
-        # Apply normalization to [0,1]
-        if norm == True:
-            data[arg].y_stream = np.interp(
-                data[arg].y_stream, (data[arg].y_stream.min(), data[arg].y_stream.max()), (0, 1))
-
-        # Apply offset to y-stream
-        data[arg].y_stream = apply_offset(
-        data[arg].y_stream, yoffset, ycoffset)
-               
-        # Smooth and take derivatives
-        if savgol != None:
-            if isinstance(savgol,tuple):
-                if len(savgol) == 2: # Need to provide window length and polynomial order
-                    savgol_deriv = 0 # Then, no derivative is taken
-                elif len(savgol) == 3:
-                    savgol_deriv = savgol[2] # May also specify additional argument for derivative order
-                else:
-                    raise TypeError("Savgol smoothing arguments incorrect.")
-                data[arg].x_stream, data[arg].y_stream = apply_savgol(data[arg].x_stream,data[arg].y_stream,savgol[0],savgol[1],savgol_deriv)
-
-                if norm == True:
-                    data[arg].y_stream = data[arg].y_stream / \
-                    data[arg].y_stream.max()
-            else:
-                raise TypeError("Savgol smoothing arguments incorrect.")
+        data[arg].x_stream,data[arg].y_stream = apply_kwargs_1d(data[arg].x_stream,data[arg].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize)
 
     return data
+
+def apply_kwargs_1d(x_stream,y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize):
+    """ Internal function to apply math operations as specified in key-word arguments
+
+        Parameters
+        ----------
+        x_stream: array
+            x-data
+        y_stream: array
+            y-data
+        norm: boolean
+            normalizes to [0,1]
+        xoffset: list
+            fitting offset (x-stream)
+        xcoffset: float
+            constant offset (x-stream)
+        yoffset: list
+            fitting offset (y-stream)
+        ycoffset: float
+            constant offset (y-stream)
+        grid_x: list
+            grid data evenly with [start,stop,delta]
+        savgol: tuple
+            (window length, polynomial order, derivative)
+        binsize: int
+            puts data in bins of specified size
+
+        Returns
+        -------
+        x_stream: array
+            Adjusted x-stream
+        y_stream: array
+            Adjusted y-stream
+    """
+
+    #Bin the data if requested
+    if binsize != None:
+        x_stream, y_stream = bin_data(x_stream,y_stream,binsize)
+
+    # Grid the data if specified
+    if grid_x != [None, None, None]:
+        new_x, new_y = grid_data(
+            x_stream, y_stream, grid_x)
+
+        x_stream = new_x
+        y_stream = new_y
+
+    # Apply offsets to x-stream
+    x_stream = apply_offset(
+    x_stream, xoffset, xcoffset)
+
+    # Apply normalization to [0,1]
+    if norm == True:
+        y_stream = np.interp(
+            y_stream, (y_stream.min(), y_stream.max()), (0, 1))
+
+    # Apply offset to y-stream
+    y_stream = apply_offset(
+    y_stream, yoffset, ycoffset)
+            
+    # Smooth and take derivatives
+    if savgol != None:
+        if isinstance(savgol,tuple):
+            if len(savgol) == 2: # Need to provide window length and polynomial order
+                savgol_deriv = 0 # Then, no derivative is taken
+            elif len(savgol) == 3:
+                savgol_deriv = savgol[2] # May also specify additional argument for derivative order
+            else:
+                raise TypeError("Savgol smoothing arguments incorrect.")
+            x_stream, y_stream = apply_savgol(x_stream,y_stream,savgol[0],savgol[1],savgol_deriv)
+
+            if norm == True:
+                y_stream = y_stream / y_stream.max()
+        else:
+            raise TypeError("Savgol smoothing arguments incorrect.")
+        
+    return x_stream,y_stream

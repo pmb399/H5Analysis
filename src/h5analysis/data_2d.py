@@ -312,12 +312,6 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
                 warnings.warn("Unexpected detector dimension, assume transpose")
                 data[arg].x_data = np.arange(0,np.shape(data[arg].detector)[1])
 
-        # Apply x offset
-        data[arg].x_data = apply_offset(data[arg].x_data, xoffset, xcoffset)
-
-        # Apply y offset
-        data[arg].y_data = apply_offset(data[arg].y_data, yoffset, ycoffset)
-
         # Normalize MCA data by SCA
         if not isinstance(norm_by,type(None)):
             norm_data = data[arg].Scan(norm_by)
@@ -325,21 +319,11 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
 
             data[arg].detector = detector_norm(data[arg].detector,normalization)
 
-        # Normalize if requested
-        if norm == True:
-            data[arg].detector = data[arg].detector/np.max(data[arg].detector)
-
         # Note that the detector image is transposed
         data[arg].detector = np.transpose(data[arg].detector)
 
-        # Apply the binning
-        if isinstance(binsize_x,int):
-            data[arg].x_data = bin_shape_1d(data[arg].x_data,binsize_x)
-            data[arg].detector = bin_shape_x(data[arg].detector,binsize_x)
-
-        if isinstance(binsize_y,int):
-            data[arg].y_data = bin_shape_1d(data[arg].y_data,binsize_y)
-            data[arg].detector = bin_shape_y(data[arg].detector,binsize_y)
+        # Apply kwargs
+        data[arg].x_data, data[arg].y_data, data[arg].detector = apply_kwargs_2d(data[arg].x_data, data[arg].y_data, data[arg].detector,norm,xoffset,xcoffset,yoffset,ycoffset,binsize_x,binsize_y)
 
         # Grid data to image
         new_x, new_y, new_z = grid_data2d(data[arg].x_data, data[arg].y_data, data[arg].detector, grid_x=grid_x,grid_y=grid_y)
@@ -348,3 +332,66 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         data[arg].new_z = new_z
 
     return data
+
+def apply_kwargs_2d(x_data,y_data,detector,norm,xoffset,xcoffset,yoffset,ycoffset,binsize_x,binsize_y):
+    """ Internal function to apply math operations as specified in key-word arguments
+
+        Parameters
+        ----------
+        x_stream: array
+            x-data
+        y_stream: array
+            y-data
+        detector: 2d-array
+            Matrix data
+        norm: boolean
+            normalization to maximum True or False, if None intepreted as False
+        xoffset: list of tuples
+            fitted offset (x-stream)
+        xcoffset: float
+            constant offset (x-stream)
+        yoffset: list of tuples
+            fitted offset (y-stream)
+        ycoffset: float
+            constant offset (y-stream)
+        grid_x: list
+            grid equally spaced in x with [start, stop, delta]
+        grid_y: list
+            grid equally spaced in y with [start, stop, delta]
+        norm_by: string
+            norm MCA by defined h5 key or SCA alias
+        binsize_x: int
+            puts data in bins of specified size in the horizontal direction
+        binsize: int
+            puts data in bins of specified size in the vertical direction
+
+        Returns
+        -------
+        x_stream: array
+            Adjusted x-stream
+        y_stream: array
+            Adjusted y-stream
+        detector: 2d-array
+            Matrix data
+    """
+
+    # Apply x offset
+    x_data = apply_offset(x_data, xoffset, xcoffset)
+
+    # Apply y offset
+    y_data = apply_offset(y_data, yoffset, ycoffset)
+
+    # Normalize if requested
+    if norm == True:
+        detector = detector/np.max(detector)
+
+    # Apply the binning
+    if isinstance(binsize_x,int):
+        x_data = bin_shape_1d(x_data,binsize_x)
+        detector = bin_shape_x(detector,binsize_x)
+
+    if isinstance(binsize_y,int):
+        y_data = bin_shape_1d(y_data,binsize_y)
+        detector = bin_shape_y(detector,binsize_y)
+
+    return x_data,y_data,detector

@@ -104,8 +104,7 @@ def load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False
 
         # Normalize if requested
         if norm == True:
-            data[arg].z_data = np.interp(
-                data[arg].z_data, (data[arg].z_data.min(), data[arg].z_data.max()), (0, 1))
+            data[arg].z_data = data[arg].z_data / np.max(data[arg].z_data)
 
         # Do some error checking to ensure matching dimensions
         if len(data[arg].x_data) != len(data[arg].y_data) or len(data[arg].y_data) != len(data[arg].z_data):
