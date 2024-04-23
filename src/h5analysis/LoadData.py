@@ -375,7 +375,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, plot_height=450, plot_width=700, norm=False, waterfall=None, **kwargs):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, ylabel_right=None, plot_height=450, plot_width=700, norm=False, waterfall=None, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -385,6 +385,7 @@ class Load1d:
         title : string, optional
         xlabel : string, optional
         ylabel : string, optional
+        ylabel_right : string, optional
         plot_height : int, optional
         plot_width : int, optional
         norm: boolean, optional
@@ -403,6 +404,7 @@ class Load1d:
             
         xaxis_labels = list()
         yaxis_labels = list()
+        yaxis_r_labels = list()
 
         # Organize all data assosciated with object in sorted dictionary.
         # Separate data by y-axis (if right-hand side axis requested)
@@ -424,17 +426,19 @@ class Load1d:
                             xaxis_labels.append(label)
                 except:
                     pass
-                # y
-                try:
-                    for label in v.yaxis_label:
-                        if label not in yaxis_labels:
-                            yaxis_labels.append(label)
-                except:
-                    pass
 
                 # Work on twinned axis
                 if hasattr(v,'twin_y'):
                     if v.twin_y != True:
+
+                        # y labels
+                        try:
+                            for label in v.yaxis_label:
+                                if label not in yaxis_labels:
+                                    yaxis_labels.append(label)
+                        except:
+                            pass
+
                         data_default_dict = plot_data
                         if waterfall == None:
                             y = v.y_stream
@@ -442,6 +446,13 @@ class Load1d:
                             y = waterfall_i*waterfall + np.interp(v.y_stream,(v.y_stream.min(),v.y_stream.max()),(0,1))
                             waterfall_i+=1
                     else:
+                        # y label right
+                        try:
+                            for label in v.yaxis_label:
+                                if label not in yaxis_r_labels:
+                                    yaxis_r_labels.append(label)
+                        except:
+                            pass
                         data_default_dict = plot_data_twin
                         if waterfall == None:
                             y = v.y_stream
@@ -449,6 +460,15 @@ class Load1d:
                             y = waterfall_itwin*waterfall + np.interp(v.y_stream,(v.y_stream.min(),v.y_stream.max()),(0,1))
                             waterfall_itwin+=1
                 else:
+
+                    # y label
+                    try:
+                        for label in v.yaxis_label:
+                            if label not in yaxis_labels:
+                                yaxis_labels.append(label)
+                    except:
+                        pass
+
                     data_default_dict = plot_data
                     if waterfall == None:
                         y = v.y_stream
@@ -484,10 +504,20 @@ class Load1d:
             ymin = min(mins) - 0.05*yrange
             ymax = max(maxs) + 0.05*yrange
 
+            # Work on labels
+            if ylabel != None:
+                ystring = str(ylabel)
+            else:
+                ystring = ""
+                for i,label in enumerate(yaxis_labels):
+                    if i != 0:
+                        ystring+=f"|"
+                    ystring+=f"{label}"
+
             # Disable default axis and add custom axis to left
             p.yaxis.visible = False
             p.extra_y_ranges['left'] = DataRange1d(bounds=(ymin,ymax))
-            p.add_layout(LinearAxis(y_range_name='left'), 'left')
+            p.add_layout(LinearAxis(y_range_name='left',axis_label=ystring), 'left')
 
             default_range = 'left'
         else:
@@ -510,8 +540,18 @@ class Load1d:
             ymin = min(mins) - 0.05*yrange
             ymax = max(maxs) + 0.05*yrange
 
+            # Work on labels
+            if ylabel_right != None:
+                ystring = ylabel_right
+            else:
+                ystring = ""
+                for i,label in enumerate(yaxis_r_labels):
+                    if i != 0:
+                        ystring+=f"|"
+                    ystring+=f"{label}"
+
             p.extra_y_ranges['right'] = DataRange1d(bounds=(ymin,ymax))
-            p.add_layout(LinearAxis(y_range_name='right'), 'right')
+            p.add_layout(LinearAxis(y_range_name='right',axis_label=ystring), 'right')
             
             # Determine the color
             numlines_y = len(plot_data_twin['scan'])
@@ -571,15 +611,17 @@ class Load1d:
                     xstring+=f"|"
                 xstring+=f"{label}"
             p.xaxis.axis_label = str(xstring)
-        if ylabel != None:
-            p.yaxis.axis_label = str(ylabel)
-        else:
-            ystring = ""
-            for i,label in enumerate(yaxis_labels):
-                if i != 0:
-                    ystring+=f"|"
-                ystring+=f"{label}"
-            p.yaxis.axis_label = str(ystring)
+        
+        if len(plot_data_twin['x_stream']) == 0:
+            if ylabel != None:
+                p.yaxis.axis_label = str(ylabel)
+            else:
+                ystring = ""
+                for i,label in enumerate(yaxis_labels):
+                    if i != 0:
+                        ystring+=f"|"
+                    ystring+=f"{label}"
+                p.yaxis.axis_label = str(ystring)
         show(p)
 
     def get_data(self):
