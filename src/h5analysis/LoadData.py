@@ -1207,7 +1207,7 @@ class Load2d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, title=None, kind='Image', xlabel=None, ylabel=None, plot_height=600, plot_width=600, 
+    def plot(self, title=None, kind='Image', xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, 
             vmin=None, vmax=None, colormap = "linear", norm=False, **kwargs):
         """
         Plot all data assosciated with class instance/object.
@@ -1218,6 +1218,7 @@ class Load2d:
         kind : string, optional
         xlabel : string, optional
         ylabel : string, optional
+        zlabel : string, optional
         plot_height : int, optional
         plot_width : int, optional
         vmin : float, optional
@@ -1278,10 +1279,14 @@ class Load2d:
                 p.grid.grid_line_width = 0.5
 
                 # Defining properties of color mapper
+                if zlabel == None:
+                    zstring = 'Counts'
+                else:
+                    zstring = zlabel
                 color_bar = ColorBar(color_mapper=color_mapper,
                                      label_standoff=12,
                                      location=(0, 0),
-                                     title='Counts')
+                                     title=zstring)
                 p.add_layout(color_bar, 'right')
 
                 # Overwrite plot properties if selected.
