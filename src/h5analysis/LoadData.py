@@ -1836,7 +1836,7 @@ class Load3d:
                 if not isinstance(ylim,type(None)):
                     plt.ylim(ylim)
                 for i,img in enumerate(v.stack):
-                    frames.append([plt.imshow(img,animated=True,extent=[v.x_min[i],v.x_max[i],v.y_min[i],v.y_max[i]],aspect=aspect)])
+                    frames.append([plt.imshow(img,animated=True,extent=[v.new_x[i].min(),v.new_x[i].max(),v.new_y[i].min(),v.new_y[i].max()],aspect=aspect)])
             
                 ani = animation.ArtistAnimation(fig, frames, interval=interval, blit=True,
                                 repeat_delay=10000)
