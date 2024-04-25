@@ -33,7 +33,7 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
             raise ValueError("Cannot add the same scan to itself")
 
     # Load all specified scan data
-    ScanData = load_1d(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None)
+    ScanData = load_1d(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=binsize)
 
     # Iterate over all loaded scans to determine bounds
     start_list = list()
@@ -116,7 +116,7 @@ def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None,
     data[0].matplotlib_props = matplotlib_props
 
     # Apply kwargs
-    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize)
+    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,None)
 
     return data
 

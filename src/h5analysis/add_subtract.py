@@ -37,7 +37,7 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
             raise ValueError("Cannot add the same scan to itself")
 
     # Load all specified scan data
-    ScanData = load_1d(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None)
+    ScanData = load_1d(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=binsize)
 
     # Iterate over all loaded scans to determine bounds
     start_list = list()
@@ -111,7 +111,7 @@ def ScanAddition(config,file, x_stream, y_stream, *args, norm=False, xoffset=Non
     data[0].matplotlib_props = matplotlib_props
 
     # Apply kwargs
-    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize)
+    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,None)
 
     return data
 
@@ -145,8 +145,8 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
         
     # Get the minuend and subtrahend data
     # Pass the scans specified in each list to the Scan addition function
-    minuendData = ScanAddition(config,file, x_stream, y_stream, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None)
-    subtrahendData = ScanAddition(config,file, x_stream, y_stream, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None)
+    minuendData = ScanAddition(config,file, x_stream, y_stream, *minuend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=binsize)
+    subtrahendData = ScanAddition(config,file, x_stream, y_stream, *subtrahend, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=binsize)
 
     name = f"{minuend}-{subtrahend}"
 
@@ -202,7 +202,7 @@ def ScanSubtraction(config,file, x_stream, y_stream, minuend, subtrahend, norm=F
     data[0].matplotlib_props = matplotlib_props
 
     # Apply kwargs
-    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize)
+    data[0].x_stream,data[0].y_stream = apply_kwargs_1d(data[0].x_stream,data[0].y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,None)
 
     return data
 
