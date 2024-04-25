@@ -25,9 +25,19 @@ def load_beamline(config, file, key, average=True, norm=False, xoffset=None, xco
             file name
         key: string
             path to the meta data of interest
-        **kwargs: See Load1d class, but additional
+        **kwargs:
             average: Boolean
                 determines if array of values or their average is reported
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
             legend_item: string
                 Name for legend
             twin_y: boolean

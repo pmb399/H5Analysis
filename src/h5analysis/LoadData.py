@@ -1851,30 +1851,34 @@ class LoadBeamline(Load1d):
 
         Parameters
         ----------
-        basedir : string
-            Specifiy the absolute or relative path to experimental data.
-        file : string
+        config: dict
+            h5 data configuration
+        file: string
             Specify the file name (either ASCII or HDF5).
-        key : string
+        key: string
+            HDF5 meta data location 
         **kwargs: multiple, optional
-            Options:
-                average: Boolean
-                    determines if array of values or their average is reported
-                norm : boolean
-                    Norm the spectra to [0,1].
-                    default: True
-                xoffset : list of tuples
-                    Offset the x-axis by applying a polynomial fit.
-                    default: None
-                xcoffset : float
-                    Offset x-axis by constant value.
-                    default : None 
-                yoffset : list of tuples
-                    Offset the y-axis by applying a polynomial fit.
-                    default : None 
-                ycoffset : float
-                    Offset y-axis by constant value.
-                    default : None
+            average: Boolean
+                determines if array of values or their average is reported
+            norm: boolean
+                Norm the spectra to [0,1].
+                default: True
+            xoffset: list of tuples
+                Offset the x-axis by applying a polynomial fit.
+                default: None
+            xcoffset: float
+                Offset x-axis by constant value.
+                default : None 
+            yoffset: list of tuples
+                Offset the y-axis by applying a polynomial fit.
+                default : None 
+            ycoffset: float
+                Offset y-axis by constant value.
+                default: None
+            legend_item: string
+                Name for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
         """
 
         # Add data index to configuration
@@ -1902,7 +1906,7 @@ class LoadLog:
 
         Parameters
         ----------
-        config: dict,
+        config: dict
             h5 data configuration
         file: string
             file name
