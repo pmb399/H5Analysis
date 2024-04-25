@@ -672,7 +672,7 @@ class PFYLoader(Object2dReduce):
 
 
 class ELOSSLoader(Object2dReduce):
-    def load(self,config,file, y_stream,*args, **kwargs):
+    def load(self,config,file, y_stream,*args, binsize = None,**kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream_orig = y_stream
@@ -684,7 +684,7 @@ class ELOSSLoader(Object2dReduce):
         for scan_i in args:
             #Load Image for processing
             RIXS_Image = Object2dTransform()
-            RIXS_Image.load(config,file,'Energy',y_stream,scan_i, **kwargs)
+            RIXS_Image.load(config,file,'Energy',y_stream,scan_i, binsize_y = binsize,**kwargs)
             #Load total 1D spectra for intensity comparison
             RIXS_Spectra = Load1d()
             RIXS_Spectra.load(config,file,'[None]',y_stream,scan_i)
@@ -711,7 +711,7 @@ class ELOSSLoader(Object2dReduce):
             self.data[len(self.data)-1][0].y_stream = self.data[len(self.data)-1][0].y_stream*scale_fact
             self.data[len(self.data)-1][0].legend = str(len(self.data)) + '-S' + str(scan_i) + '_Energy_' + str(y_stream_orig)
         return Object2dReduce
-    def stitch(self,config,file, y_stream,*args, **kwargs):
+    def stitch(self,config,file, y_stream,*args, binsize = None, **kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream_orig = y_stream
@@ -722,10 +722,10 @@ class ELOSSLoader(Object2dReduce):
             y_stream = data_args[0]
         #Load Image for processing
         RIXS_Image = Object2dTransform()
-        RIXS_Image.stitch(config,file,'Energy',y_stream,*args, **kwargs)
+        RIXS_Image.stitch(config,file,'Energy',y_stream,*args, binsize_y = binsize,**kwargs)
         #Load total 1D spectra for intensity comparison
         RIXS_Spectra = Load1d()
-        RIXS_Spectra.stitch(config,file,'[None]',y_stream,*args)
+        RIXS_Spectra.stitch(config,file,'[None]',y_stream, *args)
         #Make another image, but use it for normalization
         XES_Image = Object2dReduce()
         XES_Image.load(RIXS_Image,0,0)
@@ -752,7 +752,7 @@ class ELOSSLoader(Object2dReduce):
             self.data[len(self.data)-1][0].legend += '+' + str(args[i])
         self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
         return Object2dReduce
-    def add(self,config,file, y_stream,*args, **kwargs):
+    def add(self,config,file, y_stream,*args, binsize = None, **kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream_orig = y_stream
@@ -763,10 +763,10 @@ class ELOSSLoader(Object2dReduce):
             y_stream = data_args[0]
         #Load Image for processing
         RIXS_Image = Object2dTransform()
-        RIXS_Image.add(config,file,'Energy',y_stream,*args, **kwargs)
+        RIXS_Image.add(config,file,'Energy',y_stream,*args,binsize_y = binsize, **kwargs)
         #Load total 1D spectra for intensity comparison
         RIXS_Spectra = Load1d()
-        RIXS_Spectra.add(config,file,'[None]',y_stream,*args)
+        RIXS_Spectra.add(config,file,'[None]',y_stream, *args)
         #Make another image, but use it for normalization
         XES_Image = Object2dReduce()
         XES_Image.load(RIXS_Image,0,0)
@@ -793,7 +793,7 @@ class ELOSSLoader(Object2dReduce):
             self.data[len(self.data)-1][0].legend += '+' + str(args[i])
         self.data[len(self.data)-1][0].legend += '_Energy_' + str(y_stream_orig)
         return Object2dReduce
-    def subtract(self,config,file, y_stream,*args, **kwargs):
+    def subtract(self,config,file, y_stream,*args,binsize = None, **kwargs):
         file = hdf5FileFixer(file)
         data_args = y_stream.split('[')
         y_stream_orig = y_stream
@@ -804,7 +804,7 @@ class ELOSSLoader(Object2dReduce):
             y_stream = data_args[0]
         #Load Image for processing
         RIXS_Image = Object2dTransform()
-        RIXS_Image.subtract(config,file,'Energy',y_stream,*args, **kwargs)
+        RIXS_Image.subtract(config,file,'Energy',y_stream,*args, binsize_y = binsize, **kwargs)
         #Load total 1D spectra for intensity comparison
         RIXS_Spectra = Load1d()
         RIXS_Spectra.subtract(config,file,'[None]',y_stream,*args)
