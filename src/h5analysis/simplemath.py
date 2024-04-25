@@ -280,22 +280,7 @@ def bin_data(x_data,y_data,binsize):
             y-values for the bins
     """
 
-    # Caluclate how many bins
-    bins = len(x_data)/binsize
-
-    # Split the data into the bins
-    try:
-        x_splits = np.split(x_data,bins)
-        y_splits = np.split(y_data,bins)
-    except Exception as e:
-        warnings.warn("Could not split specified quantity in equally split subarrays. Adjust the bin size.")
-        raise Exception(e)
-
-    # Calculate the mean for all x and y values, respectively, in the bin
-    new_x = np.mean(x_splits,axis=1)
-    new_y = np.mean(y_splits,axis=1)
-
-    return np.array(new_x), np.array(new_y)
+    return bin_shape_1d(x_data,binsize), bin_shape_1d(y_data,binsize)
 
 def bin_shape_1d(arr,width):
     """ Bins 1d arrays by truncating the array at the end if necessary and calculating the mean in each bin
