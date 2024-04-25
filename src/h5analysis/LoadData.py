@@ -1695,7 +1695,7 @@ class Load3d:
             self.data.append(StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwargs))
 
 
-    def plot(self, title=None, xlabel=None, ylabel=None, plot_height=600, plot_width=600, norm=False, **kwargs):
+    def plot(self, title=None, xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, vmin=None, vmax=None, colormap="linear", norm=False, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -1704,8 +1704,13 @@ class Load3d:
         title : string, optional
         xlabel : string, optional
         ylabel : string, optional
+        zlabel : string, optional
         plot_height : int, optional
         plot_width : int, optional
+        vmin : float, optional
+        vmax : float, optional
+        colormap : string
+            Use: "linear" or "log"
         norm: boolean
             Normalizes to the maximum z-value across all images in the stack
         kwargs
@@ -1753,7 +1758,21 @@ class Load3d:
                 p.x_range.range_padding = p.y_range.range_padding = 0
 
                 # must give a vector of image data for image parameter
-                color_mapper = LinearColorMapper(palette="Viridis256")
+                mapper_kwargs = dict()
+                mapper_kwargs['palette'] = "Viridis256"
+                if vmin != None:
+                    mapper_kwargs['low'] = vmin
+                if vmax != None:
+                    mapper_kwargs['high'] = vmax
+
+                if colormap == "linear":
+                    myMapper = LinearColorMapper
+                elif colormap == "log":
+                    myMapper = LogColorMapper
+                else:
+                    raise UserWarning("Only 'linear' and 'log' implemented.")
+
+                color_mapper = myMapper(**mapper_kwargs)
 
                 # Calculate boundaries and shape of image for plotter
                 # so that pixels are centred at their given values
@@ -1773,10 +1792,14 @@ class Load3d:
                 p.grid.grid_line_width = 0.5
 
                 # Defining properties of color mapper
+                if zlabel == None:
+                    zstring = 'Counts'
+                else:
+                    zstring = zlabel
                 color_bar = ColorBar(color_mapper=color_mapper,
                                      label_standoff=12,
                                      location=(0, 0),
-                                     title='Counts')
+                                     title=zstring)
                 p.add_layout(color_bar, 'right')
 
                 p.toolbar.logo = None
