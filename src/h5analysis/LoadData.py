@@ -1834,7 +1834,7 @@ class Load3d:
                 mywidget.observe(update,names='value')
                 display(mywidget)
 
-    def export(self,filename, interval=500, aspect=1, xlim=None, ylim=None, **kwargs):
+    def movie(self,filename, interval=500, aspect=1, xlim=None, ylim=None, **kwargs):
         """ Export Stack image as movie
 
             Parameters
@@ -1864,6 +1864,128 @@ class Load3d:
                 ani = animation.ArtistAnimation(fig, frames, interval=interval, blit=True,
                                 repeat_delay=10000)
                 ani.save(filename+'.mp4')
+
+    def get_data(self):
+        """Make data available in memory as exported to file.
+
+        Returns
+        -------
+        f : string.IO object
+            Motor and Detector Scales. Pandas Data Series.
+            1) Rewind memory with f.seek(0)
+            2) Load with pandas.read_csv(f,skiprows=3)
+        g : string.IO object
+            Actual gridded detector image.
+            1) Rewind memory with g.seek(0)
+            2) Load with numpy.genfromtxt(g,skip_header=4)
+        raw_data: list
+            List of lists with series data, series header, and matrix_data
+        """
+        # Set up the data frame and the two string objects for export
+        f = io.StringIO()
+        g = io.StringIO()
+        series_data = list()
+        series_header = list()
+        matrix_data = list()
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                # Gridded scales now calculated directly during the MCA load and only need to be referenced here
+
+                # Start writing string f
+                f.write("========================\n")
+                f.write(
+                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
+                f.write("========================\n")
+
+                # Start writing string g
+                g.write("========================\n")
+                g.write(
+                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
+                g.write("========================\n")
+
+                for idx in range(0,len(v.new_x)):
+
+                    # Append data to string now.
+                    # Append x-stream
+                    series_data.append(pd.Series(v.new_x[idx]))
+                    series_header.append(f"{v.xlabel} Gridded {idx+1}")
+
+                    # Append y-stream
+                    series_data.append(pd.Series(v.new_y[idx]))
+                    series_header.append(f"{v.ylabel} Gridded {idx+1}")
+
+                    g.write(f"=== {v.zlabel} {idx+1} ===\n")
+                    np.savetxt(g, v.stack[idx], fmt="%.9g")
+                    matrix_data.append(v.stack[idx])
+
+                dfT = pd.DataFrame(series_data).transpose(copy=True)
+                dfT.columns = series_header
+                dfT.to_csv(f, index=False, lineterminator='\n')
+
+            
+        raw_data = [series_data,series_header,matrix_data]
+
+        return f, g, raw_data
+
+    def export(self, filename, split_files=False):
+        """
+        Export and write data to specified file.
+
+        Parameters
+        ----------
+        filename : string
+        split_files: Boolean
+            Sets whether scans are exported appended to one file (False), or separately (True)
+        """
+        f, g, raw_data = self.get_data()
+
+        if split_files == False:
+            # Dump both strings in file.
+            # Need to rewind memory location of String.IO to move to beginning.
+            # Copy string content to file with shutil.
+            with open(f"{filename}.txt_scale", "a") as scales:
+                f.seek(0)
+                shutil.copyfileobj(f, scales)
+
+            with open(f"{filename}.txt_matrix", "a") as matrix:
+                g.seek(0)
+                shutil.copyfileobj(g, matrix)
+
+        else:
+            # iterate over matrices
+            for i,m in enumerate(raw_data[2]):
+                j = i+1
+                np.savetxt(f"{filename}_{j}.txt_matrix", m)
+                np.savetxt(f"{filename}_{j}.txt_scale1", raw_data[0][2*i],header=raw_data[1][2*i])
+                np.savetxt(f"{filename}_{j}.txt_scale2", raw_data[0][2*i+1],header=raw_data[1][2*i+1])
+
+        print(f"Successfully wrote Image data to {filename}.txt")
+
+    def exporter(self):
+        """Interactive exporter widget."""
+        current_dir = os.path.dirname(os.path.realpath("__file__"))
+
+        self.exportfile = FileChooser(current_dir)
+        self.exportfile.use_dir_icons = True
+        #self.exportfile.filter_pattern = '*.txt'
+
+        button = widgets.Button(
+            description='Save data file',
+            disabled=False,
+            button_style='info',  # 'success', 'info', 'warning', 'danger' or ''
+            tooltip='Save data to file',
+            icon='save'  # (FontAwesome names without the `fa-` prefix)
+        )
+
+        button.on_click(self.exportWidgetStep)
+        display(self.exportfile, button)
+
+    def exportWidgetStep(self):
+        """Helper function for exporter widget."""
+        file = os.path.join(self.exportfile.selected_path,
+                            self.exportfile.selected_filename)
+        self.export(file)
 
 #########################################################################################
 class LoadBeamline(Load1d):

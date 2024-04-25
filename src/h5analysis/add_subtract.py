@@ -549,6 +549,11 @@ def StackAddition(config, file, ind_stream, stack, *args,**kwargs):
     for i,s in enumerate(stack_data):
         if i == 0:
             MASTER_STACK = s.stack
+            filename = s.filename
+            xlabel = s.xlabel
+            ylabel = s.ylabel
+            zlabel = s.zlabel
+
         else:
             MASTER_STACK = np.add(MASTER_STACK,s.stack)
 
@@ -559,10 +564,13 @@ def StackAddition(config, file, ind_stream, stack, *args,**kwargs):
     data[0].str_ind_stream = stack_data[0].str_ind_stream
     data[0].new_x = stack_data[0].new_x
     data[0].new_y = stack_data[0].new_y
-    data[0].x_min = stack_data[0].x_min
-    data[0].x_max = stack_data[0].x_max
-    data[0].y_min = stack_data[0].y_min
-    data[0].y_max = stack_data[0].y_max
+
+    data[0].scan = 0
+    data[0].filename = filename
+    data[0].xlabel = xlabel
+    data[0].ylabel = ylabel
+    data[0].zlabel = zlabel
+
 
     return data
 
@@ -610,9 +618,11 @@ def StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwa
     data[0].str_ind_stream = minuend[0].str_ind_stream
     data[0].new_x = minuend[0].new_x
     data[0].new_y = minuend[0].new_y
-    data[0].x_min = minuend[0].x_min
-    data[0].x_max = minuend[0].x_max
-    data[0].y_min = minuend[0].y_min
-    data[0].y_max = minuend[0].y_max
+
+    data[0].scan = 0
+    data[0].filename = minuend[0].filename
+    data[0].xlabel = minuend[0].xlabel
+    data[0].ylabel = minuend[0].ylabel
+    data[0].zlabel = minuend[0].zlabel
 
     return data

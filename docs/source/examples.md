@@ -171,7 +171,7 @@ Note: Can only load one scan at a time!
 load3d = Load3d()
 load3d.load(config,'Filename.h5','ind_stream','stack',1)
 load3d.plot()
-load3d.export() # this will export a movie
+load3d.movie() # this will export a movie
 ```
 
 1. Create "Loader" object

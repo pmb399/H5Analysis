@@ -186,6 +186,9 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
 
     data[arg].xlabel = xlabel
     data[arg].ylabel = ylabel
+    data[arg].zlabel = stack
+
+    data[arg].filename = file
 
     # Check that independent stream dimension is correct
     if len(data[arg].ind_stream) == np.shape(data[arg].stack)[0]:
