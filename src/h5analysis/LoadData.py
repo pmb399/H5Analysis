@@ -1856,13 +1856,17 @@ class Load3d:
                 fig  = plt.figure(**kwargs)
                 if not isinstance(xlim,type(None)):
                     plt.xlim(xlim)
+                else:
+                    plt.xlim(np.min(v.new_x),np.max(v.new_x))
                 if not isinstance(ylim,type(None)):
                     plt.ylim(ylim)
+                else:
+                    plt.ylim(np.min(v.new_y),np.max(v.new_y))
                 for i,img in enumerate(v.stack):
                     frames.append([plt.imshow(img,animated=True,extent=[v.new_x[i].min(),v.new_x[i].max(),v.new_y[i].min(),v.new_y[i].max()],aspect=aspect)])
             
                 ani = animation.ArtistAnimation(fig, frames, interval=interval, blit=True,
-                                repeat_delay=10000)
+                                repeat_delay=1000)
                 ani.save(filename+'.mp4')
 
     def get_data(self):
