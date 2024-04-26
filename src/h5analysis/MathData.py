@@ -1477,6 +1477,7 @@ class Object1dFit(Load1d):
             idx_high = None
 
         # Crop the arrays
+        x_stream = self.SCADataObject.x_stream
         x = self.SCADataObject.x_stream[idx_low:idx_high]
         y = self.SCADataObject.y_stream[idx_low:idx_high]
         
@@ -1498,8 +1499,8 @@ class Object1dFit(Load1d):
             data[0] = added_object()
 
             # Store all pertinent information in object
-            data[0].x_stream = x
-            data[0].y_stream = out.best_fit
+            data[0].x_stream = x_stream
+            data[0].y_stream = out.eval(x=x_stream)
             data[0].scan = self.SCADataObject.scan
             data[0].xlabel = self.SCADataObject.xlabel
             data[0].ylabel = f"{self.SCADataObject.ylabel} - Fit"
@@ -1509,14 +1510,14 @@ class Object1dFit(Load1d):
             
         # Else, store the initial fit
         elif fit == 'init':
-            init_components = out.eval_components(params=out.init_params)
+            init_components = out.eval_components(params=out.init_params,x=x_stream)
             for i,(prefix,arr) in enumerate(list(init_components.items())):
 
                 # Create dict with objects to be compatible with other loaders
                 data[i] = added_object()
 
                 # Store all pertinent information in object
-                data[i].x_stream = x
+                data[i].x_stream = x_stream
                 data[i].y_stream = arr
                 data[i].scan = self.SCADataObject.scan
                 data[i].xlabel = self.SCADataObject.xlabel
@@ -1533,8 +1534,8 @@ class Object1dFit(Load1d):
             data[0] = added_object()
 
             # Store all pertinent information in object
-            data[0].x_stream = x
-            data[0].y_stream = out.best_fit
+            data[0].x_stream = x_stream
+            data[0].y_stream = out.eval(x=x_stream)
             data[0].scan = self.SCADataObject.scan
             data[0].xlabel = self.SCADataObject.xlabel
             data[0].ylabel = f"{self.SCADataObject.ylabel} - Fit"
@@ -1542,14 +1543,14 @@ class Object1dFit(Load1d):
             data[0].legend = f'{index} - S{self.SCADataObject.scan} - LMFit (best fit)'
             data[0].filename = self.SCADataObject.filename
 
-            best_components = out.eval_components()
+            best_components = out.eval_components(x=x_stream)
             for i,(prefix,arr) in enumerate(list(best_components.items())):
 
                 # Create dict with objects to be compatible with other loaders
                 data[i+1] = added_object()
 
                 # Store all pertinent information in object
-                data[i+1].x_stream = x
+                data[i+1].x_stream = x_stream
                 data[i+1].y_stream = arr
                 data[i+1].scan = self.SCADataObject.scan
                 data[i+1].xlabel = self.SCADataObject.xlabel
