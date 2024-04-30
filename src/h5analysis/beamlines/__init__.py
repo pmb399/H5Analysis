@@ -1,0 +1,1 @@
+"""A module containing configuration setups for different beamlines and applications."""

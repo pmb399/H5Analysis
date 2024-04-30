@@ -242,7 +242,7 @@ class Load1d:
         Parameters
         ----------
         See loader function.
-        Sticthes all scans specified in *args.
+        Stitches all scans specified in *args.
         """
 
         # Add data index to configuration
@@ -1083,7 +1083,7 @@ class Load2d:
         Parameters
         ----------
         See loader function.
-        Sticthes all scans specified in *args.
+        Stitches all scans specified in *args.
         """
 
         # Ensure that only one scan is loaded.
