@@ -11,4 +11,4 @@ dynamic = ["version"]  # remove any existing version parameter
 
 [tool.setuptools_scm]
 version_scheme = "post-release"
-version_file = "h5analysis/_version.py"
+version_file = "src/h5analysis/_version.py"
