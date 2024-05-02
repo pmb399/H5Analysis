@@ -1,6 +1,14 @@
 [build-system]
 requires = [
-    "setuptools>=42",
-    "wheel"
+    "setuptools>=60",
+    "wheel",
+    "setuptools-scm>=8.0"
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]  # remove any existing version parameter
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+version_file = "h5analysis/_version.py"
