@@ -6,9 +6,6 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[project]
-dynamic = ["version"]  # remove any existing version parameter
-
 [tool.setuptools_scm]
 version_scheme = "post-release"
 version_file = "src/h5analysis/_version.py"
