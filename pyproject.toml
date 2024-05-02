@@ -7,6 +7,6 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-version_scheme = "post-release"
+version_scheme = "only-version"
 local_scheme = 'no-local-version'
 version_file = "src/h5analysis/_version.py"
