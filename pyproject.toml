@@ -10,6 +10,3 @@ build-backend = "setuptools.build_meta"
 version_scheme = "post-release"
 local_scheme = 'no-local-version'
 version_file = "src/h5analysis/_version.py"
-
-[tool.setuptools.dynamic]
-version = { attr = "setuptools_scm.get_version" }
