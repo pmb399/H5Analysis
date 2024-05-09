@@ -9,11 +9,11 @@ from .ReadData import Data
 # Data utilities
 from .parser import parse
 from .util import check_key_in_dict
-from .simplemath import apply_offset, grid_data2d, handle_eval
+from .simplemath import apply_offset, grid_data2d, handle_eval, bin_shape_1d, bin_shape_x, bin_shape_y
 from .datautil import strip_roi, get_indices, mca_roi, stack_roi
 from .readutil import stack_norm
 
-def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None):
+def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None,grid_x=[None, None, None],grid_y=[None, None,None],norm_by=None,binsize_x=None,binsize_y=None):
     """ Internal function to load STACK data
     
         Parameters
@@ -43,6 +43,10 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
                 grid equally spaced in y with [start, stop, delta]
             norm_by: string
                 norm MCA by defined h5 key or SCA alias
+            binsize_x: int
+                puts data in bins of specified size in the horizontal direction
+            binsize: int
+                puts data in bins of specified size in the vertical direction
 
         Returns
         -------
@@ -170,8 +174,22 @@ def load_3d(config, file, ind_stream, stack, arg, xoffset=None, xcoffset=None, y
     new_x_list = list()
     new_y_list = list()
     for i,img in enumerate(my_stack):
-        # Note that the image is transposed, need to apply np.transpose to have it in matrix form
-        new_x, new_y, new_z = grid_data2d(x_data[i], y_data[i], np.transpose(img), grid_x=grid_x,grid_y=grid_y)
+        # Apply the transpose as per data convention
+        img = np.transpose(img)
+        # Apply the binning
+        if isinstance(binsize_x,int):
+            x_data_i = bin_shape_1d(x_data[i],binsize_x)
+            img = bin_shape_x(img,binsize_x)
+        else:
+            x_data_i = x_data[i]
+
+        if isinstance(binsize_y,int):
+            y_data_i = bin_shape_1d(y_data[i],binsize_y)
+            img = bin_shape_y(img,binsize_y)
+        else:
+            y_data_i = y_data[i]
+
+        new_x, new_y, new_z = grid_data2d(x_data_i, y_data_i, img, grid_x=grid_x,grid_y=grid_y)
         stack_grid.append(new_z)
         new_x_list.append(new_x)
         new_y_list.append(new_y)

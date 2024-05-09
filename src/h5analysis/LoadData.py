@@ -1652,6 +1652,10 @@ class Load3d:
                     grid equally spaced in y with [start, stop, delta]
                 norm_by: string
                     norm MCA by defined h5 key or SCA alias
+                binsize_x: int
+                    puts data in bins of specified size in the horizontal direction
+                binsize: int
+                    puts data in bins of specified size in the vertical direction
         """
 
         # Ensure we only load 1
@@ -1693,6 +1697,141 @@ class Load3d:
             raise UserWarning("Can only load one movie at a time.")
         else:
             self.data.append(StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwargs))
+
+    def background_2d(self,config, file, x_stream, detector, *args, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        detector: string
+            alias of the MCA detector
+        *args: int
+            scans
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+            binsize_x: int
+                puts data in bins of specified size in the horizontal direction
+            binsize: int
+                puts data in bins of specified size in the vertical direction
+        """
+
+        # Get the background data
+        if len(args) == 1:
+            background = load_2d(config, file, x_stream, detector, args[0], **kwargs)
+            bg_z = background[args[0]].new_z
+        else:
+            background = ImageAddition_2d(config,file, x_stream, detector, *args, **kwargs)
+            bg_z = background[0].new_z
+        
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                for img in v.stack:
+                    if np.shape(img) == np.shape(bg_z):
+                        pass
+                    else:
+                        raise Exception("Attempting to background subtract stacks with incompatible dimensions.")
+
+                # Remove data
+                new_z = np.subtract(v.stack,bg_z)
+
+                # Overwrite streams in object
+                v.stack = new_z
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
+
+    def background_3d(self, config, file, ind_stream, stack, *args, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+            Parameters
+            ----------
+            config: dict
+                h5 configuration
+            file: string
+                filename
+            ind_stream: string
+                independent stream, corresponding to stack's first dim
+            stack: string
+                alias of an image STACK
+            args: int
+                scan number
+            kwargs
+                xoffset: list of tuples
+                    fitted offset (x-stream)
+                xcoffset: float
+                    constant offset (x-stream)
+                yoffset: list of tuples
+                    fitted offset (y-stream)
+                ycoffset: float
+                    constant offset (y-stream)
+                grid_x: list
+                    grid equally spaced in x with [start, stop, delta]
+                grid_y: list
+                    grid equally spaced in y with [start, stop, delta]
+                norm_by: string
+                    norm MCA by defined h5 key or SCA alias
+                binsize_x: int
+                    puts data in bins of specified size in the horizontal direction
+                binsize: int
+                    puts data in bins of specified size in the vertical direction
+        """
+
+        # Get the background data
+        if len(args) == 1:
+            background = load_3d(config, file, ind_stream, stack, args[0], **kwargs)
+            bg_stack = background[args[0]].stack
+        else:
+            background = StackAddition(config, file, ind_stream, stack, *args, **kwargs)
+            bg_stack = background[0].stack
+        
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                # make sure the dimensions are matching
+                if np.shape(v.stack) == np.shape(bg_stack):
+                    pass
+                else:
+                    raise Exception("Attempting to background subtract stacks with incompatible dimensions.")
+                
+                # Remove data
+                new_stack = np.subtract(v.stack,bg_stack)
+
+                # Overwrite streams in object
+                v.stack = new_stack
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
 
 
     def plot(self, title=None, xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, vmin=None, vmax=None, colormap="linear", norm=False, **kwargs):
