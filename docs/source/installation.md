@@ -39,6 +39,12 @@ $ pip install h5analysis[FFMPEG]
 
 Note, the export to MP4 file format using FFMPEG within python triggers the system's FFMPEG binding which may need to be installed. If you are using an Anaconda python environment, this task will be straight forward. In case you are using a different python eco-system, you will have to get the executable binary from the FFMPEG website.
 
+To utilize the ```xraylarch``` engine for EXAFS data processing, ensure that the larch python package is installed:
+
+```
+$ pip install h5analysis[EXAFS]
+```
+
 ::::{tab-set}
 
 :::{tab-item} Anaconda3
