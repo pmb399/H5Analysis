@@ -217,3 +217,36 @@ f.fit_report()
 4. The composite model may then be evaluated on the previously supplied data. Options include to specify lower and upper fitting limits for the minimizer. Also the ```fit``` key-word allows to choose, whether the 'best' fit, 'initial fit', or the 'components' of the best fit are displayed.
 
 5. You may choose to either print the best ```fit_values``` or the entire ```fit_report```.
+
+## Object1dEXAFS
+
+![Identifying the background, pre-edge, and post-edge components upon applying xraylarch's autobk engine.](img/exafs.png "Identifying the background, pre-edge, and post-edge components upon applying xraylarch's autobk engine.")
+
+To judge the quality of EXAFS data, it is important to look at the extended portion of the spectrum and convert it to k-space. From there, one may apply a Fourier transform to R-space for further analysis. Such operations are directly supported to be carried out with the integrated ```xraylarch``` engine.
+
+```
+p = Load1d()
+p.load(vespers,'vespers_files/Cu-foil_xafs_1_20210728_123251.hdf5','EnergyFeedback','trans',0)
+q = Object1dEXAFS()
+q.load(p,0,0)
+q.calculate_autobk(rbkg=0.85, kweight=2)
+q.calculate_xftf(kweight=2, kmin=2, kmax=13.0, dk=5, kwindow='Kaiser-Bessel')
+q.evaluate('energy','mu')
+q.evaluate('energy','post_edge')
+q.evaluate('energy','pre_edge')
+q.evaluate('energy','bkg')
+#q.evaluate('k','chi*k**2')
+#q.evaluate('r','chir_mag')
+#q.evaluate('r','chir_re')
+q.plot()
+```
+
+1. Create EXAFS "Loader" object (this is ```q``` in the example above)
+
+2. Specify one 1d object to be loaded and processed (```p``` in the example above). Note that the data must be in the conventional format with the ```x_stream``` being energy and the ```y_stream``` being mu.
+
+3. Calculate the background and forward Fourier Transform of the EXAFS using the ```xraylarch``` engine. See ```xraylarch``` documentation for applicable key-word arguments.
+
+4. Evaluate the results and specify the (x,y) quantities to be displayed. You may choose from all ```xraylarch``` group attributes. Math can be applied to these quantities as shown above.
+
+![Investigating the extended part of the XAFS spectrum in k-space.](img/EXAFS_k_chi.png "Investigating the extended part of the XAFS spectrum in k-space.")

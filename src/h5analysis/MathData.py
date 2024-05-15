@@ -16,6 +16,7 @@ from .LoadData import Load1d, Load2d
 from .simplemath import handle_eval
 from .datautil import mca_roi, get_indices, get_indices_polygon
 from .data_1d import apply_kwargs_1d
+from .parser import parse
 
 class Object1dAddSubtract(Load1d):
     """Apply addition/subtraction on loader objects"""
@@ -999,7 +1000,7 @@ class Object1dFit(Load1d):
     """Apply fit to 1d data"""
 
     def load(self,obj,line,scan):
-        """Loader for 2d object
+        """Loader for 1d object
         
             Parameters
             ----------
@@ -1574,3 +1575,126 @@ class Object1dFit(Load1d):
         df = pd.DataFrame.from_dict(self.out.best_values,orient='index')
         df.columns = ['Parameters']
         return df
+    
+#########################################################################################
+
+class Object1dEXAFS(Load1d):
+    """EXAFS processing provided by xraylarch integration"""
+
+    def load(self,obj,line,scan):
+        """Loader for 1d object
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        self.SCADataObject = obj.data[line][scan]
+        self.scan_string = scan
+
+        from larch import Group
+        x = self.SCADataObject.x_stream
+        y = self.SCADataObject.y_stream
+
+        x_monotonic = np.array(x)[np.where(np.diff(x)>0)[0]]
+        y_monotonic = np.array(y)[np.where(np.diff(x)>0)[0]]
+
+        self.EXAFSDataGroup = Group(name='my',energy=x_monotonic,mu=y_monotonic)
+        
+
+    def add(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def subtract(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def stitch(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def background(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def loadObj(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+        
+    def calculate_autobk(self,**kwargs):
+        """Calculate the background
+        
+            Parameters
+            ----------
+            **kwargs:
+                See autobk function from xraylarch package
+        """
+
+        from larch.xafs.autobk import autobk
+
+        autobk(energy=self.EXAFSDataGroup.energy,mu=self.EXAFSDataGroup.mu,group=self.EXAFSDataGroup,**kwargs)
+
+    def calculate_xftf(self,**kwargs):
+        """Calculate the forward Fourier Transform
+        
+            Parameters
+            ----------
+            **kwargs:
+                See xftf function from xraylarch package
+        """
+
+        from larch.xafs import xftf
+        xftf(self.EXAFSDataGroup,**kwargs)
+
+    def evaluate(self,x,y):
+        """Evaluate the given expressions
+        
+            Parameters
+            ----------
+            x: string
+                See xraylarch group for possible attributes; may apply math operations
+            y: string
+                See xraylarch group for possible attributes; may apply math operations
+        """
+
+        # Apply parser to get split up math operations
+        # Place all parsed quatities in dictionary and retrieve corresponding data
+        x_parse = parse(x)
+        y_parse = parse(y)
+        x_dict = dict()
+        y_dict = dict()
+        for item in x_parse:
+            x_dict[item] = self.EXAFSDataGroup[item]
+        for item in y_parse:
+            y_dict[item] = self.EXAFSDataGroup[item]
+
+        # Store data
+        class added_object:
+            def __init__(self):
+                """Initialize data container"""
+                pass
+        
+        # Create dict with objects to be compatible with other loaders
+        # Evaluate expressions for x_stream and y_stream using created dicts of variables only
+        data = dict()
+        data[0] = added_object()
+        data[0].x_stream = np.nan_to_num(eval(x,x_dict),nan=0,posinf=0,neginf=0)
+        data[0].y_stream = np.nan_to_num(eval(y,y_dict),nan=0,posinf=0,neginf=0)
+        data[0].scan = self.scan_string
+        index = len(self.data) + 1
+        data[0].legend = f'{index} - {self.scan_string} - EXAFS {y}'
+
+        data[0].xlabel = x
+        data[0].ylabel = y
+        data[0].xaxis_label = [x]
+        data[0].yaxis_label = ['Intensity']
+        data[0].filename = 'Object Math'
+        
+        self.data.append(data)
+
