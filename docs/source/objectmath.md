@@ -224,7 +224,9 @@ f.fit_report()
 
 To judge the quality of EXAFS data, it is important to look at the extended portion of the spectrum and convert it to k-space. From there, one may apply a Fourier transform to R-space for further analysis. Such operations are directly supported to be carried out with the integrated ```xraylarch``` engine.
 
-> :warning: **Requirements**: To use this feature, ensure that ```xraylarch``` is installed!
+:::{card} {octicon}`alert-fill;1em;sd-text-info` Requirements
+To use this feature, ensure that ```xraylarch``` is installed!
+:::
 
 ```
 p = Load1d()
