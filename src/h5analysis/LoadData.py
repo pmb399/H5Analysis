@@ -32,7 +32,7 @@ from ipyfilechooser import FileChooser
 # Data processing functions
 from .data_1d import load_1d
 from .data_2d import load_2d
-from .histogram import load_histogram
+from .histogram import load_histogram_1d, load_histogram_1d_reduce, load_histogram_2d, load_histogram_2d_sum, load_histogram_3d
 from .data_3d import load_3d
 from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, StackAddition, StackSubtraction
 from .stitch import ScanStitch, ImageStitch_2d, ImageStitch_hist
@@ -1512,7 +1512,110 @@ class Load2d:
 
 #########################################################################################
 
-class LoadHistogram(Load2d):
+class LoadHistogram1d(Load1d):
+    def load(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """
+        Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        y_stream: string
+            h5 key or alias of 1d, 2d-ROI, or 3d-ROI-ROI stream
+        *args: ints
+            scans, comma separated
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
+            matplotlib_props: dict
+                dict[scan number] = dict with props that takes keys:
+                    - linewidth
+                    - color
+                    - linestyle
+                    - marker
+                    - markersize
+                    - etc.
+        """
+
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
+        # Append all scan objects to scan list in current object.
+        self.data.append(load_histogram_1d(config, file, x_stream, y_stream, *args, **kwargs))
+
+class LoadHistogram1dReduce(Load1d):
+    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias of 1d-ROI (dim 0)
+        y_stream: string
+            key name or alias of 1d-ROI (dim 0)
+        z_stream: string
+            key name or alias of 2d data stream
+        *args: ints
+            scan numbers, comma separated
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            binsize: int
+                puts x-data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
+            matplotlib_props: dict
+                dict[scan number] = dict with props, see keys below
+                    - linewidth
+                    - color
+                    - linestyle
+                    - marker
+                    - markersize
+                    - etc.
+        """
+
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
+        # Append all scan objects to scan list in current object.
+        self.data.append(load_histogram_1d_reduce(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
+
+
+class LoadHistogram2d(Load2d):
     """Class to display (x,y,z) scatter data."""
 
     def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
@@ -1552,7 +1655,7 @@ class LoadHistogram(Load2d):
         if self.data != []:
             raise TypeError("You can only append one scan per object")
         
-        self.data.append(load_histogram(config, file, x_stream,
+        self.data.append(load_histogram_2d(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
 
     def add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
@@ -1612,6 +1715,51 @@ class LoadHistogram(Load2d):
         kwargs.setdefault('kind', "Histogram")
 
         super().plot(*args, **kwargs)
+
+class LoadHistogram(LoadHistogram2d):
+    pass
+
+
+class LoadHistogram2dSum(Load2d):
+    """Class to display (x,y,z) scatter data."""
+
+    def load(self, config, file, x_stream, z_stream, *args, **kwargs):
+        """
+        Load (x,y,z) stream data to histogram
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias of 1d or 1d-ROI data
+        z_stream: string
+            key name or alias of 2d or 3d data
+        args: int
+            scan number
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+        """
+        
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        self.data.append(load_histogram_2d_sum(config, file, x_stream,
+                         z_stream, *args, **kwargs))
 
 #########################################################################################
         
@@ -2130,6 +2278,57 @@ class Load3d:
                             self.exportfile.selected_filename)
         self.export(file)
 
+#########################################################################################
+
+class LoadHistogram3d(Load3d):
+    """Class to display (x,y,z) scatter data."""
+
+    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Load (x,y,z) stream data to histogram
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias of 1d stream
+        y_stream: string
+            key name or alias of 1d stream
+        z_stream: string
+            key name or alias of 2d stream
+        *args: ints
+            scan numbers, comma separated
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            binsize_x: int
+                puts x-data in bins of specified size
+            binsize_y: int
+                puts y-data in bins of specified size
+            binsize_z: int
+                puts z-data in bins of specified size (along scale direction)
+        """
+        
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        self.data.append(load_histogram_3d(config, file, x_stream,
+                         y_stream, z_stream, *args, **kwargs))
+        
 #########################################################################################
 class LoadBeamline(Load1d):
     """Load meta data as 1d data stream."""

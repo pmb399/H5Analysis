@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d, interp2d
 # Data loaders
 from .data_1d import load_1d, apply_kwargs_1d
 from .data_2d import load_2d, apply_kwargs_2d
-from .histogram import load_histogram
+from .histogram import load_histogram_2d
 
 def ScanStitch(config,file, x_stream, y_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None, legend_item=None, twin_y=False, matplotlib_props=dict()):
     """Internal function to handle scan stitching.
@@ -154,7 +154,7 @@ def ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, norm=Fal
 
     # Load all 2d data to be added
     # Note that this is possible since load2d supports loading multiple scans
-    ScanData = load_histogram(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=binsize_x, binsize_y=binsize_y)
+    ScanData = load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=binsize_x, binsize_y=binsize_y)
 
     return ImageStitch(ScanData, file, x_stream, z_stream, *args, norm=norm, xoffset=xoffset, xcoffset=xcoffset, yoffset=yoffset, ycoffset=ycoffset, average=average)
 
