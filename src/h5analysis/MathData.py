@@ -10,10 +10,10 @@ import lmfit
 from lmfit.models import GaussianModel, QuadraticModel, ConstantModel, LinearModel, QuadraticModel, PolynomialModel, LorentzianModel, ExponentialModel
 
 # Import Loaders
-from .LoadData import Load1d, Load2d, Load3d
+from .LoadData import Load1d, Load2d, Load3d, LoadHistogram3d
 
 # Import simplemath and datautil
-from .simplemath import handle_eval
+from .simplemath import handle_eval, apply_savgol
 from .datautil import mca_roi, get_indices, get_indices_polygon
 from .data_1d import apply_kwargs_1d
 from .parser import parse
@@ -325,6 +325,105 @@ class Object1dStitch(Load1d):
 
 #########################################################################################
 
+class Object1dTransform(Load1d):
+    """Apply baseline to 1d data"""
+
+    def load(self,obj,line,scan):
+        """Loader for 1d object
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        self.SCADataObject = obj.data[line][scan]
+        data_dict = dict()
+        data_dict[scan] = self.SCADataObject
+        self.data.append(data_dict)
+
+    def add(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def subtract(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def stitch(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def background(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def loadObj(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def baseline(self,algorithm,smooth=None,subtract=True,**kwargs):
+        """Add baseline from the pybaselines module
+        
+            Parameters
+            ----------
+            algorithm: str
+                name of the algorithm
+            smooth: tuple
+                Sets Savitsky-Golay filter properties: (window length, polynomial order)
+            subtract: Boolean
+                Whether the baseline is subtracted from the data or added as existing data stream
+            kwargs: dict
+                Key-word arguments for tuning of baseline algorithm
+        """
+
+        from pybaselines import Baseline
+
+        x = self.SCADataObject.x_stream
+        y = self.SCADataObject.y_stream
+
+        if smooth != None:
+            x,y = apply_savgol(x,y,smooth[0],smooth[1],0)
+
+        base = Baseline(x,check_finite=False)
+        method = getattr(base,algorithm)
+
+        new_baseline = method(y,**kwargs)[0]
+
+        # Prepare data storage
+        class added_object:
+            def __init__(self):
+                """Initialize data container"""
+                pass
+        
+        data = dict()
+        # Create dict with objects to be compatible with other loaders
+        data[0] = added_object()
+
+        # Store all pertinent information in object
+        data[0].x_stream = x
+        data[0].scan = self.SCADataObject.scan
+        data[0].xlabel = self.SCADataObject.xlabel
+        data[0].ylabel = f"{self.SCADataObject.ylabel}"
+        index = len(self.data) + 1 
+        data[0].filename = self.SCADataObject.filename
+
+        if subtract == True:
+            data[0].legend = f'{index} - S{self.SCADataObject.scan} - Baseline (subtracted)'
+            data[0].y_stream = np.subtract(y,new_baseline)
+        else:
+            data[0].legend = f'{index} - S{self.SCADataObject.scan} - Baseline'
+            data[0].y_stream = new_baseline
+
+            
+
+        self.data.append(data)
+    
+#########################################################################################
 
 class Object2dAddSubtract(Load2d):
     """Apply addition/subtraction on loader objects"""
@@ -973,6 +1072,8 @@ class Object2dReduce(Load1d):
                 self.data[i][k].x_stream = v.x_stream
                 self.data[i][k].y_stream = v.y_stream
 
+#########################################################################################
+
 class Object2dTransform(Load2d):
     """Apply transformations to a 2d image"""
 
@@ -1100,6 +1201,52 @@ class Object2dTransform(Load2d):
 
                 # Write back to dict
                 self.data[i][k] = v
+
+    def baseline(self,algorithm,smooth=None,subtract=True,**kwargs):
+        """Add baseline from the pybaselines module
+        
+            Parameters
+            ----------
+            algorithm: str
+                name of the algorithm
+            smooth: tuple
+                Sets Savitsky-Golay filter properties: (window length, polynomial order)
+            subtract: Boolean
+                Whether the baseline is subtracted from the data or replaces the existing data stream
+            kwargs: dict
+                Key-word arguments for tuning of baseline algorithm
+        """
+
+        from pybaselines import Baseline
+
+        # For all loaded objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                baseline_spec = np.zeros_like(v.new_z)
+
+                for idx,spec in enumerate(np.transpose(v.new_z)):
+                    scale = v.new_y
+
+                    if smooth != None:
+                        scale,spec = apply_savgol(scale,spec,smooth[0],smooth[1],0)
+
+                    base = Baseline(scale,check_finite=True)
+                    method = getattr(base,algorithm)
+
+                    baseline_spec[:,idx] = np.nan_to_num(method(spec,**kwargs)[0])
+
+                v.new_y = scale
+                if subtract == True:
+                    v.new_z = np.subtract(v.new_z,baseline_spec)
+                    v.ylabel = f'Baseline subtracted {v.ylabel}'
+                else:
+                    v.new_z = baseline_spec
+                    v.ylabel = f'Baseline {v.ylabel}'
+
+                # Prepare data storage
+                self.data[i][k] = v
+
 
 #########################################################################################
 class Object3dAddSubtract(Load3d):
@@ -1250,6 +1397,205 @@ class Object3dAddSubtract(Load3d):
         data[0].filename = filename
         
         self.data.append(data)
+
+#########################################################################################
+
+class Object3dHistogramTransform(LoadHistogram3d):
+    """Apply transformations to a 3d image stack"""
+
+    def baseline(self,algorithm,smooth=None,subtract=True,**kwargs):
+        """Add baseline from the pybaselines module
+        
+            Parameters
+            ----------
+            algorithm: str
+                name of the algorithm
+            smooth: tuple
+                Sets Savitsky-Golay filter properties: (window length, polynomial order)
+            subtract: Boolean
+                Whether the baseline is subtracted from the data or replaces the existing data stream
+            kwargs: dict
+                Key-word arguments for tuning of baseline algorithm
+        """
+
+        from pybaselines import Baseline
+
+        # For all loaded objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                baseline_spec = np.zeros_like(v.stack)
+                for idx1 in range(0,np.shape(v.stack)[1]):
+                    for idx2 in range(0,np.shape(v.stack)[2]):
+                        scale = v.ind_stream
+                        spec = v.stack[:,idx1,idx2]
+
+                        if smooth != None:
+                            scale,spec = apply_savgol(scale,spec,smooth[0],smooth[1],0)
+
+                        base = Baseline(scale,check_finite=True)
+                        method = getattr(base,algorithm)
+
+                        baseline_spec[:,idx1,idx2] = np.nan_to_num(method(spec,**kwargs)[0])
+
+                if subtract == True:
+                    v.stack = np.subtract(v.stack,baseline_spec)
+                    v.zlabel = f'Baseline subtracted {v.zlabel}'
+                else:
+                    v.stack = baseline_spec
+                    v.zlabel = f'Baseline {v.zlabel}'
+
+                # Prepare data storage
+                self.data[i][k] = v
+
+#########################################################################################
+
+class Object3dHistogramReduce(Load1d):
+    """Apply transformations to a 3d image stack"""
+
+    def load(self,obj,line,scan):
+        """Loader for 3d object
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+        self.STACKDataObject = obj.data[line][scan]
+
+    def add(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def subtract(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def stitch(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def background(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def loadObj(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+    
+    def polygon(self,polygon,exact=False):
+        """ Mask array defined by a polygon and sum over specified axis
+        
+            Parameters
+            ----------
+            integration_axis: string
+                options: 'x' or 'y'
+            polygon: list of tuple
+                corresponds to coordinate pairs
+            exact: Boolean
+                True: Iterates over all data points P explicitly and determines if P is contained in polygon (most accurate, slow)
+                False: Applies image algorithm to mask polygon by filling holes (less accurate, faster)
+        """
+
+        SPEC = list()
+        x_stream = self.STACKDataObject.ind_stream
+
+        for idx,slice2d in enumerate(self.STACKDataObject.stack):
+            scale1 = np.array(self.STACKDataObject.new_x)[idx]
+            scale2 = np.array(self.STACKDataObject.new_y)[idx]
+
+
+            if exact == False:
+                # If not exact, 
+                # return array indices corresponding to polygon boundaries
+                # then apply algorithm to get mask
+                # apply mask to array
+                idx = get_indices_polygon(polygon,scale1,scale2)
+                mask = ski.draw.polygon2mask(slice2d.shape, idx)
+                sum = np.where(mask,np.array(slice2d),0).sum(axis=(0,1))
+
+            else:
+                # If exact,
+                # get shapely polygon
+                # check iteratively for each data point in array if contained
+                # in polygon.
+                # if so, add to sum
+                poly = Polygon(polygon)
+                sum = 0
+                for x_idx,px in enumerate(scale1):
+                    for y_idx,py in enumerate(scale2):
+                        p = Point(px,py)
+                        if poly.contains(p):
+                            sum += np.array(slice2d)[y_idx,x_idx]
+
+            SPEC.append(sum)
+
+    
+        # Prepare data storage
+        class added_object:
+            def __init__(self):
+                """Initialize data container"""
+                pass
+        
+        # Create dict with objects to be compatible with other loaders
+        data = dict()
+        data[0] = added_object()
+
+        # Store all pertinent information in object
+        data[0].x_stream = x_stream
+        data[0].y_stream = np.array(SPEC)
+
+        data[0].scan = self.STACKDataObject.scan
+
+        # Set labels and independent data stream
+        data[0].xlabel = f"{self.STACKDataObject.zlabel} - Scale"
+        data[0].xaxis_label = [f"{self.STACKDataObject.zlabel} - Scale"]
+        data[0].ylabel = f"Intensity"
+        data[0].yaxis_label = [f"Intensity"]
+
+        index = len(self.data) + 1 
+        data[0].legend = f'{index} - S{self.STACKDataObject.scan} - 3d polygon reduction'
+        data[0].filename = self.STACKDataObject.filename
+        
+        self.data.append(data)
+
+
+    def apply_kwargs(self,norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, grid_x=[None, None, None], savgol=None, binsize=None):
+        """ Apply math to 1d reduced objects
+
+            Parameters
+            ----------    
+        
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+        """
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                v.x_stream,v.y_stream = apply_kwargs_1d(v.x_stream,v.y_stream,norm,xoffset,xcoffset,yoffset,ycoffset,grid_x,savgol,binsize)
+                    
+                self.data[i][k].x_stream = v.x_stream
+                self.data[i][k].y_stream = v.y_stream
+
 
 #########################################################################################
 #########################################################################################
