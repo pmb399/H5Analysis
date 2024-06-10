@@ -10,7 +10,7 @@ import lmfit
 from lmfit.models import GaussianModel, QuadraticModel, ConstantModel, LinearModel, QuadraticModel, PolynomialModel, LorentzianModel, ExponentialModel
 
 # Import Loaders
-from .LoadData import Load1d, Load2d
+from .LoadData import Load1d, Load2d, Load3d
 
 # Import simplemath and datautil
 from .simplemath import handle_eval
@@ -80,8 +80,21 @@ class Object1dAddSubtract(Load1d):
 
         self.DataObjectsSubtract.append(o)
         
-    def evaluate(self):
-        """Evaluate the request"""
+    def evaluate(self,filename=None,legend_item=None,twin_y=False,matplotlib_props=dict()):
+        """ Evaluate the request
+        
+            Parameters
+            ----------
+            kwargs:
+                filename: str
+                    Name of the data file
+                legend_item: str
+                    Text to appear in legend
+                twin_y: Boolean
+                    Switch to display data on second y axis
+                matplotlib_props: dict
+                    Dictionary for matplotlib properties       
+        """
 
         if self.DataObjectsAdd == []:
             raise Exception('You need to add at least one scan.')
@@ -127,7 +140,7 @@ class Object1dAddSubtract(Load1d):
         
         # Second, subtract objects
         for i,item in enumerate(self.DataObjectsSubtract):
-                MASTER_y -= interp1d(item.x_stream,item.y_stream)(MASTER_x)
+            MASTER_y -= interp1d(item.x_stream,item.y_stream)(MASTER_x)
 
         # Store data
         class added_object:
@@ -141,14 +154,26 @@ class Object1dAddSubtract(Load1d):
         data[0].x_stream = MASTER_x
         data[0].y_stream = MASTER_y
         data[0].scan = self.scan_string
-        index = len(self.data) + 1
-        data[0].legend = f'{index} - {self.scan_string} - Addition/Subtraction'
+        data[0].twin_y = twin_y
+        
+        # Set matplotlib props
+        data[0].matplotlib_props = matplotlib_props
+
+        if legend_item == None:
+            index = len(self.data) + 1
+            data[0].legend = f'{index} - {self.scan_string} - Addition/Subtraction'
+        else:
+            data[0].legend = legend_item
 
         data[0].xlabel = self.x_string
         data[0].ylabel = self.y_string
         data[0].xaxis_label = self.xaxis_label
         data[0].yaxis_label = self.yaxis_label
-        data[0].filename = 'Object Math'
+
+        if filename == None:
+            data[0].filename = 'Object Math'
+        else:
+            data[0].filename = filename
         
         self.data.append(data)
 
@@ -191,8 +216,22 @@ class Object1dStitch(Load1d):
 
         self.DataObjectsStitch.append(o)
                 
-    def evaluate(self):
-        """Evaluate the request"""
+    def evaluate(self,filename=None,legend_item=None,twin_y=False,matplotlib_props=dict()):
+        """ Evaluate the request
+        
+            Parameters
+            ----------
+            kwargs:
+                filename: str
+                    Name of the data file
+                legend_item: str
+                    Text to appear in legend
+                twin_y: Boolean
+                    Switch to display data on second y axis
+                matplotlib_props: dict
+                    Dictionary for matplotlib properties    
+        
+        """
 
         if self.DataObjectsStitch == []:
             raise Exception('You need to add at least one scan.')
@@ -227,7 +266,7 @@ class Object1dStitch(Load1d):
         MASTER_y_nan_list = list() # where nan values are stored
 
         # Iterate over all loaded scans for interpolation
-        for i, item in enumerate(self.DataObjectsStitch):
+        for i, item in enumerate(self.DataObjectsStitch):                
             # interpolate to common scale
             item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
             # Store results
@@ -246,21 +285,33 @@ class Object1dStitch(Load1d):
             def __init__(self):
                 """Initialize data container"""
                 pass
-        
+
         # Create dict with objects to be compatible with other loaders
         data = dict()
         data[0] = added_object()
         data[0].x_stream = MASTER_x
         data[0].y_stream = MASTER_y
         data[0].scan = self.scan_string
-        index = len(self.data) + 1
-        data[0].legend = f'{index} - {self.scan_string} - Stitching'
+        data[0].twin_y = twin_y
+        
+        # Set matplotlib props
+        data[0].matplotlib_props = matplotlib_props
+
+        if legend_item == None:
+            index = len(self.data) + 1
+            data[0].legend = f'{index} - {self.scan_string} - Stitching'
+        else:
+            data[0].legend = legend_item
 
         data[0].xlabel = self.x_string
         data[0].ylabel = self.y_string
         data[0].xaxis_label = self.xaxis_label
         data[0].yaxis_label = self.yaxis_label
-        data[0].filename = 'Object Math'
+
+        if filename == None:
+            data[0].filename = 'Object Math'
+        else:
+            data[0].filename = filename
         
         self.data.append(data)
 
@@ -326,8 +377,23 @@ class Object2dAddSubtract(Load2d):
 
         self.DataObjectsSubtract.append(o)
         
-    def evaluate(self):
-        """Evaluate the request"""
+    def evaluate(self,filename=None,label_x=None,label_y=None,label_z=None,legend=None):
+        """ Evaluate the request
+        
+            Parameters
+            ----------
+            kwargs:
+                filename: str
+                    Name of the data file
+                label_x: str
+                    Label on horizontal axis
+                label_y: str
+                    Label on vertical axis
+                label_z: str
+                    Label for count axis
+                legend: str
+                    Text for legend/title
+        """
 
         # Make sure there is no other scan loaded
         if self.data != []:
@@ -446,18 +512,30 @@ class Object2dAddSubtract(Load2d):
                 """Initialize data container"""
                 pass
         
+        # Get props
+        if filename==None:
+            filename = 'Simple Math'
+        if label_x==None:
+            label_x = self.x_string
+        if label_y==None:
+            label_y = self.y_string
+        if label_z==None:
+            label_z = self.z_string
+        if legend==None:
+            index = len(self.data) + 1
+            f'{index} - {self.scan_string} - Addition/Subtraction'
+
         data = dict()
         data[0] = added_object()
         data[0].new_x = MASTER_x_stream
         data[0].new_y = MASTER_y_stream
         data[0].new_z = MASTER_detector
         data[0].scan = self.scan_string
-        index = len(self.data) + 1
-        data[0].legend = f'{index} - {self.scan_string} - Addition/Subtraction'
-        data[0].xlabel = self.x_string
-        data[0].ylabel = self.y_string
-        data[0].zlabel = self.z_string
-        data[0].filename = 'Simple Math'
+        data[0].legend = legend
+        data[0].xlabel = label_x
+        data[0].ylabel = label_y
+        data[0].zlabel = label_z
+        data[0].filename = filename
         
         self.data.append(data)
 
@@ -509,7 +587,7 @@ class Object2dStitch(Load2d):
 
         self.DataObjects.append(o)
         
-    def evaluate(self,average=False):
+    def evaluate(self,average=False,filename=None,label_x=None,label_y=None,label_z=None,legend=None):
         """Evaluate the request
         
         Parameters
@@ -517,7 +595,16 @@ class Object2dStitch(Load2d):
         average: Boolean
             For overlap, whether the first image takes precedence (False) or
             if overlap is averaged (True)
-        
+        filename: str
+            Name of the data file
+        label_x: str
+            Label on horizontal axis
+        label_y: str
+            Label on vertical axis
+        label_z: str
+            Label for count axis
+        legend: str
+            Text for legend/title
         """
 
         # Make sure there is no other scan loaded
@@ -619,19 +706,31 @@ class Object2dStitch(Load2d):
         # Remove NaN values and set to 0
         matrix = np.nan_to_num(matrix,nan=0,posinf=0,neginf=0)
 
+        # Get props
+        if filename==None:
+            filename = 'Simple Math'
+        if label_x==None:
+            label_x = self.x_string
+        if label_y==None:
+            label_y = self.y_string
+        if label_z==None:
+            label_z = self.z_string
+        if legend==None:
+            index = len(self.data) + 1
+            f'{index} - {self.scan_string} - Addition/Subtraction'
+
         # Place data in a dictionary with the same structure as a regular Load1d call, so that we can plot it
         data = dict()
         data[0] = added_object()
         data[0].new_x = new_x
         data[0].new_y = new_y
         data[0].new_z = matrix
-        data[0].xlabel = self.x_string
-        data[0].ylabel = self.y_string
-        data[0].zlabel = self.z_string
-        data[0].filename = 'Simple Math'
+        data[0].xlabel = label_x
+        data[0].ylabel = label_y
+        data[0].zlabel = label_z
+        data[0].filename = filename
         data[0].scan = self.scan_string
-        index = len(self.data) + 1
-        data[0].legend = f'{index} - {self.scan_string} - Stitching'
+        data[0].legend = legend
         
         self.data.append(data)
 
@@ -994,6 +1093,157 @@ class Object2dTransform(Load2d):
                 # Write back to dict
                 self.data[i][k] = v
 
+#########################################################################################
+class Object3dAddSubtract(Load3d):
+    """Apply addition/subtraction on loader objects"""
+
+    def __init__(self):
+        self.DataObjectsAdd = list()
+        self.DataObjectsSubtract = list()
+        self.x_string = ""
+        self.y_string = ""
+        self.z_string = ""
+        self.scan_string = "S"
+
+        return Load3d.__init__(self)
+    
+    def load(self):
+        """This method is not defined"""
+        raise Exception("This method is not defined")
+        
+    def add(self,obj,line,scan):
+        """Loader objects to be added
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.z_string += f"{o.zlabel}|"
+        self.scan_string += f"_+{scan}"
+
+        self.DataObjectsAdd.append(o)
+        
+    def subtract(self,obj,line,scan):
+        """Loader objects to be subtracted
+        
+            Parameters
+            ----------
+            obj: object
+                Loader object
+            line: int
+                load, add, subtract line of object (indexing with 0)
+            scan: int
+                number of the scan to be accessed
+        """
+
+        o = obj.data[line][scan]
+        self.x_string += f"{o.xlabel}|"
+        self.y_string += f"{o.ylabel}|"
+        self.z_string += f"{o.zlabel}|"
+        self.scan_string += f"_-{scan}"
+
+        self.DataObjectsSubtract.append(o)
+        
+    def evaluate(self,filename=None,label_x=None,label_y=None,label_z=None):
+        """ Evaluate the request
+        
+            Parameters
+            ----------
+            kwargs:
+                filename: str
+                    Name of the data file
+                label_x: str
+                    Label on horizontal axis
+                label_y: str
+                    Label on vertical axis
+                label_z: str
+                    Label for count axis
+        """
+
+        # Make sure there is no other scan loaded
+        if self.data != []:
+            raise UserWarning("Can only load one scan at a time.")
+        
+        if self.DataObjectsAdd == []:
+            raise Exception('You need to add at least one scan.')
+        
+        all_objs = self.DataObjectsAdd + self.DataObjectsSubtract
+
+        # Check that dimensions are matching
+        stack_data_dims = list()
+
+        for obj in all_objs:
+            stack_data_dims.append(np.shape(obj.stack))
+
+        # make sure the dimensions are matching
+        if all([np.array_equal(stack_data_dims[0],dims) for dims in stack_data_dims]):
+            pass
+        else:
+            raise Exception("Adding stacks with incompatible dimensions.")
+
+        for i,item in enumerate(self.DataObjectsAdd):
+            if i ==0:
+                MASTER = item.stack
+                
+            else:
+                MASTER = np.add(MASTER,item.stack)
+        
+        # Add all objects (2d) that need to be removed after interpolation step to master
+        for i,item in enumerate(self.DataObjectsSubtract):
+                if i == 0:
+                    MASTER_SUB = item.stack
+                else:
+                    MASTER_SUB = np.add(MASTER_SUB,item.stack)
+
+        # Remove subtraction from Master, if any
+        if len(self.DataObjectsSubtract)>0:
+            MASTER = np.subtract(MASTER,MASTER_SUB)
+
+        
+        # Store data
+        class added_object:
+            def __init__(self):
+                """Initialize data container"""
+                pass
+        
+        # Get props
+        if filename==None:
+            filename = 'Simple Math'
+        if label_x==None:
+            label_x = self.x_string
+        if label_y==None:
+            label_y = self.y_string
+        if label_z==None:
+            label_z = self.z_string
+
+        data = dict()
+        data[0] = added_object()
+
+        data[0].new_x = self.DataObjectsAdd[0].new_x
+        data[0].new_y = self.DataObjectsAdd[0].new_y
+        data[0].stack = MASTER
+
+        data[0].ind_stream = self.DataObjectsAdd[0].ind_stream
+        data[0].str_ind_stream = self.DataObjectsAdd[0].str_ind_stream
+
+        data[0].scan = self.scan_string
+        data[0].xlabel = label_x
+        data[0].ylabel = label_y
+        data[0].zlabel = label_z
+        data[0].filename = filename
+        
+        self.data.append(data)
+
+#########################################################################################
 #########################################################################################
                 
 class Object1dFit(Load1d):

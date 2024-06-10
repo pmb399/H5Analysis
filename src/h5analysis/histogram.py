@@ -158,9 +158,14 @@ def load_histogram_1d(config, file, x_stream, y_stream, *args, norm=False, xoffs
             for slice1d in np.transpose(z_data): # transpose z_data, so that we go through the data at a specific scale value, for all independent points x_data
                 bin,bin_edges = np.histogram(x_data,range=roi_tuple,bins=1,weights=slice1d)
                 SPEC.append(bin)
+
+            SPEC = np.array(SPEC)
+            # Broadcast  correct shape
+            if len(np.shape(SPEC)) == 2 and np.shape(SPEC)[1] == 1:
+                SPEC = SPEC[:,0]
             
             data[arg].x_stream = scale
-            data[arg].y_stream = np.array(SPEC)
+            data[arg].y_stream = SPEC
             data[arg].xlabel = f"{y_stream} Scale"
             data[arg].ylabel = "Intensity"
             data[arg].xaxis_label.append(f"{y_stream} Scale")
@@ -289,9 +294,14 @@ def load_histogram_1d_reduce(config, file, x_stream, y_stream, z_stream, *args, 
         for slice1d in np.transpose(z_data): # transpose z_data, so that we go through the data at a specific scale value, for all independent points (x_data,y_data)
             bin,xedge,yedge = np.histogram2d(x_data,y_data,range=[x_roi_tuple,y_roi_tuple],bins=1,weights=slice1d)
             SPEC.append(bin)
+
+        SPEC = np.array(SPEC)
+
+        if len(np.shape(SPEC)) == 3 and np.shape(SPEC)[1] == 1 and np.shape(SPEC)[2] == 1:
+                SPEC = SPEC[:,0,0]
             
         data[arg].x_stream = scale
-        data[arg].y_stream = np.array(SPEC)
+        data[arg].y_stream = SPEC
 
         if binsize != None:
             data[arg].x_stream, data[arg].y_stream = bin_data(data[arg].x_stream, data[arg].y_stream, binsize)

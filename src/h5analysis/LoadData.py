@@ -20,7 +20,7 @@ import os
 from collections import defaultdict
 import io
 import shutil
-from .util import COLORP, get_emission_line
+from .util import COLORP, get_emission_line, check_key_in_dict
 from .datautil import check_dimensions2d, bokeh_image_boundaries
 from .plot_exporter import create_figure, plot_image, plot_lines, save_figure
 
@@ -34,8 +34,6 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram_1d, load_histogram_1d_reduce, load_histogram_2d, load_histogram_2d_sum, load_histogram_3d
 from .data_3d import load_3d
-from .add_subtract import ScanAddition, ScanSubtraction, ImageAddition_2d, ImageSubtraction_2d, ImageAddition_hist, ImageSubtraction_hist, StackAddition, StackSubtraction
-from .stitch import ScanStitch, ImageStitch_2d, ImageStitch_hist
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -52,6 +50,10 @@ class Load1d:
         self.plot_vlines = list()
         self.plot_hlines = list()
         self.plot_labels = list()
+
+    def _load(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """Loading helper function"""
+        return load_1d(config, file, x_stream, y_stream, *args, **kwargs)
 
     def load(self, config, file, x_stream, y_stream, *args, **kwargs):
         """
@@ -104,7 +106,7 @@ class Load1d:
         config.index = len(self.data)+1
 
         # Append all scan objects to scan list in current object.
-        self.data.append(load_1d(config, file, x_stream, y_stream, *args, **kwargs))
+        self.data.append(self._load(config, file, x_stream, y_stream, *args, **kwargs))
 
     def loadObj(self,obj,line):
         """
@@ -126,6 +128,37 @@ class Load1d:
             d[k].legend = f"{index}-{v.legend}"
 
         self.data.append(d)
+
+    def _background(self,bg_x,bg_y):
+        """ Subtracts the defined data from all loaded data"""
+
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                # Determine biggest overlap between background and data
+                s = max(v.x_stream.min(),bg_x.min())
+                e = min(v.x_stream.max(),bg_x.max())
+
+                x_stream_int = v.x_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+                y_stream_int = v.y_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+
+                # Interpolate the background onto the x data
+                int_y = interp1d(bg_x,bg_y)(x_stream_int)
+
+                # Remove data
+                new_y = np.subtract(y_stream_int,int_y)
+
+                # Overwrite streams in object
+                v.x_stream = x_stream_int
+                v.y_stream = new_y
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
+
 
     def background(self,config, file, x_stream, y_stream, *args, **kwargs):
         """ Subtracts the defined data from all loaded data
@@ -164,44 +197,30 @@ class Load1d:
         """
 
         # Get the background data
-        if len(args) == 1:
-            background = load_1d(config, file, x_stream, y_stream, args[0], **kwargs)
-            bg_x = background[args[0]].x_stream
-            bg_y = background[args[0]].y_stream
-        else:
-            background = ScanAddition(config, file, x_stream, y_stream, *args, **kwargs)
-            bg_x = background[0].x_stream
-            bg_y = background[0].y_stream
+        # Append all scan objects to scan list in temp object.
+        background = self.__class__()
+        background.add(config, file, x_stream, y_stream, *args, **kwargs)
+        bg_x = background.data[0][0].x_stream
+        bg_y = background.data[0][0].y_stream
+
+        self._background(bg_x,bg_y)
         
-        # Subtract the background from all data objects
-        for i, val in enumerate(self.data):
-            for k, v in val.items():
+    def _add(self,tempO,file,legend_item,twin_y,matplotlib_props):
+        """Method to evaluate scan addition"""
 
-                # Determine biggest overlap between background and data
-                s = max(v.x_stream.min(),bg_x.min())
-                e = min(v.x_stream.max(),bg_x.max())
+        # Create Object Addition instance
+        from .MathData import Object1dAddSubtract
+        addO = Object1dAddSubtract()
 
-                x_stream_int = v.x_stream[(v.x_stream>=s) & (v.x_stream<=e)]
-                y_stream_int = v.y_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+        # Add all scans, then evaluate
+        for k,v in tempO.data[0].items():
+            addO.add(tempO,0,k)
+        addO.evaluate(filename=file,legend_item=legend_item,twin_y=twin_y,matplotlib_props=matplotlib_props)
 
-                # Interpolate the background onto the x data
-                int_y = interp1d(bg_x,bg_y)(x_stream_int)
+        # Append result as data
+        self.data.append(addO.data[0])
 
-                # Remove data
-                new_y = np.subtract(y_stream_int,int_y)
-
-                # Overwrite streams in object
-                v.x_stream = x_stream_int
-                v.y_stream = new_y
-
-                # Update dictionary with new object
-                val[k] = v
-
-            # Update data list with updated dictionary
-            self.data[i] = val
-
-
-    def add(self, config, file, x_stream, y_stream, *args, **kwargs):
+    def add(self, config, file, x_stream, y_stream, *args, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
         """
         Add specified scans for selected streams.
 
@@ -211,31 +230,102 @@ class Load1d:
         Adds all scans specified in *args.
         """
 
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+
+        # Append all scan objects to scan list in temp object.
+        tempO = self.__class__()
+        tempO.load(config, file, x_stream, y_stream, *args, **kwargs)
+
+        # Process scan key-word arguments handed to the evaluation method
         # Add data index to configuration
-        config.index = len(self.data)+1
+        legend_index = len(self.data)+1
 
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ScanAddition(config,
-            file, x_stream, y_stream, *args, **kwargs))
+        # Create key-word arguments
+        if legend_item == None:
+            for idx,scan in enumerate(args):
+                if idx==0:
+                    name = str(scan)
+                else:
+                    name += "+" + str(scan)
+            legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
 
-    def subtract(self, config, file, x_stream, y_stream, minuend, subtrahend, **kwargs):
+        self._add(tempO,file,legend_item,twin_y,matplotlib_props)
+
+
+    def _subtract(self,tempOMin,tempOSub,file,legend_item,twin_y,matplotlib_props):
+        """Method to evaluate scan addition"""
+
+        # Create Object Addition instance
+        from .MathData import Object1dAddSubtract
+        addO = Object1dAddSubtract()
+
+        # Add all scans, then subtract, then evaluate
+        for k,v in tempOMin.data[0].items():
+            addO.add(tempOMin,0,k)
+        for k,v,in tempOSub.data[0].items():
+            addO.subtract(tempOSub,0,k)
+        addO.evaluate(filename=file,legend_item=legend_item,twin_y=twin_y,matplotlib_props=matplotlib_props)
+
+        # Append result as data
+        self.data.append(addO.data[0])
+
+    def subtract(self, config, file, x_stream, y_stream, minuend, subtrahend, legend_item=None, twin_y=False, matplotlib_props=dict(),**kwargs):
         """
         Subtract specified scans for selected streams.
 
         Parameters
         ----------
         See loader function.
-        Subtracts all scans from the first element. May add scans in first element by specifying list of scans as first *arg.
+        Subtracts two scans. May add scans by specifying list of scans as first/second arg.
         """
 
-        # Add data index to configuration
-        config.index = len(self.data)+1
-
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ScanSubtraction(config,
-            file, x_stream, y_stream, minuend, subtrahend, **kwargs))
+        # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+        if isinstance(minuend,int):
+            minuend = [minuend]
+        if isinstance(subtrahend,int):
+            subtrahend = [subtrahend]
         
-    def stitch(self, config, file, x_stream, y_stream, *args, **kwargs):
+        # Append all scan objects to scan list in temp object.
+        tempOMin = self.__class__()
+        tempOMin.load(config, file, x_stream, y_stream, *minuend, **kwargs)
+        tempOSub = self.__class__()
+        tempOSub.load(config, file, x_stream, y_stream, *subtrahend, **kwargs)
+
+        # Add data index to configuration
+        legend_index = len(self.data)+1
+
+        # Create key-word arguments
+        if legend_item == None:
+            for idx,scan in enumerate(minuend):
+                if idx==0:
+                    name = str(scan)
+                else:
+                    name += "+" + str(scan)
+            for scan in subtrahend:
+                name += "-" + str(scan)
+            legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
+
+        self._subtract(tempOMin,tempOSub,file,legend_item,twin_y,matplotlib_props)
+
+    def _stitch(self,tempO,file,legend_item,twin_y,matplotlib_props):
+        """Method to evaluate scan stitching"""
+
+        # Create Object Stitching instance
+        from .MathData import Object1dStitch
+        stitchO = Object1dStitch()
+
+        # Add all scans, then evaluate
+        for k,v in tempO.data[0].items():
+            stitchO.stitch(tempO,0,k)
+        stitchO.evaluate(filename=file,legend_item=legend_item,twin_y=twin_y,matplotlib_props=matplotlib_props)
+
+        # Append result as data
+        self.data.append(stitchO.data[0])
+
+    def stitch(self, config, file, x_stream, y_stream, *args, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
         """
         Stitch specified scans for selected streams.
 
@@ -245,12 +335,30 @@ class Load1d:
         Stitches all scans specified in *args.
         """
 
-        # Add data index to configuration
-        config.index = len(self.data)+1
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
 
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ScanStitch(config,
-            file, x_stream, y_stream, *args, **kwargs))
+        # Append all scan objects to scan list in temp object.
+        tempO = self.__class__()
+        tempO.load(config, file, x_stream, y_stream, *args, **kwargs)
+
+        # Process scan key-word arguments handed to the evaluation method
+        # Add data index to configuration
+        legend_index = len(self.data)+1
+
+        # Create key-word arguments
+        if legend_item == None:
+            for idx,scan in enumerate(args):
+                if idx==0:
+                    name = str(scan)
+                else:
+                    name += "+" + str(scan)
+            legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
+
+        self._stitch(tempO,file,legend_item,twin_y,matplotlib_props)
+
 
     def xlim(self, lower, upper):
         """
@@ -796,6 +904,10 @@ class Load2d:
         self.plot_hlines = list()
         self.plot_labels = list()
 
+    def _load(self, config, file, x_stream, detector, *args, **kwargs):
+        """Helper function for load call"""
+        return load_2d(config, file, x_stream, detector, *args, **kwargs)
+
     def load(self, config, file, x_stream, detector, *args, **kwargs):
         """
         Load one or multiple specific scan(s) for selected streams.
@@ -841,55 +953,10 @@ class Load2d:
         if self.data != []:
             raise TypeError("You can only append one scan per object")
         
-        self.data.append(load_2d(config, file, x_stream, detector, *args, **kwargs))
+        self.data.append(self._load(config, file, x_stream, detector, *args, **kwargs))
 
-    def background_1d(self,config, file, x_stream, y_stream, *args, axis='y', **kwargs):
-        """ Subtracts the defined data from all loaded data
-
-        Parameters
-        ----------
-        config: dict
-            h5 configuration
-        file: string
-            file name
-        x_stream: string
-            h5 key or alias of 1d stream
-        y_stream: string
-            h5 key or alias of 1d stream
-        *args: int
-            scans
-        **kwargs
-            axis: string
-                <<x>> or <<y>> axis for subtraction direction
-            norm: boolean
-                normalizes to [0,1]
-            xoffset: list
-                fitting offset (x-stream)
-            xcoffset: float
-                constant offset (x-stream)
-            yoffset: list
-                fitting offset (y-stream)
-            ycoffset: float
-                constant offset (y-stream)
-            grid_x: list
-                grid data evenly with [start,stop,delta]
-            savgol: tuple
-                (window length, polynomial order, derivative)
-            binsize: int
-                puts data in bins of specified size
-            legend_items: dict
-                dict[scan number] = description for legend
-        """
-
-        # Get the background data
-        if len(args) == 1:
-            background = load_1d(config, file, x_stream, y_stream, args[0], **kwargs)
-            bg_x = background[args[0]].x_stream
-            bg_y = background[args[0]].y_stream
-        else:
-            background = ScanAddition(config, file, x_stream, y_stream, *args, **kwargs)
-            bg_x = background[0].x_stream
-            bg_y = background[0].y_stream
+    def _background_1d(self,bg_x,bg_y,axis):
+        """Helper function to subtract 1d background"""
 
         if axis == 'y':
             # Subtract the background from all data objects
@@ -952,7 +1019,91 @@ class Load2d:
 
         else:
             raise Exception(f"Specified axis {axis} unknown.")
+
+    def background_1d(self,config, file, x_stream, y_stream, *args, axis='y', **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            h5 key or alias of 1d stream
+        y_stream: string
+            h5 key or alias of 1d stream
+        *args: int
+            scans
+        **kwargs
+            axis: string
+                <<x>> or <<y>> axis for subtraction direction
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+        """
+
+        # Get the background data
+        bgO = Load1d()
+        bgO.add(config, file, x_stream, y_stream, *args, **kwargs)
+        bg_x = bgO.data[0][0].x_stream
+        bg_y = bgO.data[0][0].y_stream
+
+        self._background_1d(bg_x,bg_y,axis)
         
+        
+    def _background_2d(self,bg_x,bg_y,bg_z):
+        """ Helper function to subtract 2d background"""
+
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                # Determine biggest overlap between background and data
+                s_x = max(v.new_x.min(),bg_x.min())
+                e_x = min(v.new_x.max(),bg_x.max())
+                d_x = np.diff(v.new_x).min()
+                ds_x = int((e_x-s_x)/d_x)+1
+                s_y = max(v.new_y.min(),bg_y.min())
+                e_y = min(v.new_y.max(),bg_y.max())
+                d_y = np.diff(v.new_y).min()
+                ds_y = int((e_y-s_y)/d_y)+1
+
+                new_x = np.linspace(s_x,e_x,ds_x)
+                new_y = np.linspace(s_y,e_y,ds_y)
+
+                # Interpolate the x,y data onto the background
+                bg_z_int = interp2d(bg_x,bg_y,bg_z)(new_x,new_y)
+                im_z_int = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
+
+                # Remove data
+                new_z = np.subtract(im_z_int,bg_z_int)
+
+                # Overwrite streams in object
+                v.new_x = new_x
+                v.new_y = new_y
+                v.new_z = new_z
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
+
     def background_2d(self,config, file, x_stream, detector, *args, **kwargs):
         """ Subtracts the defined data from all loaded data
 
@@ -994,50 +1145,33 @@ class Load2d:
         """
 
         # Get the background data
-        if len(args) == 1:
-            background = load_2d(config, file, x_stream, detector, args[0], **kwargs)
-            bg_x = background[args[0]].new_x
-            bg_y = background[args[0]].new_y
-            bg_z = background[args[0]].new_z
-        else:
-            background = ImageAddition_2d(config,file, x_stream, detector, *args, **kwargs)
-            bg_x = background[0].new_x
-            bg_y = background[0].new_y
-            bg_z = background[0].new_z
+        background = self.__class__()
+        background.add(config,file, x_stream, detector, *args, **kwargs)
+        bg_x = background.data[0][0].new_x
+        bg_y = background.data[0][0].new_y
+        bg_z = background.data[0][0].new_z
         
-        # Subtract the background from all data objects
-        for i, val in enumerate(self.data):
-            for k, v in val.items():
-                # Determine biggest overlap between background and data
-                s_x = max(v.new_x.min(),bg_x.min())
-                e_x = min(v.new_x.max(),bg_x.max())
-                d_x = np.diff(v.new_x).min()
-                ds_x = int((e_x-s_x)/d_x)+1
-                s_y = max(v.new_y.min(),bg_y.min())
-                e_y = min(v.new_y.max(),bg_y.max())
-                d_y = np.diff(v.new_y).min()
-                ds_y = int((e_y-s_y)/d_y)+1
+        self._background_2d(bg_x,bg_y,bg_z)
 
-                new_x = np.linspace(s_x,e_x,ds_x)
-                new_y = np.linspace(s_y,e_y,ds_y)
+    def _add(self,tempO):
+        """ Method to evaluate 2d addition"""
 
-                # Interpolate the x,y data onto the background
-                bg_z_int = interp2d(bg_x,bg_y,bg_z)(new_x,new_y)
-                im_z_int = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
+        # Create Object for image addition
+        from .MathData import Object2dAddSubtract
+        addO = Object2dAddSubtract()
 
-                # Remove data
-                new_z = np.subtract(im_z_int,bg_z_int)
+        # Add all images, then evaluate
+        for k,v in tempO.data[0].items():
+            addO.add(tempO,0,k)
+            filename = tempO.data[0][k].filename
+            xlabel = tempO.data[0][k].xlabel
+            ylabel = tempO.data[0][k].ylabel
+            zlabel = tempO.data[0][k].zlabel
 
-                # Overwrite streams in object
-                v.new_x = new_x
-                v.new_y = new_y
-                v.new_z = new_z
+        addO.evaluate(filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel,legend=f"{zlabel} Image")
 
-                # Update dictionary with new object
-                val[k] = v
-
-            # Update data list with updated dictionary
-            self.data[i] = val
+        # Append result as data
+        self.data.append(addO.data[0])
 
     def add(self, config, file, x_stream, detector, *args, **kwargs):
         """
@@ -1052,12 +1186,41 @@ class Load2d:
         # Ensure that only one scan is loaded.
         if self.data != []:
             raise TypeError("You can only append one scan per object")
-
-        self.data.append(ImageAddition_2d(config,file, x_stream,
+        
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+        
+        # Create temporary scan object
+        tempO = self.__class__()
+        tempO.data.append(tempO._load(config,file, x_stream,
                          detector, *args, **kwargs))
         
+        self._add(tempO)
 
-    def subtract(self, config, file, x_stream, detector, *args, **kwargs):
+    def _subtract(self,tempOMin,tempOSub):
+        """ Method to evaluate 2d addition"""
+
+        # Create Object for image addition
+        from .MathData import Object2dAddSubtract
+        addO = Object2dAddSubtract()
+
+        # Add all images, then evaluate
+        for k,v in tempOMin.data[0].items():
+            addO.add(tempOMin,0,k)
+        for k,v in tempOSub.data[0].items():
+            addO.subtract(tempOSub,0,k)
+            filename = tempOSub.data[0][k].filename
+            xlabel = tempOSub.data[0][k].xlabel
+            ylabel = tempOSub.data[0][k].ylabel
+            zlabel = tempOSub.data[0][k].zlabel
+        addO.evaluate(filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel,legend=f"{zlabel} Image")
+
+        # Append result as data
+        self.data.append(addO.data[0])
+
+    def subtract(self, config, file, x_stream, detector, minuend, subtrahend, **kwargs):
         """
         Subtract specified images for selected streams.
 
@@ -1068,13 +1231,45 @@ class Load2d:
 
         """
 
+        # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+        if isinstance(minuend,int):
+            minuend = [minuend]
+        if isinstance(subtrahend,int):
+            subtrahend = [subtrahend]
+
         # Ensure that only one scan is loaded.
         if self.data != []:
             raise TypeError("You can only append one scan per object")
+        
+        # Append all scan objects to scan list in temp object.
+        tempOMin = self.__class__()
+        tempOMin.data.append(tempOMin._load(config,file, x_stream,
+                         detector, *minuend, **kwargs))
+        tempOSub = self.__class__()
+        tempOSub.data.append(tempOSub._load(config,file, x_stream,
+                         detector, *subtrahend, **kwargs))
+        
+        self._subtract(tempOMin,tempOSub)
 
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ImageSubtraction_2d(config, file, x_stream,
-                         detector, *args, **kwargs))
+    def _stitch(self,tempO,average=False):
+        """ Helper function for 2d stitching"""
+
+        # Create Object for image addition
+        from .MathData import Object2dStitch
+        addO = Object2dStitch()
+
+        # Add all images, then evaluate
+        for k,v in tempO.data[0].items():
+            addO.stitch(tempO,0,k)
+            filename = tempO.data[0][k].filename
+            xlabel = tempO.data[0][k].xlabel
+            ylabel = tempO.data[0][k].ylabel
+            zlabel = tempO.data[0][k].zlabel
+
+        addO.evaluate(average=average,filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel,legend=f"{zlabel} Image")
+
+        # Append result as data
+        self.data.append(addO.data[0])
         
     def stitch(self, config, file, x_stream, detector, *args, **kwargs):
         """
@@ -1086,14 +1281,26 @@ class Load2d:
         Stitches all scans specified in *args.
         """
 
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+
         # Ensure that only one scan is loaded.
         if self.data != []:
             raise TypeError("You can only append one scan per object")
-
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ImageStitch_2d(config,
-            file, x_stream, detector, *args, **kwargs))
         
+        # Check if averaging is passed as kwarg
+        average = False
+        if check_key_in_dict('average',kwargs):
+            average = average
+        
+        # Create temporary scan object
+        tempO = self.__class__()
+        tempO.data.append(tempO._load(config,file, x_stream,
+                         detector, *args, **kwargs))
+        
+        self._stitch(tempO,average)
 
     def xlim(self, lower, upper):
         """
@@ -1511,257 +1718,6 @@ class Load2d:
 
 
 #########################################################################################
-
-class LoadHistogram1d(Load1d):
-    def load(self, config, file, x_stream, y_stream, *args, **kwargs):
-        """
-        Load one or multiple specific scan(s) for selected streams.
-
-        Parameters
-        ----------
-        config: dict
-            h5 configuration
-        file: string
-            file name
-        x_stream: string
-            h5 key or alias of 1d stream
-        y_stream: string
-            h5 key or alias of 1d, 2d-ROI, or 3d-ROI-ROI stream
-        *args: ints
-            scans, comma separated
-        **kwargs
-            norm: boolean
-                normalizes to [0,1]
-            xoffset: list
-                fitting offset (x-stream)
-            xcoffset: float
-                constant offset (x-stream)
-            yoffset: list
-                fitting offset (y-stream)
-            ycoffset: float
-                constant offset (y-stream)
-            binsize: int
-                puts data in bins of specified size
-            legend_items: dict
-                dict[scan number] = description for legend
-            twin_y: boolean
-                supports a second y-axis on the right-hand side
-            matplotlib_props: dict
-                dict[scan number] = dict with props that takes keys:
-                    - linewidth
-                    - color
-                    - linestyle
-                    - marker
-                    - markersize
-                    - etc.
-        """
-
-        # Add data index to configuration
-        config.index = len(self.data)+1
-
-        # Append all scan objects to scan list in current object.
-        self.data.append(load_histogram_1d(config, file, x_stream, y_stream, *args, **kwargs))
-
-class LoadHistogram1dReduce(Load1d):
-    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
-        """
-        Load one or multiple specific scan(s) for selected streams.
-
-        Parameters
-        ----------
-        config: dict
-            h5 configuration
-        file: string
-            file name
-        x_stream: string
-            key name or alias of 1d-ROI (dim 0)
-        y_stream: string
-            key name or alias of 1d-ROI (dim 0)
-        z_stream: string
-            key name or alias of 2d data stream
-        *args: ints
-            scan numbers, comma separated
-        kwargs:
-            norm: boolean
-                normalizes to [0,1]
-            xoffset: list
-                fitting offset (x-stream)
-            xcoffset: float
-                constant offset (x-stream)
-            yoffset: list
-                fitting offset (y-stream)
-            ycoffset: float
-                constant offset (y-stream)
-            binsize: int
-                puts x-data in bins of specified size
-            legend_items: dict
-                dict[scan number] = description for legend
-            twin_y: boolean
-                supports a second y-axis on the right-hand side
-            matplotlib_props: dict
-                dict[scan number] = dict with props, see keys below
-                    - linewidth
-                    - color
-                    - linestyle
-                    - marker
-                    - markersize
-                    - etc.
-        """
-
-        # Add data index to configuration
-        config.index = len(self.data)+1
-
-        # Append all scan objects to scan list in current object.
-        self.data.append(load_histogram_1d_reduce(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
-
-
-class LoadHistogram2d(Load2d):
-    """Class to display (x,y,z) scatter data."""
-
-    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
-        """
-        Load (x,y,z) stream data to histogram
-
-        Parameters
-        ----------
-        config: dict
-            h5 configuration
-        file: string
-            file name
-        x_stream: string
-            key name or alias
-        y_stream: string
-            key name or alias
-        z_stream: string
-            key name or alias
-        args: int
-            scan number
-        kwargs:
-            norm: boolean
-                normalizes to [0,1]
-            xoffset: list
-                fitting offset (x-stream)
-            xcoffset: float
-                constant offset (x-stream)
-            yoffset: list
-                fitting offset (y-stream)
-            ycoffset: float
-                constant offset (y-stream)
-        """
-        
-        # Ensure that only one scan is loaded.
-        if len(args) != 1:
-            raise TypeError("You may only select one scan at a time")
-        if self.data != []:
-            raise TypeError("You can only append one scan per object")
-        
-        self.data.append(load_histogram_2d(config, file, x_stream,
-                         y_stream, z_stream, *args, **kwargs))
-
-    def add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
-        """
-        Add specified histograms for selected streams.
-
-        Parameters
-        ----------
-        See loader function.
-        Adds all scans specified in *args.
-        """
-
-        # Ensure that only one scan is loaded.
-        if self.data != []:
-            raise TypeError("You can only append one scan per object")
-        
-        self.data.append(ImageAddition_hist(config, file, x_stream,
-                         y_stream, z_stream, *args, **kwargs))
-    
-    def subtract(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
-        """
-        Subract specified histograms for selected streams.
-
-        Parameters
-        ----------
-        See loader function.
-        Subtracts all scans specified in two *args lists.
-        """
-
-        # Ensure that only one scan is loaded.
-        if self.data != []:
-            raise TypeError("You can only append one scan per object")
-        
-        self.data.append(ImageSubtraction_hist(config, file, x_stream,
-                         y_stream, z_stream, *args, **kwargs))
-        
-
-    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
-        """
-        Stitch specified scans for selected histograms.
-
-        Parameters
-        ----------
-        See loader function.
-        Sticthes all scans specified in *args.
-        """
-
-        # Ensure that only one scan is loaded.
-        if self.data != []:
-            raise TypeError("You can only append one scan per object")
-
-        # Append all REIXS scan objects to scan list in current object.
-        self.data.append(ImageStitch_hist(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
-
-
-    def plot(self, *args, **kwargs):
-        kwargs.setdefault('kind', "Histogram")
-
-        super().plot(*args, **kwargs)
-
-class LoadHistogram(LoadHistogram2d):
-    pass
-
-
-class LoadHistogram2dSum(Load2d):
-    """Class to display (x,y,z) scatter data."""
-
-    def load(self, config, file, x_stream, z_stream, *args, **kwargs):
-        """
-        Load (x,y,z) stream data to histogram
-
-        Parameters
-        ----------
-        config: dict
-            h5 configuration
-        file: string
-            file name
-        x_stream: string
-            key name or alias of 1d or 1d-ROI data
-        z_stream: string
-            key name or alias of 2d or 3d data
-        args: int
-            scan number
-        kwargs:
-            norm: boolean
-                normalizes to [0,1]
-            xoffset: list
-                fitting offset (x-stream)
-            xcoffset: float
-                constant offset (x-stream)
-            yoffset: list
-                fitting offset (y-stream)
-            ycoffset: float
-                constant offset (y-stream)
-        """
-        
-        # Ensure that only one scan is loaded.
-        if len(args) != 1:
-            raise TypeError("You may only select one scan at a time")
-        if self.data != []:
-            raise TypeError("You can only append one scan per object")
-        
-        self.data.append(load_histogram_2d_sum(config, file, x_stream,
-                         z_stream, *args, **kwargs))
-
-#########################################################################################
         
 class Load3d:
     """Object to hold a 3d stack of images"""
@@ -1769,6 +1725,10 @@ class Load3d:
     def __init__(self):
         """Initialize variables and data containers"""
         self.data = list()
+
+    def _load(self,config, file, ind_stream, stack, arg,**kwargs):
+        """Helper function to load data"""
+        return load_3d(config, file, ind_stream, stack, arg, **kwargs)
 
     def load(self, config, file, ind_stream, stack, arg,**kwargs):
         """ Shows a 3d stack of images interactively
@@ -1810,7 +1770,28 @@ class Load3d:
         if self.data != []:
             raise UserWarning("Can only load one movie at a time.")
         else:
-            self.data.append(load_3d(config, file, ind_stream, stack, arg, **kwargs))
+            self.data.append(self._load(config, file, ind_stream, stack, arg, **kwargs))
+
+    def _add(self,tempO):
+        """ Method to evaluate 3d addition"""
+
+        # Create Object for image addition
+        from .MathData import Object3dAddSubtract
+        addO = Object3dAddSubtract()
+
+        # Add all images, then evaluate
+        for idx,data in enumerate(tempO.data):
+            for k,v in data.items():
+                addO.add(tempO,idx,k)
+                filename = tempO.data[idx][k].filename
+                xlabel = tempO.data[idx][k].xlabel
+                ylabel = tempO.data[idx][k].ylabel
+                zlabel = tempO.data[idx][k].zlabel
+
+        addO.evaluate(filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel)
+
+        # Append result as data
+        self.data.append(addO.data[0])
 
     def add(self, config, file, ind_stream, stack, *args,**kwargs):
         """ Adds 3d stacks of images with identical scales
@@ -1821,12 +1802,44 @@ class Load3d:
             Adds all scans specified in *args.
         """
 
-        # Ensure we only load 1
+        # Ensure that only one scan is loaded.
         if self.data != []:
-            raise UserWarning("Can only load one movie at a time.")
-        else:
-            self.data.append(StackAddition(config, file, ind_stream, stack, *args, **kwargs))
+            raise TypeError("You can only append one scan per object")
+        
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+        
+        # Create temporary scan object
+        tempO = self.__class__()
+        for arg in args:
+            tempO.data.append(tempO._load(config, file, ind_stream, stack, arg, **kwargs))
+        
+        self._add(tempO)
 
+    def _subtract(self,tempOMin,tempOSub):
+        """ Method to evaluate 2d addition"""
+
+        # Create Object for image addition
+        from .MathData import Object3dAddSubtract
+        addO = Object3dAddSubtract()
+
+        # Add all images, then evaluate
+        for idx,data in enumerate(tempOMin.data):
+            for k,v in data.items():
+                addO.add(tempOMin,idx,k)
+        for idx,data in enumerate(tempOSub.data):
+            for k,v in data.items():
+                addO.subtract(tempOSub,idx,k)
+                filename = tempOSub.data[idx][k].filename
+                xlabel = tempOSub.data[idx][k].xlabel
+                ylabel = tempOSub.data[idx][k].ylabel
+                zlabel = tempOSub.data[idx][k].zlabel
+        addO.evaluate(filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel)
+
+        # Append result as data
+        self.data.append(addO.data[0])
 
     def subtract(self, config, file, ind_stream, stack, minuend, subtrahend,**kwargs):
         """ Subtracts 3d stacks of images with identical scales
@@ -1840,11 +1853,50 @@ class Load3d:
                 adds all images in list, generates subtrahend
         """
 
-        # Ensure we only load 1
+        # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+        if isinstance(minuend,int):
+            minuend = [minuend]
+        if isinstance(subtrahend,int):
+            subtrahend = [subtrahend]
+
+        # Ensure that only one scan is loaded.
         if self.data != []:
-            raise UserWarning("Can only load one movie at a time.")
-        else:
-            self.data.append(StackSubtraction(config, file, ind_stream, stack, minuend, subtrahend, **kwargs))
+            raise TypeError("You can only append one scan per object")
+        
+        # Append all scan objects to scan list in temp object.
+        tempOMin = self.__class__()
+        for arg in minuend:
+            tempOMin.data.append(tempOMin._load(config,file, ind_stream, stack, arg, **kwargs))
+        tempOSub = self.__class__()
+        for arg in subtrahend:
+            tempOSub.data.append(tempOSub._load(config,file, ind_stream, stack, arg, **kwargs))
+        
+        self._subtract(tempOMin,tempOSub)
+
+    def _background_2d(self,bg_z):
+        """ Helper function to subtract 2d background """
+
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                for img in v.stack:
+                    if np.shape(img) == np.shape(bg_z):
+                        pass
+                    else:
+                        raise Exception("Attempting to background subtract stacks with incompatible dimensions.")
+
+                # Remove data
+                new_z = np.subtract(v.stack,bg_z)
+
+                # Overwrite streams in object
+                v.stack = new_z
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
+
 
     def background_2d(self,config, file, x_stream, detector, *args, **kwargs):
         """ Subtracts the defined data from all loaded data
@@ -1887,27 +1939,30 @@ class Load3d:
         """
 
         # Get the background data
-        if len(args) == 1:
-            background = load_2d(config, file, x_stream, detector, args[0], **kwargs)
-            bg_z = background[args[0]].new_z
-        else:
-            background = ImageAddition_2d(config,file, x_stream, detector, *args, **kwargs)
-            bg_z = background[0].new_z
-        
+        background = Load2d()
+        background.add(config,file, x_stream, detector, *args, **kwargs)
+        bg_z = background.data[0][0].new_z
+
+        self._background_2d(bg_z)
+
+    def _background_3d(self, bg_stack):
+        """ Helper function to subtract 3d background"""
+
         # Subtract the background from all data objects
         for i, val in enumerate(self.data):
             for k, v in val.items():
-                for img in v.stack:
-                    if np.shape(img) == np.shape(bg_z):
-                        pass
-                    else:
-                        raise Exception("Attempting to background subtract stacks with incompatible dimensions.")
 
+                # make sure the dimensions are matching
+                if np.shape(v.stack) == np.shape(bg_stack):
+                    pass
+                else:
+                    raise Exception("Attempting to background subtract stacks with incompatible dimensions.")
+                
                 # Remove data
-                new_z = np.subtract(v.stack,bg_z)
+                new_stack = np.subtract(v.stack,bg_stack)
 
                 # Overwrite streams in object
-                v.stack = new_z
+                v.stack = new_stack
 
                 # Update dictionary with new object
                 val[k] = v
@@ -1952,35 +2007,12 @@ class Load3d:
         """
 
         # Get the background data
-        if len(args) == 1:
-            background = load_3d(config, file, ind_stream, stack, args[0], **kwargs)
-            bg_stack = background[args[0]].stack
-        else:
-            background = StackAddition(config, file, ind_stream, stack, *args, **kwargs)
-            bg_stack = background[0].stack
+        background = self.__class__()
+        background.add(config, file, ind_stream, stack, *args, **kwargs)
+        bg_stack = background.data[0][0].stack
+
+        self._background_3d(bg_stack)
         
-        # Subtract the background from all data objects
-        for i, val in enumerate(self.data):
-            for k, v in val.items():
-
-                # make sure the dimensions are matching
-                if np.shape(v.stack) == np.shape(bg_stack):
-                    pass
-                else:
-                    raise Exception("Attempting to background subtract stacks with incompatible dimensions.")
-                
-                # Remove data
-                new_stack = np.subtract(v.stack,bg_stack)
-
-                # Overwrite streams in object
-                v.stack = new_stack
-
-                # Update dictionary with new object
-                val[k] = v
-
-            # Update data list with updated dictionary
-            self.data[i] = val
-
 
     def plot(self, title=None, xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, vmin=None, vmax=None, colormap="linear", norm=False, **kwargs):
         """
@@ -2280,8 +2312,428 @@ class Load3d:
 
 #########################################################################################
 
+class LoadHistogram1d(Load1d):
+
+    def _load(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """Loading helper function"""
+        return load_histogram_1d(config, file, x_stream, y_stream, *args, **kwargs)
+
+class LoadHistogram1dReduce(Load1d):
+
+    def _load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """Loading helper function"""
+        return load_histogram_1d_reduce(config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+
+    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias of 1d-ROI (dim 0)
+        y_stream: string
+            key name or alias of 1d-ROI (dim 0)
+        z_stream: string
+            key name or alias of 2d data stream
+        *args: ints
+            scan numbers, comma separated
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            binsize: int
+                puts x-data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
+            matplotlib_props: dict
+                dict[scan number] = dict with props, see keys below
+                    - linewidth
+                    - color
+                    - linestyle
+                    - marker
+                    - markersize
+                    - etc.
+        """
+
+        # Add data index to configuration
+        config.index = len(self.data)+1
+
+        # Append all scan objects to scan list in current object.
+        self.data.append(self._load(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
+
+    def backgroundHist(self,config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias of 1d-ROI (dim 0)
+        y_stream: string
+            key name or alias of 1d-ROI (dim 0)
+        z_stream: string
+            key name or alias of 2d data stream
+        *args: int
+            scans
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+        """
+
+        # Get the background data
+        # Append all scan objects to scan list in temp object.
+        background = self.__class__()
+        background.add(config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+        bg_x = background.data[0][0].x_stream
+        bg_y = background.data[0][0].y_stream
+
+        self._background(bg_x,bg_y)
+
+    def add(self, config, file, x_stream, y_stream, z_stream, *args, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
+        """
+        Add specified scans for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Adds all scans specified in *args.
+        """
+
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+
+        # Append all scan objects to scan list in temp object.
+        tempO = self.__class__()
+        tempO.load(config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+
+        # Process scan key-word arguments handed to the evaluation method
+        # Add data index to configuration
+        legend_index = len(self.data)+1
+
+        # Create key-word arguments
+        if legend_item == None:
+            for idx,scan in enumerate(args):
+                if idx==0:
+                    name = str(scan)
+                else:
+                    name += "+" + str(scan)
+            legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
+
+        self._add(tempO,file,legend_item,twin_y,matplotlib_props)
+
+    def subtract(self, config, file, x_stream, y_stream, z_stream, minuend, subtrahend, legend_item=None, twin_y=False, matplotlib_props=dict(),**kwargs):
+        """
+        Subtract specified scans for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Subtracts two scans. May add scans by specifying list of scans as first/second arg.
+        """
+
+        # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+        if isinstance(minuend,int):
+            minuend = [minuend]
+        if isinstance(subtrahend,int):
+            subtrahend = [subtrahend]
+        
+        # Append all scan objects to scan list in temp object.
+        tempOMin = self.__class__()
+        tempOMin.load(config, file, x_stream, y_stream, z_stream, *minuend, **kwargs)
+        tempOSub = self.__class__()
+        tempOSub.load(config, file, x_stream, y_stream, z_stream, *subtrahend, **kwargs)
+
+        # Add data index to configuration
+        legend_index = len(self.data)+1
+
+        # Create key-word arguments
+        if legend_item == None:
+            for idx,scan in enumerate(minuend):
+                if idx==0:
+                    name = str(scan)
+                else:
+                    name += "+" + str(scan)
+            for scan in subtrahend:
+                name += "-" + str(scan)
+            legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
+
+        self._subtract(tempOMin,tempOSub,file,legend_item,twin_y,matplotlib_props)
+
+    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
+        """
+        Stitch specified scans for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Stitches all scans specified in *args.
+        """
+
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+
+        # Append all scan objects to scan list in temp object.
+        tempO = self.__class__()
+        tempO.load(config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+
+        # Process scan key-word arguments handed to the evaluation method
+        # Add data index to configuration
+        legend_index = len(self.data)+1
+
+        # Create key-word arguments
+        if legend_item == None:
+            for idx,scan in enumerate(args):
+                if idx==0:
+                    name = str(scan)
+                else:
+                    name += "+" + str(scan)
+            legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
+
+        self._stitch(tempO,file,legend_item,twin_y,matplotlib_props)
+
+class LoadHistogram2d(Load2d):
+    """Class to display (x,y,z) scatter data."""
+
+    def _load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """ Loading helper function"""
+        
+        return load_histogram_2d(config, file, x_stream,
+                         y_stream, z_stream, *args, **kwargs)
+
+    def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Load (x,y,z) stream data to histogram
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias
+        y_stream: string
+            key name or alias
+        z_stream: string
+            key name or alias
+        args: int
+            scan number
+        kwargs:
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+        """
+        
+        # Ensure that only one scan is loaded.
+        if len(args) != 1:
+            raise TypeError("You may only select one scan at a time")
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        self.data.append(self._load(config, file, x_stream,
+                         y_stream, z_stream, *args, **kwargs))
+        
+    def background_2dHist(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+        Parameters
+        ----------
+        config: dict
+            h5 configuration
+        file: string
+            file name
+        x_stream: string
+            key name or alias
+        y_stream: string
+            key name or alias
+        z_stream: string
+            key name or alias
+        *args: int
+            scans
+        **kwargs
+            norm: boolean
+                normalizes to [0,1]
+            xoffset: list
+                fitting offset (x-stream)
+            xcoffset: float
+                constant offset (x-stream)
+            yoffset: list
+                fitting offset (y-stream)
+            ycoffset: float
+                constant offset (y-stream)
+            grid_x: list
+                grid data evenly with [start,stop,delta]
+            savgol: tuple
+                (window length, polynomial order, derivative)
+            binsize: int
+                puts data in bins of specified size
+            legend_items: dict
+                dict[scan number] = description for legend
+            binsize_x: int
+                puts data in bins of specified size in the horizontal direction
+            binsize: int
+                puts data in bins of specified size in the vertical direction
+        """
+
+        # Get the background data
+        background = self.__class__()
+        background.add(config,file, x_stream, y_stream, z_stream, *args, **kwargs)
+        bg_x = background.data[0][0].new_x
+        bg_y = background.data[0][0].new_y
+        bg_z = background.data[0][0].new_z
+        
+        self._background_2d(bg_x,bg_y,bg_z)
+
+    def add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Add specified histograms for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Adds all scans specified in *args.
+        """
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+        
+        # Create temporary scan object
+        tempO = self.__class__()
+        tempO.data.append(tempO._load(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
+        
+        self._add(tempO)
+            
+    def subtract(self, config, file, x_stream, y_stream, z_stream, minuend, subtrahend, **kwargs):
+        """
+        Subract specified histograms for selected streams.
+
+        Parameters
+        ----------
+        See loader function.
+        Subtracts all scans specified in two *args lists.
+        """
+
+        # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+        if isinstance(minuend,int):
+            minuend = [minuend]
+        if isinstance(subtrahend,int):
+            subtrahend = [subtrahend]
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        # Append all scan objects to scan list in temp object.
+        tempOMin = self.__class__()
+        tempOMin.data.append(tempOMin._load(config, file, x_stream, y_stream, z_stream, *minuend, **kwargs))
+        tempOSub = self.__class__()
+        tempOSub.data.append(tempOSub._load(config, file, x_stream, y_stream, z_stream, *subtrahend, **kwargs))
+        
+        self._subtract(tempOMin,tempOSub)
+        
+
+    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """
+        Stitch specified scans for selected histograms.
+
+        Parameters
+        ----------
+        See loader function.
+        Sticthes all scans specified in *args.
+        """
+
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        # Create temporary scan object
+        tempO = self.__class__()
+        tempO.data.append(tempO._load(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
+        
+        self._stitch(tempO)
+
+    def plot(self, *args, **kwargs):
+        kwargs.setdefault('kind', "Histogram")
+
+        super().plot(*args, **kwargs)
+
+class LoadHistogram(LoadHistogram2d):
+    pass
+
+class LoadHistogram2dSum(Load2d):
+    """Class to display (x,z) scatter data."""
+
+    def _load(self, config, file, x_stream, z_stream, *args, **kwargs):
+        """ Loading helper function"""
+        
+        return load_histogram_2d_sum(config, file, x_stream,
+                         z_stream, *args, **kwargs)
+
+#########################################################################################
+
 class LoadHistogram3d(Load3d):
     """Class to display (x,y,z) scatter data."""
+
+    def _load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """ Loading helper function"""
+        
+        return load_histogram_3d(config, file, x_stream,
+                         y_stream, z_stream, *args, **kwargs)
 
     def load(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
         """
@@ -2326,8 +2778,81 @@ class LoadHistogram3d(Load3d):
         if self.data != []:
             raise TypeError("You can only append one scan per object")
         
-        self.data.append(load_histogram_3d(config, file, x_stream,
+        self.data.append(self._load(config, file, x_stream,
                          y_stream, z_stream, *args, **kwargs))
+        
+    def add(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """ Adds 3d stacks of images with identical scales
+
+            Parameters
+            ----------
+            See Load3d function.
+            Adds all scans specified in *args.
+        """
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        # Ensure we only add a unique scan once
+        for i in args:
+            if args.count(i) > 1:
+                raise ValueError("Cannot add the same scan to itself")
+        
+        # Create temporary scan object
+        tempO = self.__class__()
+        for arg in args:
+            tempO.data.append(tempO._load(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
+        
+        self._add(tempO)
+
+    def subtract(self, config, file, x_stream, y_stream, z_stream, minuend, subtrahend,**kwargs):
+        """ Subtracts 3d stacks of images with identical scales
+
+            Parameters
+            ----------
+            See LoadHistogram3d function, but
+            minuend: list
+                adds all images in list, generates minuend
+            subtrahend: list
+                adds all images in list, generates subtrahend
+        """
+
+        # Make sure minuend and subtrahend are of type list (even if only one scan is passed)
+        if isinstance(minuend,int):
+            minuend = [minuend]
+        if isinstance(subtrahend,int):
+            subtrahend = [subtrahend]
+
+        # Ensure that only one scan is loaded.
+        if self.data != []:
+            raise TypeError("You can only append one scan per object")
+        
+        # Append all scan objects to scan list in temp object.
+        tempOMin = self.__class__()
+        for arg in minuend:
+            tempOMin.data.append(tempOMin._load(config,file, x_stream, y_stream, z_stream, arg, **kwargs))
+        tempOSub = self.__class__()
+        for arg in subtrahend:
+            tempOSub.data.append(tempOSub._load(config,file, x_stream, y_stream, z_stream, arg, **kwargs))
+        
+        self._subtract(tempOMin,tempOSub)
+
+    def background_3d(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+        """ Subtracts the defined data from all loaded data
+
+            Parameters
+            ----------
+            See LoadHistogram3d function
+        """
+
+        # Get the background data
+        background = self.__class__()
+        background.add(config, file, x_stream, y_stream, z_stream, *args, **kwargs)
+        bg_stack = background.data[0][0].stack
+
+        self._background_3d(bg_stack)
+
         
 #########################################################################################
 class LoadBeamline(Load1d):
