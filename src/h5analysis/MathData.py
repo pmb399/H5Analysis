@@ -102,31 +102,39 @@ class Object1dAddSubtract(Load1d):
         all_objs = self.DataObjectsAdd + self.DataObjectsSubtract
         start_list = list()
         end_list = list()
+        x_list = list()
 
         for i,item in enumerate(all_objs):
             start_list.append(item.x_stream.min())
             end_list.append(item.x_stream.max())
+            x_list.append(item.x_stream)
 
             if i == 0:
                 x_diff = np.abs(np.diff(item.x_stream).min())
 
-        s = max(start_list)
-        e = min(end_list)
+        #Check if we need to interpolate scales
+        if all([np.array_equal(x_list[0],test_scale) for test_scale in x_list]):
+            # All scales are equal, no interpolation required
+            MASTER_x = x_list[0]
 
-        if s>=e:
-            raise Exception("There is not sufficient overlap in x to perform interpolation.")
-        
-        # Limit array size to 100MB (=104857600 bytes)
-        # Numpy float64 array element requires 8 bytes
-        max_steps = 104857600/8
-        steps = int((e-s)/x_diff)+1
-
-        if steps>max_steps:
-            num = max_steps
         else:
-            num = steps
+            s = max(start_list)
+            e = min(end_list)
 
-        MASTER_x = np.linspace(s,e,num)
+            if s>=e:
+                raise Exception("There is not sufficient overlap in x to perform interpolation.")
+            
+            # Limit array size to 100MB (=104857600 bytes)
+            # Numpy float64 array element requires 8 bytes
+            max_steps = 104857600/8
+            steps = int((e-s)/x_diff)+1
+
+            if steps>max_steps:
+                num = max_steps
+            else:
+                num = steps
+
+            MASTER_x = np.linspace(s,e,num)
 
         # First, add all objects
         for i,item in enumerate(self.DataObjectsAdd):
