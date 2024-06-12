@@ -34,6 +34,7 @@ from .data_1d import load_1d
 from .data_2d import load_2d
 from .histogram import load_histogram_1d, load_histogram_1d_reduce, load_histogram_2d, load_histogram_2d_sum, load_histogram_3d
 from .data_3d import load_3d
+from .scatter import load_scatter_1d
 from .beamline_info import load_beamline, get_single_beamline_value, get_spreadsheet
 
 #########################################################################################
@@ -2312,6 +2313,232 @@ class Load3d:
 
 #########################################################################################
 
+class LoadScatter1d(Load1d):
+
+    def _load(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """Loading helper function"""
+        return load_scatter_1d(config, file, x_stream, y_stream, *args, **kwargs)
+    
+    def plot(self, size=10, title=None, xlabel=None, ylabel=None, ylabel_right=None, plot_height=450, plot_width=700, **kwargs):
+        """
+        Plot all data assosciated with class instance/object.
+
+        Parameters
+        ----------
+        size : int, optional
+        title : string, optional
+        xlabel : string, optional
+        ylabel : string, optional
+        ylabel_right : string, optional
+        plot_height : int, optional
+        plot_width : int, optional
+        norm: boolean, optional
+            Normalized plot output to [0,1]
+        waterfall: float
+            Normalizes plot output to [0,1] and applies offset specified
+        kwargs
+            all bokeh figure key-word arguments
+        """
+
+        # Keep track of 1d x-axis and y-axis labels
+            
+        xaxis_labels = list()
+        yaxis_labels = list()
+        yaxis_r_labels = list()
+
+        # Organize all data assosciated with object in dictionary.
+        # Need to provide one scan per source (ColumnDataSource to scatter)
+        # Therefore, store the ColumnDataSource objects instead of defaultdict
+        # Separate data by y-axis (if right-hand side axis requested)
+        sources = list()
+        sources_twin = list()
+        colorcount = 0
+
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+                # Check dimensions
+                if len(v.x_stream) != len(v.y_stream):
+                    raise UserWarning(f'Error in line {i+1}. Cannot plot (x,y) arrays with different size.')
+                
+                plot_data = dict()
+
+                # Track axis labels
+                # x
+                try:
+                    for label in v.xaxis_label:
+                        if label not in xaxis_labels:
+                            xaxis_labels.append(label)
+                except:
+                    pass
+
+                # Work on twinned axis
+                if hasattr(v,'twin_y'):
+                    if v.twin_y != True:
+                        # y labels
+                        try:
+                            for label in v.yaxis_label:
+                                if label not in yaxis_labels:
+                                    yaxis_labels.append(label)
+                        except:
+                            pass
+                        mysources = sources
+                    else:
+                        # y label right
+                        try:
+                            for label in v.yaxis_label:
+                                if label not in yaxis_r_labels:
+                                    yaxis_r_labels.append(label)
+                        except:
+                            pass
+                        mysources = sources_twin
+                else:
+                    # y label
+                    try:
+                        for label in v.yaxis_label:
+                            if label not in yaxis_labels:
+                                yaxis_labels.append(label)
+                    except:
+                        pass
+
+                    mysources = sources
+
+                plot_data["x_stream"] = v.x_stream
+                plot_data["y_stream"] = v.y_stream
+                plot_data['x_name'] = [v.xlabel]*len(v.x_stream)
+                plot_data['y_name'] = [v.ylabel]*len(v.x_stream)
+                plot_data['filename'] = [v.filename]*len(v.x_stream)
+                plot_data['scan'] = [v.scan]*len(v.x_stream)
+                plot_data['legend'] = [v.legend]*len(v.x_stream)
+                plot_data['color'] = [COLORP[colorcount]]*len(v.x_stream)
+                mysources.append(ColumnDataSource(data = plot_data))
+                colorcount += 1
+
+        # Set up the bokeh plot
+        p = figure(height=plot_height, width=plot_width,
+                   tools="pan,wheel_zoom,box_zoom,reset,crosshair,save", **kwargs)
+                
+        # If twinning enabled, calculate left linear axis and disable default
+        # This is because the default axis always scales to maximum range
+        if len(sources_twin) != 0 and len(sources) != 0:
+            # Determine the range of the axis and add it to plot
+            mins = [min(x.data['y_stream']) for x in sources]
+            maxs = [max(x.data['y_stream']) for x in sources]
+            yrange = max(maxs)-min(mins)
+            ymin = min(mins) - 0.05*yrange
+            ymax = max(maxs) + 0.05*yrange
+
+            # Work on labels
+            if ylabel != None:
+                ystring = str(ylabel)
+            else:
+                ystring = ""
+                for i,label in enumerate(yaxis_labels):
+                    if i != 0:
+                        ystring+=f"|"
+                    ystring+=f"{label}"
+
+            # Disable default axis and add custom axis to left
+            p.yaxis.visible = False
+            p.extra_y_ranges['left'] = DataRange1d(bounds=(ymin,ymax))
+            p.add_layout(LinearAxis(y_range_name='left',axis_label=ystring), 'left')
+
+            default_range = 'left'
+        else:
+            # Else, main axis remains default
+            default_range = 'default'
+
+        # Only try to add plot data to left axis if there is any
+        if len(sources) != 0:
+            for source in sources:
+                p.scatter("x_stream", "y_stream", size=size, color="color", legend_group="legend", fill_alpha=0.6,hover_fill_color='color', hover_fill_alpha=1.0,source=source,y_range_name=default_range)
+        
+        # Plot all data associated with the right side y-axis
+        if len(sources_twin) != 0:
+            # Determine the range of the axis and add it to plot
+            mins = [min(x.data['y_stream']) for x in sources_twin]
+            maxs = [max(x.data['y_stream']) for x in sources_twin]
+            yrange = max(maxs)-min(mins)
+            ymin = min(mins) - 0.05*yrange
+            ymax = max(maxs) + 0.05*yrange
+
+            # Work on labels
+            if ylabel_right != None:
+                ystring = ylabel_right
+            else:
+                ystring = ""
+                for i,label in enumerate(yaxis_r_labels):
+                    if i != 0:
+                        ystring+=f"|"
+                    ystring+=f"{label}"
+
+            p.extra_y_ranges['right'] = DataRange1d(bounds=(ymin,ymax))
+            p.add_layout(LinearAxis(y_range_name='right',axis_label=ystring), 'right')
+            
+            # Get the data source
+            for source_twin in sources_twin:
+                # Add to plot
+                p.scatter("x_stream", "y_stream", size=size, color="color", legend_group="legend", fill_alpha=0.6,hover_fill_color='color', hover_fill_alpha=1.0,source=source_twin,y_range_name='right')
+
+        # Set up the information for hover box
+        p.add_tools(HoverTool(show_arrow=False, line_policy='next', tooltips=[
+            ('Scan', '@scan'),
+            ('File', '@filename'),
+            ("(x,y)", "(@x_name, @y_name)"),
+            ("(x,y)", "($x, $y)")
+        ]))
+
+        p.toolbar.logo = None
+
+        # Overwrite plot properties if requested.
+        if self.legend_loc == 'outside':
+            p.add_layout(p.legend[0], 'right')
+        else:
+            p.legend.location = self.legend_loc
+
+        if len(self.plot_hlines) > 0:
+            for line_props in self.plot_hlines:
+                line = Span(location=line_props[0],
+                            dimension='width', **line_props[1])
+                p.add_layout(line)
+
+        if len(self.plot_vlines) > 0:
+            for line_props in self.plot_vlines:
+                line = Span(
+                    location=line_props[0], dimension='height', **line_props[1])
+                p.add_layout(line)
+
+        if len(self.plot_labels) > 0:
+            for label_props in self.plot_labels:
+                label = Label(
+                    x=label_props[0], y=label_props[1], text=label_props[2], **label_props[3])
+                p.add_layout(label)
+
+        if title != None:
+            p.title.text = str(title)
+        if xlabel != None:
+            p.xaxis.axis_label = str(xlabel)
+        else:
+            xstring = ""
+            for i,label in enumerate(xaxis_labels):
+                if i != 0:
+                    xstring+=f"|"
+                xstring+=f"{label}"
+            p.xaxis.axis_label = str(xstring)
+        
+        if len(sources_twin) == 0:
+            if ylabel != None:
+                p.yaxis.axis_label = str(ylabel)
+            else:
+                ystring = ""
+                for i,label in enumerate(yaxis_labels):
+                    if i != 0:
+                        ystring+=f"|"
+                    ystring+=f"{label}"
+                p.yaxis.axis_label = str(ystring)
+        show(p)
+
+
+#########################################################################################
 class LoadHistogram1d(Load1d):
 
     def _load(self, config, file, x_stream, y_stream, *args, **kwargs):
