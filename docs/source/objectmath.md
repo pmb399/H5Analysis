@@ -71,9 +71,35 @@ m.plot()
 
 1. Create "Loader" object
 
-2. Specify all scans to be sticthed together (execute this method once per scan that needs to be processed)
+2. Specify all scans to be stitched together (execute this method once per scan that needs to be processed)
 
 3. Evaluate the result
+
+## Object1dTransform
+
+:::{card} {octicon}`alert-fill;1em;sd-text-info` Requirements
+To use this feature, ensure that ```pybaselines``` is installed!
+:::
+
+Applies a baseline to 1d data and allows to subtract the modelled background. This may be especially useful for hard x-ray spectroscopy and imaging where the scattering background for higher energies is large.
+
+```
+l = Object1dTransform()
+l.load(o,0,0)
+l.baseline('arpls',subtract=False)
+l.baseline('arpls',subtract=True)
+l.plot()
+```
+
+1. Create "Loader" object
+
+2. Specify scan (from object) that shall be treated with a baseline background subtraction
+
+3. Apply the baseline as available from the ```pybaselines``` package. See here for implemented algroithms: [pybaseline ReadTheDocs](https://pybaselines.readthedocs.io/en/latest/algorithms/index.html). If requested, Savitsky-Golay smoothing can be explicitly applied to the data before the data streams are handed to the baseline algorithm.
+
+4. Plot results
+
+![Subtraction of a baseline in a 1d XRF spectrum.](img/Object1dTransform.png "Subtraction of a baseline in a 1d XRF spectrum.")
 
 ## Object2dAddSubtract
 
@@ -159,6 +185,8 @@ Note, that the key-word argument exact may be defined. Exact evaluation processe
 
 ## Object2dTransform
 
+### Excitation-Emission Maps
+
 ![Transforming an excitation-emission map to energy loss scale.](img/2d_transform.png "Transforming an excitation-emission map to energy loss scale.")
 
 This allows to apply math operations on a 2d object on a per data point basis. All data points on the second axis may be recalculated based on an equation provided the independent primary axis. Additionally, the transpose of an image may be calculated.
@@ -182,6 +210,33 @@ o.plot()
 For most transformations, the output dimensions are cropped to maximize the 'y' axis. This may not necessarily be desirable, hence, additional key-word arguments in the ```transform``` method allow to specify and limit both 'x' and 'y' directions. The ```xlim``` crops the data stream before the transformation is applied, while ```ylim``` is evaluated after the transformation. Then, the maximum area is determined.
 
 4. We transpose the matrix and switch the scales accordingly.
+
+### Baseline subtraction
+
+This works similar to the 1d case above (see: ```Object1dTransform```) with an integrated ```baseline``` method.
+
+## Object3dHistogramTransform
+
+This works similar to the 1d case above (see: ```Object1dTransform```) with an integrated ```baseline``` method.
+
+## Object3dHistogramReduce
+
+```python
+rh = Object3dHistogramReduce()
+rh.load(h3,0,2)
+rh.polygon([(-1.5,-1.5),(1.5,-1.5),(1.5,1.5),(-1.5,1.5)])
+rh.plot()
+```
+
+1. Create "Loader" object
+
+2. Specify one Histogram3d object to be loaded and processed.
+
+3. With the implemented polygon method, an arbitrary polygon with a list of (x,y) coordinate pairs may be specified.
+
+4. On execution, the Histogram stack is reduced to a 1d line plot such that only the intensities contained in the polygon are used for summing. Thus, this method is similar to the ```LoadHistogram1dReduce``` class but allows summing over any region defined by an enclosed polygon.
+
+![Polygon reduction on 3d histogram to 1d plot.](img/Object3dHistogramReduce.png "Polygon reduction on 3d histogram to 1d plot.")
 
 
 ## Object1dFit

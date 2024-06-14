@@ -24,6 +24,8 @@ The package and its source code are availabe under the `MIT license <https://git
    installation
    quickstart
    examples
+   histogram
+   scatter
    metadata
    objectmath
 

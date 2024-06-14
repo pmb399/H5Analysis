@@ -1,4 +1,4 @@
-# Example plots
+# Example plots for base classes (1d/2d/3d)
 
 ## 1d plots
 
@@ -107,55 +107,6 @@ load2d.exporter()
 - _grid_x_ (Takes a list with three arguments to apply 1d interpolation gridding)
   e.g. grid_x = [Start Energy, Stop Energy, Delta]
 - _norm_by_ (Normalizes to specified stream)
-- _binsize_x_ (To bin data in the horizontal direction, this may truncate the image if required)
-- _binsize_y_ (To bin data in the vertical direction, this may truncate the image if required)
-
-Further methods are available, please see API documentation.
-
-### 2d histogram
-
-![Example of 2d histogram visualization](img/2d_histogram.png "Example of 2d histogram visualization")
-
-This class inherits from the general Load2d but overrides data loading and processing for (x,y,z) scatter data until an image is calculated.
-
-```
-mesh = LoadHistogram()
-mesh.load(config,'Filename.h5','x_stream','y_stream','z_stream',24)
-mesh.plot()
-mesh.exporter()
-```
-
-1. Create "Loader" object
-
-2. Enter the file name of the scan to analyse ('FileName.h5') and configuration
-
-3. Options for **x_stream** quantities include:
-- All quantities contained in the sca folder(s) specified in the config
-- All SCA specified in the config
-- All MCA specified in the config with ROI specified
-- All STACK specified in the config with two ROIs specified
-
-4. Options for **y_stream** quantities include:
-- All quantities contained in the sca folder(s) specified in the config
-- All SCA specified in the config
-- All MCA specified in the config with ROI specified
-- All STACK specified in the config with two ROIs specified
-
-5. Options for **z_stream** quantities include:
-- All quantities contained in the sca folder(s) specified in the config
-- All SCA specified in the config
-- All MCA specified in the config with ROI specified
-- All STACK specified in the config with two ROIs specified
-
-6. Specify scan to analyse
-
-7. Set optional flags. Options include:
-- _norm_ (Normalizes to [0,1])
-- _xcoffset_ (Defines a constant shift in the x-stream)
-- _xoffset_ (Takes a list of tuples and defines a polynomial fit of the x-stream)
-- _ycoffset_ (Defines a constant shift in the y-stream)
-- _yoffset_ (Takes a list of tuples and defines a polynomial fit of the y-stream)
-  e.g. offset = [(100,102),(110,112),(120,121)]
 - _binsize_x_ (To bin data in the horizontal direction, this may truncate the image if required)
 - _binsize_y_ (To bin data in the vertical direction, this may truncate the image if required)
 

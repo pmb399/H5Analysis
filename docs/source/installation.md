@@ -45,6 +45,12 @@ To utilize the ```xraylarch``` engine for EXAFS data processing, ensure that the
 $ pip install h5analysis[EXAFS]
 ```
 
+To utilize the ```pybaselines``` package for background subtraction, ensure that the python package is properly installed:
+
+```
+$ pip install h5analysis[BASELINE]
+```
+
 ::::{tab-set}
 
 :::{tab-item} Anaconda3
