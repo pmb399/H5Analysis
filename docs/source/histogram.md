@@ -164,4 +164,4 @@ h3.load(config,'reixs_files/Tutorial.h5','ssh','ssv','SDD',2,binsize_z=10)
 h3.plot()
 ```
 
-<video src="img/Histogram3d.mp4" controls></video>
+<video src="_static/Histogram3d.mp4" controls></video>
