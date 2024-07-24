@@ -320,7 +320,7 @@ def load_histogram_1d_reduce(config, file, x_stream, y_stream, z_stream, *args, 
 
     return data
 
-def load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None, binsize_z=None):
+def load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None, binsize_z=None,bins=None):
     """ Internal function to generate scatter plots for (x,y,z) SCA data
 
         Parameters
@@ -354,6 +354,8 @@ def load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
                 puts y-data in bins of specified size
             binsize_z: int
                 puts z-data in bins of specified size
+            bins: tuple
+                Set the number of bins in the (x-direction,y-direction) explicitly
 
         Returns
         -------
@@ -463,7 +465,7 @@ def load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
                     raise Exception("Error in x-y-z stream lengths.")
 
                 # Calculate the 2d histogram
-                new_x, new_y, new_z = grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y)
+                new_x, new_y, new_z = grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y,bins)
 
                 # Set the labels
                 xlabel = x_stream
@@ -676,7 +678,7 @@ def load_histogram_2d_sum(config, file, x_stream, z_stream, *args, norm=False, x
     return data
 
 
-def load_histogram_3d(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None, binsize_z=None):
+def load_histogram_3d(config, file, x_stream, y_stream, z_stream, *args, norm=False, xoffset=None, xcoffset=None, yoffset=None, ycoffset=None, binsize_x=None, binsize_y=None, binsize_z=None, bins=None):
     """ Internal function to generate scatter plots for (x,y,z) SCA data
 
         Parameters
@@ -710,6 +712,8 @@ def load_histogram_3d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
                 puts y-data in bins of specified size
             binsize_z: int
                 puts z-data in bins of specified size (along scale direction)
+            bins: tuple
+                Set the number of bins in the (x-direction,y-direction) explicitly
 
         Returns
         -------
@@ -776,7 +780,7 @@ def load_histogram_3d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
 
         # Calculate the 2d histogram
         for slice1d in np.transpose(z_data):
-            xedge, yedge, new_z = grid_data_mesh(x_data,y_data,slice1d,binsize_x,binsize_y)
+            xedge, yedge, new_z = grid_data_mesh(x_data,y_data,slice1d,binsize_x,binsize_y,bins)
             new_x_list.append(xedge)
             new_y_list.append(yedge)
             stack_grid.append(new_z)

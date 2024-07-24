@@ -161,7 +161,7 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
     
 #########################################################################################
 
-def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y):
+def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y,bins=None):
     """Internal function to generate scatter histogram for 3 independent SCA streams.
     
         Parameters
@@ -173,6 +173,9 @@ def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y):
             puts x-data in bins of specified size
         binsize_y: int
             puts y-data in bins of specified size
+        kwargs:
+            bins: tuple
+                Set the number of bins in the (x-direction,y-direction) explicitly
     
         Returns
         -------
@@ -200,6 +203,10 @@ def grid_data_mesh(x_data,y_data,z_data,binsize_x,binsize_y):
     else:
         xbin = len(np.where(np.abs(np.diff(y_data))>0.8*np.abs(np.diff(y_data)).max())[0])+1
         ybin = int(len(x_data)/xbin)
+
+    if bins!=None and isinstance(bins,tuple):
+        xbin = bins[0]
+        ybin = bins[1]
 
     # Problem with Encoder Feedback: Could have empty bins
     # Solution: Interpolate data on evenly spaced grid, take out non-existent data
