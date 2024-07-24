@@ -13,10 +13,16 @@ $ jupyter notebook
 Before you start, you will need to import the required h5analysis package, and enable bokeh plotting.
 
 ```
-## Setup necessarry inputs
+# Setup necessary inputs
+
+## Import the loader classes
 from h5analysis.LoadData import *
 from h5analysis.MathData import *
+
+## Import the configuration class
 from h5analysis.config import h5Config
+
+## Enable bokeh plotting within the jupyter notebook
 from bokeh.io import show, output_notebook
 output_notebook(hide_banner=True)
 ```

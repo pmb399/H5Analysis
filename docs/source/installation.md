@@ -39,18 +39,6 @@ $ pip install h5analysis[FFMPEG]
 
 Note, the export to MP4 file format using FFMPEG within python triggers the system's FFMPEG binding which may need to be installed. If you are using an Anaconda python environment, this task will be straight forward. In case you are using a different python eco-system, you will have to get the executable binary from the FFMPEG website.
 
-To utilize the ```xraylarch``` engine for EXAFS data processing, ensure that the larch python package is installed:
-
-```
-$ pip install h5analysis[EXAFS]
-```
-
-To utilize the ```pybaselines``` package for background subtraction, ensure that the python package is properly installed:
-
-```
-$ pip install h5analysis[BASELINE]
-```
-
 ::::{tab-set}
 
 :::{tab-item} Anaconda3
@@ -69,6 +57,17 @@ Navigate to the [FFMPEG Website](https://ffmpeg.org/download.html). Download the
 
 ::::
 
+To utilize the ```xraylarch``` engine for EXAFS data processing, ensure that the larch python package is installed:
+
+```
+$ pip install h5analysis[EXAFS]
+```
+
+To utilize the ```pybaselines``` package for background subtraction, ensure that the python package is properly installed:
+
+```
+$ pip install h5analysis[BASELINE]
+```
 
 ## Activate widget extensions
 In case that certain widgets aren't rendered properly, make sure to enable the appropriate jupyter extensions
