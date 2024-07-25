@@ -311,7 +311,7 @@ class Load1d:
 
         self._subtract(tempOMin,tempOSub,file,legend_item,twin_y,matplotlib_props)
 
-    def _stitch(self,tempO,file,legend_item,twin_y,matplotlib_props):
+    def _stitch(self,tempO,file,legend_item,twin_y,matplotlib_props,average,adjust_scale):
         """Method to evaluate scan stitching"""
 
         # Create Object Stitching instance
@@ -321,12 +321,12 @@ class Load1d:
         # Add all scans, then evaluate
         for k,v in tempO.data[0].items():
             stitchO.stitch(tempO,0,k)
-        stitchO.evaluate(filename=file,legend_item=legend_item,twin_y=twin_y,matplotlib_props=matplotlib_props)
+        stitchO.evaluate(filename=file,legend_item=legend_item,twin_y=twin_y,matplotlib_props=matplotlib_props,average=average,adjust_scale=adjust_scale)
 
         # Append result as data
         self.data.append(stitchO.data[0])
 
-    def stitch(self, config, file, x_stream, y_stream, *args, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
+    def stitch(self, config, file, x_stream, y_stream, *args, average=True, adjust_scale=False, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
         """
         Stitch specified scans for selected streams.
 
@@ -334,6 +334,13 @@ class Load1d:
         ----------
         See loader function.
         Stitches all scans specified in *args.
+        kwargs:
+            average: Boolean
+                For overlap, whether the first scan takes precedence (False) or
+                if overlap is averaged (True)
+            adjust_scale: Boolean
+                Adjusts the intensity of consecutive scans to match the precessors intensity in the overlap
+                Automatically sets average True
         """
 
         # Ensure we only add a unique scan once
@@ -358,7 +365,7 @@ class Load1d:
                     name += "+" + str(scan)
             legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
 
-        self._stitch(tempO,file,legend_item,twin_y,matplotlib_props)
+        self._stitch(tempO,file,legend_item,twin_y,matplotlib_props,average,adjust_scale)
 
 
     def xlim(self, lower, upper):
@@ -1252,7 +1259,7 @@ class Load2d:
         
         self._subtract(tempOMin,tempOSub)
 
-    def _stitch(self,tempO,average=False):
+    def _stitch(self,tempO,average,adjust_scale):
         """ Helper function for 2d stitching"""
 
         # Create Object for image addition
@@ -1267,12 +1274,12 @@ class Load2d:
             ylabel = tempO.data[0][k].ylabel
             zlabel = tempO.data[0][k].zlabel
 
-        addO.evaluate(average=average,filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel,legend=f"{zlabel} Image")
+        addO.evaluate(average=average,adjust_scale=adjust_scale,filename=filename,label_x=xlabel,label_y=ylabel,label_z=zlabel,legend=f"{zlabel} Image")
 
         # Append result as data
         self.data.append(addO.data[0])
         
-    def stitch(self, config, file, x_stream, detector, *args, **kwargs):
+    def stitch(self, config, file, x_stream, detector, *args, average=True, adjust_scale=False, **kwargs):
         """
         Stitch specified scans for selected image.
 
@@ -1280,6 +1287,13 @@ class Load2d:
         ----------
         See loader function.
         Stitches all scans specified in *args.
+        kwargs:
+            average: Boolean
+                For overlap, whether the first scan takes precedence (False) or
+                if overlap is averaged (True)
+            adjust_scale: Boolean
+                Adjusts the intensity of consecutive scans to match the precessors intensity in the overlap
+                Automatically sets average True
         """
 
         # Ensure we only add a unique scan once
@@ -1290,18 +1304,13 @@ class Load2d:
         # Ensure that only one scan is loaded.
         if self.data != []:
             raise TypeError("You can only append one scan per object")
-        
-        # Check if averaging is passed as kwarg
-        average = False
-        if check_key_in_dict('average',kwargs):
-            average = average
-        
+                
         # Create temporary scan object
         tempO = self.__class__()
         tempO.data.append(tempO._load(config,file, x_stream,
                          detector, *args, **kwargs))
         
-        self._stitch(tempO,average)
+        self._stitch(tempO,average,adjust_scale)
 
     def xlim(self, lower, upper):
         """
@@ -2721,7 +2730,7 @@ class LoadHistogram1dReduce(Load1d):
 
         self._subtract(tempOMin,tempOSub,file,legend_item,twin_y,matplotlib_props)
 
-    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
+    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, average=True, adjust_scale=False, legend_item=None, twin_y=False, matplotlib_props=dict(), **kwargs):
         """
         Stitch specified scans for selected streams.
 
@@ -2729,6 +2738,13 @@ class LoadHistogram1dReduce(Load1d):
         ----------
         See loader function.
         Stitches all scans specified in *args.
+        kwargs:
+            average: Boolean
+                For overlap, whether the first scan takes precedence (False) or
+                if overlap is averaged (True)
+            adjust_scale: Boolean
+                Adjusts the intensity of consecutive scans to match the precessors intensity in the overlap
+                Automatically sets average True
         """
 
         # Ensure we only add a unique scan once
@@ -2753,7 +2769,7 @@ class LoadHistogram1dReduce(Load1d):
                     name += "+" + str(scan)
             legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
 
-        self._stitch(tempO,file,legend_item,twin_y,matplotlib_props)
+        self._stitch(tempO,file,legend_item,twin_y,matplotlib_props,average,adjust_scale)
 
 class LoadHistogram2d(Load2d):
     """Class to display (x,y,z) scatter data."""
@@ -2909,14 +2925,21 @@ class LoadHistogram2d(Load2d):
         self._subtract(tempOMin,tempOSub)
         
 
-    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, **kwargs):
+    def stitch(self, config, file, x_stream, y_stream, z_stream, *args, average=True, adjust_scale=False, **kwargs):
         """
         Stitch specified scans for selected histograms.
 
         Parameters
         ----------
         See loader function.
-        Sticthes all scans specified in *args.
+        Stitches all scans specified in *args.
+        kwargs:
+            average: Boolean
+                For overlap, whether the first scan takes precedence (False) or
+                if overlap is averaged (True)
+            adjust_scale: Boolean
+                Adjusts the intensity of consecutive scans to match the precessors intensity in the overlap
+                Automatically sets average True
         """
 
         # Ensure we only add a unique scan once
@@ -2932,7 +2955,7 @@ class LoadHistogram2d(Load2d):
         tempO = self.__class__()
         tempO.data.append(tempO._load(config, file, x_stream, y_stream, z_stream, *args, **kwargs))
         
-        self._stitch(tempO)
+        self._stitch(tempO,average,adjust_scale)
 
     def plot(self, *args, **kwargs):
         kwargs.setdefault('kind', "Histogram")
