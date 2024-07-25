@@ -224,12 +224,18 @@ class Object1dStitch(Load1d):
 
         self.DataObjectsStitch.append(o)
                 
-    def evaluate(self,filename=None,legend_item=None,twin_y=False,matplotlib_props=dict()):
+    def evaluate(self,average=True,adjust_scale=False,filename=None,legend_item=None,twin_y=False,matplotlib_props=dict()):
         """ Evaluate the request
         
             Parameters
             ----------
             kwargs:
+                average: Boolean
+                    For overlap, whether the first scan takes precedence (False) or
+                    if overlap is averaged (True)
+                adjust_scale: Boolean
+                    Adjusts the intensity of consecutive scans to match the precessors intensity in the overlap
+                    Automatically sets average True
                 filename: str
                     Name of the data file
                 legend_item: str
@@ -273,20 +279,64 @@ class Object1dStitch(Load1d):
         MASTER_y_list = list() # y-arrays interpolated to common scale
         MASTER_y_nan_list = list() # where nan values are stored
 
-        # Iterate over all loaded scans for interpolation
-        for i, item in enumerate(self.DataObjectsStitch):                
-            # interpolate to common scale
-            item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
-            # Store results
-            MASTER_y_list.append(item)
-            # Return boolean True where array element is a number
-            MASTER_y_nan_list.append(~np.isnan(item))
+        if average == False and adjust_scale == True:
+            average = True
 
-        # This is for averaging
-        # Sum the arrays of common length, treat nan as 0
-        # For each element, sum how many True (numbers) contribute to the sum
-        # Normalize to get average by array division
-        MASTER_y = np.nansum(MASTER_y_list,axis=0)/np.sum(MASTER_y_nan_list,axis=0)
+        if average == True:
+            if adjust_scale == True:
+                for i, item in enumerate(self.DataObjectsStitch):
+                    if i == 0:
+                        MASTER_y = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                        twos = np.ones_like(MASTER_y)
+                        twos[np.isnan(MASTER_y)] = 0
+                        divisor = twos
+                    else:
+                        item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                        ones = np.ones_like(item)
+                        ones[np.isnan(item)] = 0
+                        mask = np.add(ones,twos)==2
+                        factor = np.true_divide(MASTER_y,divisor,where=divisor!=0)[mask].mean()/item[mask].mean()
+                        MASTER_y = np.nansum(np.dstack((MASTER_y,factor*item)),2)[0]
+                        divisor = np.add(divisor,ones)
+                        twos = np.ones_like(MASTER_y)
+                        twos[divisor==0] = 0
+
+                # Divide big matrix by divisor to get average
+                MASTER_y = np.true_divide(MASTER_y,divisor,where=divisor!=0)
+
+            else:
+                # Iterate over all loaded scans for interpolation
+                for i, item in enumerate(self.DataObjectsStitch):                
+                    # interpolate to common scale
+                    item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                    # Store results
+                    MASTER_y_list.append(item)
+                    # Return boolean True where array element is a number
+                    MASTER_y_nan_list.append(~np.isnan(item))
+
+                # This is for averaging
+                # Sum the arrays of common length, treat nan as 0
+                # For each element, sum how many True (numbers) contribute to the sum
+                # Normalize to get average by array division
+                MASTER_y = np.nansum(MASTER_y_list,axis=0)/np.sum(MASTER_y_nan_list,axis=0)
+
+        else:
+            for i, item in enumerate(self.DataObjectsStitch):
+                if i == 0:
+                    item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                    MASTER_y_list.append(item)
+                    mask = np.ones_like(item)
+                    mask[np.isnan(item)] = 0
+                else:
+                    item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                    item[mask!=0] = 0
+                    MASTER_y_list.append(item)
+                    mask2 = np.ones_like(item)
+                    mask2[np.isnan(item)] = 0
+                    mask = np.add(mask,mask2)
+
+            MASTER_y = np.nansum(MASTER_y_list,axis=0)
+
 
         # Store data
         class added_object:
@@ -694,7 +744,7 @@ class Object2dStitch(Load2d):
 
         self.DataObjects.append(o)
         
-    def evaluate(self,average=False,filename=None,label_x=None,label_y=None,label_z=None,legend=None):
+    def evaluate(self,average=False,adjust_scale=False,filename=None,label_x=None,label_y=None,label_z=None,legend=None):
         """Evaluate the request
         
         Parameters
@@ -702,6 +752,9 @@ class Object2dStitch(Load2d):
         average: Boolean
             For overlap, whether the first image takes precedence (False) or
             if overlap is averaged (True)
+        adjust_scale: Boolean
+            Adjusts the intensity of consecutive images to match the precessors intensity in the overlap
+            Automatically sets average True
         filename: str
             Name of the data file
         label_x: str
@@ -772,6 +825,8 @@ class Object2dStitch(Load2d):
         new_x = np.linspace(lower_x,upper_x,x_num)
         new_y = np.linspace(lower_y,upper_y,y_num)
 
+        if average == False and adjust_scale == True:
+            average = True
 
         if average == False:
             for i, v in enumerate(self.DataObjects):
@@ -788,27 +843,56 @@ class Object2dStitch(Load2d):
                     matrix[m_keep_matrix2] = matrix2[m_keep_matrix2]
 
         else:
-            for i, v in enumerate(self.DataObjects):
-                if i ==0:
-                    # Interpolate image on new big image
-                    # Initilize divisor to track how many contributions per data points
-                    # Set the contribution to 1 where added, else 0 - use array masking
-                    # Add the new contributions to divisor
-                    matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
-                    divisor = np.zeros_like(matrix)
-                    ones = np.ones_like(matrix)
-                    ones[np.isnan(matrix)] = 0
-                    divisor = np.add(divisor,ones)
-                else:
-                    # Same as above
-                    matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
-                    matrix = np.nansum(np.dstack((matrix,matrix2)),2)
-                    ones = np.ones_like(matrix)
-                    ones[np.isnan(matrix2)] = 0
-                    divisor = np.add(divisor,ones)
+            if adjust_scale == True:
+                for i, v in enumerate(self.DataObjects):
+                    if i ==0:
+                        # Interpolate image on new big image
+                        # Initilize divisor to track how many contributions per data points
+                        # Set the contribution to 1 where added, else 0 - use array masking
+                        # Add the new contributions to divisor
+                        matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        divisor = np.zeros_like(matrix)
+                        ones = np.ones_like(matrix)
+                        ones[np.isnan(matrix)] = 0
+                        divisor = np.add(divisor,ones)
+                        twos = divisor # We need this to track where there are entries in the matrix
+                    else:
+                        # Same as above
+                        matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        ones = np.ones_like(matrix)
+                        ones[np.isnan(matrix2)] = 0
+                        overlap_mask = np.add(twos,ones)==2 ## Check where we have overlap, i.e. both matrix and matrix2 have entries
+                        factor = np.true_divide(matrix,divisor,where=divisor!=0)[overlap_mask].mean()/matrix2[overlap_mask].mean() # calculate scaling factor taking divisor into account
+                        matrix = np.nansum(np.dstack((matrix,factor*matrix2)),2) # scale new image to old overlap
+                        divisor = np.add(divisor,ones) # now can calculate new divisor corresponding to matrix calculated in the previous line, need to do this after calculating factor
+                        twos = np.ones_like(matrix) # re-create matrix for overlap estimation
+                        twos[divisor==0] = 0 # only have entries where in matrix where divisor is non-zero
 
-            # Divide big matrix by divisor to get average
-            matrix = np.true_divide(matrix,divisor,where=divisor!=0)
+                # Divide big matrix by divisor to get average
+                matrix = np.true_divide(matrix,divisor,where=divisor!=0)
+
+            else:
+                for i, v in enumerate(self.DataObjects):
+                    if i ==0:
+                        # Interpolate image on new big image
+                        # Initilize divisor to track how many contributions per data points
+                        # Set the contribution to 1 where added, else 0 - use array masking
+                        # Add the new contributions to divisor
+                        matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        divisor = np.zeros_like(matrix)
+                        ones = np.ones_like(matrix)
+                        ones[np.isnan(matrix)] = 0
+                        divisor = np.add(divisor,ones)
+                    else:
+                        # Same as above
+                        matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        matrix = np.nansum(np.dstack((matrix,matrix2)),2)
+                        ones = np.ones_like(matrix)
+                        ones[np.isnan(matrix2)] = 0
+                        divisor = np.add(divisor,ones)
+
+                # Divide big matrix by divisor to get average
+                matrix = np.true_divide(matrix,divisor,where=divisor!=0)
 
         # Remove NaN values and set to 0
         matrix = np.nan_to_num(matrix,nan=0,posinf=0,neginf=0)
