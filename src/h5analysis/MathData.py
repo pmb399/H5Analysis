@@ -295,7 +295,10 @@ class Object1dStitch(Load1d):
                         ones = np.ones_like(item)
                         ones[np.isnan(item)] = 0
                         mask = np.add(ones,twos)==2
-                        factor = np.true_divide(MASTER_y,divisor,where=divisor!=0)[mask].mean()/item[mask].mean()
+                        if mask.any()==False:
+                            factor = 1
+                        else:
+                            factor = np.true_divide(MASTER_y,divisor,where=divisor!=0)[mask].mean()/item[mask].mean()
                         MASTER_y = np.nansum(np.dstack((MASTER_y,factor*item)),2)[0]
                         divisor = np.add(divisor,ones)
                         twos = np.ones_like(MASTER_y)
@@ -862,7 +865,10 @@ class Object2dStitch(Load2d):
                         ones = np.ones_like(matrix)
                         ones[np.isnan(matrix2)] = 0
                         overlap_mask = np.add(twos,ones)==2 ## Check where we have overlap, i.e. both matrix and matrix2 have entries
-                        factor = np.true_divide(matrix,divisor,where=divisor!=0)[overlap_mask].mean()/matrix2[overlap_mask].mean() # calculate scaling factor taking divisor into account
+                        if overlap_mask.any()==False:
+                            factor = 1
+                        else:
+                            factor = np.true_divide(matrix,divisor,where=divisor!=0)[overlap_mask].mean()/matrix2[overlap_mask].mean() # calculate scaling factor taking divisor into account
                         matrix = np.nansum(np.dstack((matrix,factor*matrix2)),2) # scale new image to old overlap
                         divisor = np.add(divisor,ones) # now can calculate new divisor corresponding to matrix calculated in the previous line, need to do this after calculating factor
                         twos = np.ones_like(matrix) # re-create matrix for overlap estimation
