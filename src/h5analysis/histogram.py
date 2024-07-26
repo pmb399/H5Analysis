@@ -154,6 +154,8 @@ def load_histogram_1d(config, file, x_stream, y_stream, *args, norm=False, xoffs
             x_data, roi_tuple = get_hist_stream_0d(contrib_x_stream,x_stream,'x',arg,rois,all_data)
             z_data, scale = get_hist_stream_2d(contrib_y_stream,y_stream,'y',arg,rois,all_data)
 
+            roi_tuple = process_roi_tuple(roi_tuple,x_data)
+
             SPEC = list()
             for slice1d in np.transpose(z_data): # transpose z_data, so that we go through the data at a specific scale value, for all independent points x_data
                 bin,bin_edges = np.histogram(x_data,range=roi_tuple,bins=1,weights=slice1d)
@@ -289,6 +291,9 @@ def load_histogram_1d_reduce(config, file, x_stream, y_stream, z_stream, *args, 
         x_data, x_roi_tuple = get_hist_stream_0d(contrib_x_stream,x_stream,'x',arg,rois,all_data)
         y_data, y_roi_tuple = get_hist_stream_0d(contrib_y_stream,y_stream,'y',arg,rois,all_data)
         z_data, scale = get_hist_stream_2d(contrib_z_stream,z_stream,'z',arg,rois,all_data)
+        
+        x_roi_tuple = process_roi_tuple(x_roi_tuple,x_data)
+        y_roi_tuple = process_roi_tuple(y_roi_tuple,y_data)
 
         SPEC = list()
         for slice1d in np.transpose(z_data): # transpose z_data, so that we go through the data at a specific scale value, for all independent points (x_data,y_data)
@@ -481,6 +486,8 @@ def load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
                 y_data = get_hist_stream_1d(contrib_y_stream,y_stream_convert,'y',arg,rois,all_data)
                 z_data,scale = get_hist_stream_2d(contrib_z_stream,z_stream_convert,'z',arg,rois,all_data)
 
+                roi_tuple = process_roi_tuple(roi_tuple,x_data)
+
                 # Get the ROI in first coordinate
                 roi_idx = (x_data>= roi_tuple[0]) & (x_data<= roi_tuple[1])
                 y_data = y_data[roi_idx]
@@ -515,6 +522,9 @@ def load_histogram_2d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
                 x_data,roi_tuple1 = get_hist_stream_0d(contrib_x_stream,x_stream_convert,'x',arg,rois,all_data)
                 y_data,roi_tuple2 = get_hist_stream_0d(contrib_y_stream,y_stream_convert,'y',arg,rois,all_data)
                 z_data,scale1,scale2 = get_hist_stream_3d(contrib_z_stream,z_stream_convert,'z',arg,rois,all_data,config)
+
+                roi_tuple1 = process_roi_tuple(roi_tuple1,x_data)
+                roi_tuple2 = process_roi_tuple(roi_tuple2,y_data)
 
                 # Grid data to image
                 new_x, new_y, new_z = grid_data2d(np.average(scale1,axis=0), np.average(scale2,axis=0), np.sum(z_data[(x_data>=roi_tuple1[0]) & (x_data<=roi_tuple1[1]) & (y_data>=roi_tuple2[0]) & (y_data<=roi_tuple2[1]),:,:],axis=0))
@@ -651,6 +661,8 @@ def load_histogram_2d_sum(config, file, x_stream, z_stream, *args, norm=False, x
         elif case_ops == '1d-ROI3d':
             x_data, roi_tuple = get_hist_stream_0d(contrib_x_stream,x_stream,'x',arg,rois,all_data)
             z_data, scale1, scale2 = get_hist_stream_3d(contrib_z_stream,z_stream,'z',arg,rois,all_data,config)
+
+            roi_tuple = process_roi_tuple(roi_tuple,x_data)
 
             # Grid data to image
             new_x, new_y, new_z = grid_data2d(np.average(scale1,axis=0), np.average(scale2,axis=0), np.sum(z_data[(x_data>=roi_tuple[0]) & (x_data<=roi_tuple[1]),:,:],axis=0))
@@ -804,6 +816,33 @@ def load_histogram_3d(config, file, x_stream, y_stream, z_stream, *args, norm=Fa
             raise Exception('Dimension mismatch. Check specified independent stream.')
 
     return data
+
+def process_roi_tuple(roi_tuple,data):
+    """ Processes ROI tuples when None is specified as boundary
+
+        Parameters
+        ----------
+        roi_tuple: tuple
+            Tuple corresponding to region of interest boundaries
+        data: array
+            1d array data on which the region of interest is specified
+
+        Returns
+        -------
+        roi_tuple: tuple
+            Processed ROI tuple with two floating point numbers
+    
+    """
+        
+    if roi_tuple[0] == None:
+        entry1 = data[0]
+    else:
+        entry1 = roi_tuple[0]
+    if roi_tuple[1] == None:
+        entry2 = data[-1]
+    else:
+        entry2 = roi_tuple[1]
+    return (entry1,entry2)
 
 def get_hist_stream_0d(contrib_stream,convert,stream,arg,rois,all_data):
     """ Get and evaluate each stream requests
