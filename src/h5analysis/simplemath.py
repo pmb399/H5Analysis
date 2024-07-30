@@ -2,7 +2,8 @@
 
 # Scientific modules
 import numpy as np
-from scipy.interpolate import interp1d, interp2d, LinearNDInterpolator
+from scipy.interpolate import LinearNDInterpolator
+from .interpolate import interp1d, interp2d
 from scipy.signal import savgol_filter
 
 # Warnings
@@ -83,8 +84,7 @@ def grid_data(x_stream, y_stream, grid):
     new_x = np.linspace(xmin, xmax, numPoints)
 
     # Do the interpolation step
-    f = interp1d(x_stream, y_stream, fill_value='extrapolate')
-    new_y = f(new_x)
+    new_y = interp1d(x_stream, y_stream, new_x)
 
     return new_x, new_y
 
@@ -148,14 +148,11 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
         #y_points = int(y_points/norm)
         warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
-    # Interpolate the data with given grid
-    f = interp2d(x_data, y_data, detector)
-
     new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
     new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
 
-    # Evaluate image on evenly-spaced grid
-    new_z = f(new_x, new_y)
+    # Evaluate image on evenly-spaced grid and interpolate
+    new_z = interp2d(x_data, y_data, detector, new_x, new_y)
 
     return new_x, new_y, new_z
     

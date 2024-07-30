@@ -3,7 +3,7 @@
 # Scientific Modules
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d, interp2d
+from .interpolate import interp1d, interp2d
 
 # Plotting
 from bokeh.plotting import show, figure
@@ -145,7 +145,7 @@ class Load1d:
                 y_stream_int = v.y_stream[(v.x_stream>=s) & (v.x_stream<=e)]
 
                 # Interpolate the background onto the x data
-                int_y = interp1d(bg_x,bg_y)(x_stream_int)
+                int_y = interp1d(bg_x,bg_y,x_stream_int)
 
                 # Remove data
                 new_y = np.subtract(y_stream_int,int_y)
@@ -979,8 +979,8 @@ class Load2d:
                     new_y = np.linspace(s,e,ds)
                     
                     # Interpolate background and generate 2d array
-                    img_int = interp2d(v.new_x,v.new_y,v.new_z)(v.new_x,new_y)
-                    arr_subtract = interp1d(bg_x,bg_y)(new_y)
+                    img_int = interp2d(v.new_x,v.new_y,v.new_z,v.new_x,new_y)
+                    arr_subtract = interp1d(bg_x,bg_y,new_y)
                     img_subtract = np.transpose(np.repeat(arr_subtract[None,...],len(v.new_x),axis=0))
                     
                     # Remove data
@@ -1008,8 +1008,8 @@ class Load2d:
                     new_x = np.linspace(s,e,ds)
                     
                     # Interpolate background and generate 2d array
-                    img_int = interp2d(v.new_x,v.new_y,v.new_z)(new_x,v.new_y)
-                    arr_subtract = interp1d(bg_x,bg_y)(new_x)
+                    img_int = interp2d(v.new_x,v.new_y,v.new_z,new_x,v.new_y)
+                    arr_subtract = interp1d(bg_x,bg_y,new_x)
                     img_subtract = np.repeat(arr_subtract[None,...],len(v.new_y),axis=0)
                     
                     # Remove data
@@ -1095,8 +1095,8 @@ class Load2d:
                 new_y = np.linspace(s_y,e_y,ds_y)
 
                 # Interpolate the x,y data onto the background
-                bg_z_int = interp2d(bg_x,bg_y,bg_z)(new_x,new_y)
-                im_z_int = interp2d(v.new_x,v.new_y,v.new_z)(new_x,new_y)
+                bg_z_int = interp2d(bg_x,bg_y,bg_z,new_x,new_y)
+                im_z_int = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y)
 
                 # Remove data
                 new_z = np.subtract(im_z_int,bg_z_int)

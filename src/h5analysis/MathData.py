@@ -3,7 +3,7 @@
 # Scientific modules
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d, interp2d
+from .interpolate import interp1d, interp2d
 from shapely.geometry import Point, Polygon
 import skimage as ski
 import lmfit
@@ -140,15 +140,15 @@ class Object1dAddSubtract(Load1d):
         for i,item in enumerate(self.DataObjectsAdd):
             # Determine MASTER streams
             if i ==0:
-                MASTER_y = interp1d(item.x_stream,item.y_stream)(MASTER_x)
+                MASTER_y = interp1d(item.x_stream,item.y_stream,MASTER_x)
             
             # Interpolate other data and add
             else:
-                MASTER_y += interp1d(item.x_stream,item.y_stream)(MASTER_x)
+                MASTER_y += interp1d(item.x_stream,item.y_stream,MASTER_x)
         
         # Second, subtract objects
         for i,item in enumerate(self.DataObjectsSubtract):
-            MASTER_y -= interp1d(item.x_stream,item.y_stream)(MASTER_x)
+            MASTER_y -= interp1d(item.x_stream,item.y_stream,MASTER_x)
 
         # Store data
         class added_object:
@@ -286,12 +286,12 @@ class Object1dStitch(Load1d):
             if adjust_scale == True:
                 for i, item in enumerate(self.DataObjectsStitch):
                     if i == 0:
-                        MASTER_y = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                        MASTER_y = interp1d(item.x_stream,item.y_stream,MASTER_x)
                         twos = np.ones_like(MASTER_y)
                         twos[np.isnan(MASTER_y)] = 0
                         divisor = twos
                     else:
-                        item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                        item = interp1d(item.x_stream,item.y_stream,MASTER_x)
                         ones = np.ones_like(item)
                         ones[np.isnan(item)] = 0
                         mask = np.add(ones,twos)==2
@@ -311,7 +311,7 @@ class Object1dStitch(Load1d):
                 # Iterate over all loaded scans for interpolation
                 for i, item in enumerate(self.DataObjectsStitch):                
                     # interpolate to common scale
-                    item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                    item = interp1d(item.x_stream,item.y_stream,MASTER_x)
                     # Store results
                     MASTER_y_list.append(item)
                     # Return boolean True where array element is a number
@@ -326,12 +326,12 @@ class Object1dStitch(Load1d):
         else:
             for i, item in enumerate(self.DataObjectsStitch):
                 if i == 0:
-                    item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                    item = interp1d(item.x_stream,item.y_stream,MASTER_x)
                     MASTER_y_list.append(item)
                     mask = np.ones_like(item)
                     mask[np.isnan(item)] = 0
                 else:
-                    item = interp1d(item.x_stream,item.y_stream,bounds_error=False)(MASTER_x)
+                    item = interp1d(item.x_stream,item.y_stream,MASTER_x)
                     item[mask!=0] = 0
                     MASTER_y_list.append(item)
                     mask2 = np.ones_like(item)
@@ -643,19 +643,17 @@ class Object2dAddSubtract(Load2d):
             # Set up the new master streams
             for i,item in enumerate(self.DataObjectsAdd):
                 if i ==0:
-                    MASTER_detector = interp2d(item.new_x,item.new_y,item.new_z)(MASTER_x_stream,MASTER_y_stream)
+                    MASTER_detector = interp2d(item.new_x,item.new_y,item.new_z,MASTER_x_stream,MASTER_y_stream)
                     
             # Add all objects (2d) after interpolation step to master
                 else:
-                    interp = interp2d(item.new_x,item.new_y,item.new_z)
-                    new_z = interp(MASTER_x_stream,MASTER_y_stream)
+                    new_z = interp2d(item.new_x,item.new_y,item.new_z,MASTER_x_stream,MASTER_y_stream)
 
                     MASTER_detector = np.add(MASTER_detector,new_z)
             
             # Add all objects (2d) that need to be removed after interpolation step to master
             for i,item in enumerate(self.DataObjectsSubtract):
-                    interp = interp2d(item.new_x,item.new_y,item.new_z)
-                    new_z = interp(MASTER_x_stream,MASTER_y_stream)
+                    new_z = interp2d(item.new_x,item.new_y,item.new_z,MASTER_x_stream,MASTER_y_stream)
 
                     if i == 0:
                         SUB_detector = new_z
@@ -835,11 +833,11 @@ class Object2dStitch(Load2d):
             for i, v in enumerate(self.DataObjects):
                 if i ==0:
                     # Interpolate image on new big image
-                    matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                    matrix = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y,fill_value=np.nan)
                 else:
                     # Do this for all images
                     # Check if no information (NaN) has been added to the composite image, if so, add - else, set addition to 0
-                    matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                    matrix2 = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y,fill_value=np.nan)
                     matrix_nan = np.isnan(matrix)
                     matrix2_nan = np.isnan(matrix2)
                     m_keep_matrix2 = matrix_nan & ~matrix2_nan
@@ -853,7 +851,7 @@ class Object2dStitch(Load2d):
                         # Initilize divisor to track how many contributions per data points
                         # Set the contribution to 1 where added, else 0 - use array masking
                         # Add the new contributions to divisor
-                        matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        matrix = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y,fill_value=np.nan)
                         divisor = np.zeros_like(matrix)
                         ones = np.ones_like(matrix)
                         ones[np.isnan(matrix)] = 0
@@ -861,7 +859,7 @@ class Object2dStitch(Load2d):
                         twos = divisor # We need this to track where there are entries in the matrix
                     else:
                         # Same as above
-                        matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        matrix2 = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y,fill_value=np.nan)
                         ones = np.ones_like(matrix)
                         ones[np.isnan(matrix2)] = 0
                         overlap_mask = np.add(twos,ones)==2 ## Check where we have overlap, i.e. both matrix and matrix2 have entries
@@ -884,14 +882,14 @@ class Object2dStitch(Load2d):
                         # Initilize divisor to track how many contributions per data points
                         # Set the contribution to 1 where added, else 0 - use array masking
                         # Add the new contributions to divisor
-                        matrix = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        matrix = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y,fill_value=np.nan)
                         divisor = np.zeros_like(matrix)
                         ones = np.ones_like(matrix)
                         ones[np.isnan(matrix)] = 0
                         divisor = np.add(divisor,ones)
                     else:
                         # Same as above
-                        matrix2 = interp2d(v.new_x,v.new_y,v.new_z,fill_value=np.nan)(new_x,new_y)
+                        matrix2 = interp2d(v.new_x,v.new_y,v.new_z,new_x,new_y,fill_value=np.nan)
                         matrix = np.nansum(np.dstack((matrix,matrix2)),2)
                         ones = np.ones_like(matrix)
                         ones[np.isnan(matrix2)] = 0
@@ -1256,7 +1254,7 @@ class Object2dTransform(Load2d):
 
                 # Evaluate the image on the new common energy axis
                 for idx,val in enumerate(np.transpose(z)):
-                    scatter_z[:,idx] = interp1d(yaxes[idx],val)(new_y)
+                    scatter_z[:,idx] = interp1d(yaxes[idx],val,new_y)
                 
                 # Note, loading with Load2d ensures that the x-axis (v.new_x) is
                 # is already interpolated on evenly spaced grid
