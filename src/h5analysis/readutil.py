@@ -18,7 +18,7 @@ def detector_norm(detector_mca,norm_by):
         Division of detector_mca and norm_by array
     """
 
-    return np.true_divide(detector_mca,norm_by[:, None],where=norm_by[:, None]!=0)
+    return np.true_divide(detector_mca,norm_by[:, None],out=np.zeros_like(detector_mca),where=norm_by[:, None]!=0)
 
 #########################################################################################
 

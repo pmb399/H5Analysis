@@ -298,14 +298,14 @@ class Object1dStitch(Load1d):
                         if mask.any()==False:
                             factor = 1
                         else:
-                            factor = np.true_divide(MASTER_y,divisor,where=divisor!=0)[mask].mean()/item[mask].mean()
+                            factor = np.true_divide(MASTER_y,divisor,out=np.zeros_like(MASTER_y),where=divisor!=0)[mask].mean()/item[mask].mean()
                         MASTER_y = np.nansum(np.dstack((MASTER_y,factor*item)),2)[0]
                         divisor = np.add(divisor,ones)
                         twos = np.ones_like(MASTER_y)
                         twos[divisor==0] = 0
 
                 # Divide big matrix by divisor to get average
-                MASTER_y = np.true_divide(MASTER_y,divisor,where=divisor!=0)
+                MASTER_y = np.true_divide(MASTER_y,divisor,out=np.zeros_like(MASTER_y),where=divisor!=0)
 
             else:
                 # Iterate over all loaded scans for interpolation
@@ -321,7 +321,7 @@ class Object1dStitch(Load1d):
                 # Sum the arrays of common length, treat nan as 0
                 # For each element, sum how many True (numbers) contribute to the sum
                 # Normalize to get average by array division
-                MASTER_y = np.nansum(MASTER_y_list,axis=0)/np.sum(MASTER_y_nan_list,axis=0)
+                MASTER_y = np.true_divide(np.nansum(MASTER_y_list,axis=0),np.sum(MASTER_y_nan_list,axis=0),out=np.zeros_like(np.nansum(MASTER_y_list,axis=0)),where=np.sum(MASTER_y_nan_list,axis=0)!=0)
 
         else:
             for i, item in enumerate(self.DataObjectsStitch):
@@ -866,14 +866,14 @@ class Object2dStitch(Load2d):
                         if overlap_mask.any()==False:
                             factor = 1
                         else:
-                            factor = np.true_divide(matrix,divisor,where=divisor!=0)[overlap_mask].mean()/matrix2[overlap_mask].mean() # calculate scaling factor taking divisor into account
+                            factor = np.true_divide(matrix,divisor,out=np.zeros_like(matrix),where=divisor!=0)[overlap_mask].mean()/matrix2[overlap_mask].mean() # calculate scaling factor taking divisor into account
                         matrix = np.nansum(np.dstack((matrix,factor*matrix2)),2) # scale new image to old overlap
                         divisor = np.add(divisor,ones) # now can calculate new divisor corresponding to matrix calculated in the previous line, need to do this after calculating factor
                         twos = np.ones_like(matrix) # re-create matrix for overlap estimation
                         twos[divisor==0] = 0 # only have entries where in matrix where divisor is non-zero
 
                 # Divide big matrix by divisor to get average
-                matrix = np.true_divide(matrix,divisor,where=divisor!=0)
+                matrix = np.true_divide(matrix,divisor,out=np.zeros_like(matrix),where=divisor!=0)
 
             else:
                 for i, v in enumerate(self.DataObjects):
@@ -896,7 +896,7 @@ class Object2dStitch(Load2d):
                         divisor = np.add(divisor,ones)
 
                 # Divide big matrix by divisor to get average
-                matrix = np.true_divide(matrix,divisor,where=divisor!=0)
+                matrix = np.true_divide(matrix,divisor,out=np.zeros_like(matrix),where=divisor!=0)
 
         # Remove NaN values and set to 0
         matrix = np.nan_to_num(matrix,nan=0,posinf=0,neginf=0)
