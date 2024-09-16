@@ -1,9 +1,13 @@
+## Load all standard modules
 from h5analysis.LoadData import *
 from h5analysis.MathData import *
 from h5analysis.config import h5Config
+
+## Load Bokeh for plotting
 from bokeh.io import show, output_notebook
 output_notebook(hide_banner=True)
 
+## Set standard plotting options
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_colwidth', None)
