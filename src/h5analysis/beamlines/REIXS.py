@@ -2,6 +2,7 @@
 from h5analysis.LoadData import *
 from h5analysis.MathData import *
 from h5analysis.config import h5Config
+import h5py
 
 ## Load Bokeh for plotting
 from bokeh.io import show, output_notebook
@@ -2237,6 +2238,659 @@ class MCPLoader(Load2d):
         return Load2d.background_2d(self,config,file,'[None]',detector,*args,**kwargs)
     
 
+#File conversion class
+class SPEC_HDF5():
+    
+    #Load data from ascii
+    def load(self,dir_path, header_file):
+        self.datasets = [[]]
+        self.scanNumbers = []
+
+        self.datasetNames = [[]]
+        self.comments = [[]]
+        self.commentsDate = [[]]
+        self.G0 = [[]]
+        self.G1 = [[]]
+        self.G3 = [[]]
+        self.G4 = [[]]
+        
+        self.scanHeading = []
+        self.scanType = []
+        self.scanMotor = []
+        self.mnemonics_motors = []
+        self.postion_motors = [[]]
+        self.full_names_motors = []
+        self.mnemonics_counters = []
+        self.full_names_counters = []
+        self.scanDate = []
+        self.datafileName = ''
+        self.profile = ''
+        self.user = ''
+        self.statusus = [] 
+
+        try:
+            full_path_for_header_file = os.path.join(dir_path+header_file)
+        except:
+            raise TypeError("You did not specify a directory path.")
+
+        #Extract path to file
+        # Open the header file and read line by line
+        with open(full_path_for_header_file) as f:
+            for line in f:
+                if line.startswith('#S '):  # Triggers a new scan
+                    if len(self.scanNumbers) > 0:
+                        if self.datasets[-1] == []:
+                            for i in range(len(self.datasetNames[len(self.scanNumbers)-1])):
+                                self.datasets[-1].append('0')
+                    # Append new scan if list is currently populated in last element (scan)
+                    if self.datasets[-1] != []:
+                        # we are in a new block
+                        self.datasets.append([])
+                        self.postion_motors.append([])
+                        self.datasetNames.append([])
+                        self.G0.append([])
+                        self.G1.append([])
+                        self.G3.append([])
+                        self.G4.append([])
+                        if len(self.comments) < 1 or len(self.scanNumbers) >= 1:
+                            self.comments.append([])
+                            self.commentsDate.append([])
+                    
+                    # Ensures we can only load scans with the same scan number only once
+                    if line.strip().split()[1] in self.scanNumbers:
+                        raise ValueError(
+                            "Recorded Scans with the same scan number")
+
+                    # Append scan information
+                    else:
+                        if len(self.scanNumbers) != len(self.statusus):
+                            self.statusus.append('Scan successfully completed.')
+                        self.scanNumbers.append(line.strip().split()[1])
+                        self.scanType.append(line.strip().split()[2])
+                        self.scanMotor.append(line.strip().split()[3])
+                        self.scanHeading.append(line.strip().split('#S '+line.strip().split()[1]+'  ')[1])
+                #Date
+                elif line.startswith("#D"):
+                    if self.scanNumbers != []:
+                        self.scanDate.append(line.strip("#D ").strip("\n"))
+                        
+                #Comment
+                elif line.startswith("#C"):
+                    if self.scanNumbers != []:
+                        comment_string = line.strip("#C ").strip("\n").split('.')
+                        comment = ''
+                        for i in range(len(comment_string)-1):
+                            if i < len(comment_string)-2:
+                                comment += comment_string[i+1] + '.'
+                            else:
+                                comment += comment_string[i+1]
+                        if len(comment.split('do')[0]) > 2 and len(comment.split('Scan aborted')[0]) > 2:
+                            self.comments[-1].append(comment)
+                            self.commentsDate[-1].append(comment_string[0])
+                        elif len(comment.split('do')[0]) > 2 and len(comment.split('Scan aborted')[0]) == 2:
+                            self.statusus.append('Scan was cancelled by user.')
+                    else:
+                        comment_string = line.strip("#C ").strip("\n").split('  User = ')
+                        if len(comment_string) > 1:  
+                            self.profile = comment_string[0]
+                            self.user = comment_string[1]
+                        else:
+                            if len(self.commentsDate) < 1:
+                                self.comments.append([])
+                                self.commentsDate.append([])
+                                
+                            comment_string = comment_string[0].split('.')
+                            comment = ''
+                            for i in range(len(comment_string)-1):
+                                if i < len(comment_string)-2:
+                                    comment += comment_string[i+1] + '.'
+                                else:
+                                    comment += comment_string[i+1]
+                            if len(comment.split('do')[0]) > 2:
+                                self.comments[-1].append(comment)
+                                self.commentsDate[-1].append(comment_string[0])
+
+                            
+                        
+                # Header
+                elif line.startswith("#F"):
+                    self.datafileName = line.strip("#F ").strip("\n")
+                    self.datafileName = self.datafileName.split('.')[0]
+                    self.datafilePath = dir_path
+                    
+                elif line.startswith("#L"):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split("  ")
+                    self.datasetNames[-1] += plist
+                    
+                # Use this to generate mnemonic/long name dict
+                elif line.startswith('#J'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split("  ")
+                    self.full_names_counters += plist
+
+                elif line.startswith('#O'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split("  ")
+                    self.full_names_motors += plist
+
+                # Use this to generate mnemonic/long name dict
+                elif line.startswith('#j'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.mnemonics_counters += plist
+
+                elif line.startswith('#o'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.mnemonics_motors += plist
+                    
+                elif line.startswith('#P'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.postion_motors[-1] += plist
+                    
+                elif line.startswith('#G0'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.G0[-1] += plist
+                    
+                elif line.startswith('#G1'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.G1[-1] += plist
+                    
+                elif line.startswith('#G3'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.G3[-1] += plist
+                    
+                elif line.startswith('#G4'):
+                    plist0 = line.strip().split(" ", 1)
+                    plist = plist0[1].split(" ")
+                    self.G4[-1] += plist
+
+                # Ignore empty spaces or commented lines
+                elif line.startswith('#') or line.startswith('\n'):
+                    pass
+
+                # This is the actual data
+                else:
+                    self.datasets[-1].append(line.strip("\n").split(' '))
+        # Add last scan status if needed
+        if len(self.scanNumbers) > len(self.statusus):
+            self.statusus.append('Scan successfully completed.')
+                    
+        # Now load the sdd data from file
+        self.sdd_datasets = [[]]
+        self.sdd_scales = [[]]
+        self.sdd_scanNumbers = []
+        self.sdd_datasets, self.sdd_scales, self.sdd_scanNumbers = self.parse_mca((dir_path+header_file), "_sdd")
+
+        # Now load the sdd data from file
+        self.sddarm_datasets = [[]]
+        self.sddarm_scales = [[]]
+        self.sddarm_scanNumbers = []
+        self.sddarm_datasets, self.sddarm_scales, self.sddarm_scanNumbers = self.parse_mca((dir_path+header_file), "_sdd_arm")
+
+                # Now load the sdd data from file
+        self.sddxrf_datasets = [[]]
+        self.sddxrf_scales = [[]]
+        self.sddxrf_scanNumbers = []
+        self.sddxrf_datasets, self.sddxrf_scales, self.sddxrf_scanNumbers = self.parse_mca((dir_path+header_file), "_sdd_xrf")
+
+        
+        # Now load the xes data from file
+        self.xes_datasets = [[]]
+        self.xes_scales = [[]]
+        self.xes_scanNumbers = []
+        self.xes_datasets, self.xes_scales, self.xes_scanNumbers = self.parse_mca((dir_path+header_file), "_mcpMCA")
+        
+        # Now load the xeol data from file
+        self.xeol_datasets = [[]]
+        self.xeol_scales = [[]]
+        self.xeol_scanNumbers = []
+        self.xeol_datasets, self.xeol_scales, self.xeol_scanNumbers = self.parse_mca((dir_path+header_file), "_xeol")
+
+        #load summed mcp image for RIXS ES
+        self.mcpimg_datasets = []
+        self.mcpimg_yscale = []
+        self.mcpimg_xscale = []
+        self.mcpimg_xmotor = []
+        self.mcpimg_ymotor = []
+        self.mcpimg_scanNumbers = []
+
+        self.mcpimg_datasets, self.mcpimg_xscale, self.mcpimg_yscale, self.mcpimg_xmotor, self.mcpimg_ymotor, self.mcpimg_scanNumbers = self.parse_img(dir_path+header_file, '_mcpIMG') 
+        
+        
+        # Now load the mcp image data from file
+        self.mcp_datasets = []
+        self.mcp_yscale = []
+        self.mcp_xscale = []
+        self.mcp_xmotor = []
+        self.mcp_ymotor = []
+        self.mcp_scanNumbers = []
+
+        self.mcp_datasets, self.mcp_xscale, self.mcp_yscale, self.mcp_xmotor, self.mcp_ymotor, self.mcp_scanNumbers = self.parse_img(dir_path+header_file, '_mcp') 
+
+    def parse_img(self,file_path, file_suffix):
+        img_datasets = []
+        img_image = [[]]
+        img_xscales = [[]]
+        img_yscales = [[]]
+        img_xscale = []
+        img_yscale = []
+        img_xmotor = []
+        img_ymotor = []
+        img_scanNumbers = []
+        img_xchannels = []
+        img_ychannels = []    
+        try:
+            with open(f"{os.path.join(file_path)}"+file_suffix) as f_img:
+                next(f_img)
+                # Read file line by line
+                for line_img in f_img:
+                    if line_img.startswith('#S '):  # Triggers new scan
+                        if len(img_scanNumbers) > 0:
+                            #check if the scan was cancelled
+                            if img_image[-1] == []:
+                                for i in range(int(img_xchannels[-1])):
+                                    for j in range(int(img_ychannels[-1])):
+                                        img_image[-1][i][j] = 0
+                            if len(img_image) > 1:
+                                img_datasets.append(img_image)
+                                img_image = [[]]
+                                img_xscale.append(img_xscales)
+                                img_xscales = [[]]
+                                img_yscale.append(img_yscales)
+                                img_yscales = [[]]
+                            else:
+                                img_datasets.append(img_image[0])
+                                img_image = [[]]
+                                img_xscale.append(img_xscales[0])
+                                img_xscales = [[]]
+                                img_yscale.append(img_yscales[0])
+                                img_yscales = [[]]
+                        img_data = False
+                        img_scanNumbers.append(line_img.split()[1])
+                    elif line_img.startswith('#N'):
+                        if len(line_img.strip("#N ").strip("\n").split(' X ')) > 1:
+                            img_xchannels.append(line_img.strip("#N ").strip("\n").split(' X ')[0])
+                            img_ychannels.append(line_img.strip("#N ").strip("\n").split(' X ')[1])
+                        else: 
+                            img_xchannels.append(line_img.strip("#N ").strip("\n"))
+                            img_ychannels.append(line_img.strip("#N ").strip("\n"))
+                        
+                    elif line_img.startswith('#@IMG'):
+                        img_data = True
+                        
+                    elif line_img.startswith('#C'):
+                        #Check this is not a cancelled comment, only accept motor names
+                        if line_img.strip("#C ").strip("\n").split('\t ')[0] in self.full_names_motors:
+                            if img_image[-1] != []:
+                                # we are in a new block 
+                                img_image.append([])
+                                img_xscales.append([])
+                                img_yscales.append([])
+                            if len(img_image[0]) < 1:
+                                img_xmotor.append(line_img.strip("#C ").strip("\n").split('\t ')[0])
+                                img_ymotor.append(line_img.strip("#C ").strip("\n").split('\t ')[1])
+                            img_data = False
+                    
+                    elif line_img.startswith('#') or line_img.startswith('\n'):
+                        pass
+
+                    else:
+                        if img_data == False:
+                            img_xscales[-1].append(line_img.strip("\n").split(' ')[0])
+                            img_yscales[-1].append(line_img.strip("\n").split(' ')[1])
+                        elif img_data == True:
+                            img_image[-1].append(line_img.strip("\n").split(' '))
+                if len(img_image) > 1:
+                    img_datasets.append(img_image)
+                    img_image = [[]]
+                    img_xscale.append(img_xscales)
+                    img_xscales = [[]]
+                    img_yscale.append(img_yscales)
+                    img_yscales = [[]]
+                else:
+                    img_datasets.append(img_image[0])
+                    img_image = [[]]
+                    img_xscale.append(img_xscales[0])
+                    img_xscales = [[]]
+                    img_yscale.append(img_yscale[0])
+                    img_yscales = [[]]
+            return (img_datasets, img_xscale, img_yscale, img_xmotor, img_ymotor, img_scanNumbers)
+        except:
+            return (img_datasets, img_xscale, img_yscale, img_xmotor, img_ymotor, img_scanNumbers)
+
+    def parse_mca(self,file_path, file_suffix):
+        # Now load the xeol data from file
+        mca_datasets = [[]]
+        mca_scales = [[]]
+        mca_scanNumbers = []
+        mca_channels = []
+        
+        try:
+            with open(f"{os.path.join(file_path)}"+file_suffix) as f_mca:
+                next(f_mca)
+                # Read file line by line
+                for line_mca in f_mca:
+                    if line_mca.startswith('#S '):  # Triggers new scan
+                        if mca_datasets[-1] == [] and len(mca_scanNumbers) > 0:
+                            for i in range(int(mca_channels[-1])):
+                                mca_datasets[-1].append('0')
+                        mca_data = False
+                        if mca_datasets[-1] != []:
+                            # we are in a new block
+                            mca_datasets.append([])
+                            mca_scales.append([])
+                        mca_scanNumbers.append(line_mca.strip().split()[1])
+
+                    elif line_mca.startswith('#N'):
+                        mca_channels.append(line_mca.strip("#N ").strip("\n"))
+                                        
+                    elif line_mca.startswith('#@MCA'):
+                        mca_data = True
+                        
+                    elif line_mca.startswith('#') or line_mca.startswith('\n'):
+                        pass
+
+                    else:
+                        if mca_channels != []:
+                            if len(mca_scales[-1]) < int(mca_channels[-1]):
+                                mca_scales[-1].append(line_mca.strip("\n"))
+                            elif mca_data == True:
+                                mca_datasets[-1].append(line_mca.strip("\n").split(' '))
+            return (mca_datasets, mca_scales, mca_scanNumbers)
+        except:
+            return (mca_datasets, mca_scales, mca_scanNumbers)
+                
+
+
+    def write_hdf5(self, mono=[], epu=[], ring=[], overwrite = False, name = []):
+        
+        
+        if name == []:
+            filename = self.datafilePath + self.datafileName
+        else:
+            filename = self.datafilePath + name.split('.')[0]
+
+        
+        #make dictionary for motor/counter names and mnemonic
+        self.motorMnemonic =dict()
+        self.counterMnemonic = dict()
+        self.specialMnemonic = dict()
+        
+        for i in range(len(self.full_names_motors)):
+            self.motorMnemonic[self.full_names_motors[i]] = self.mnemonics_motors[i]
+        
+        for i in range(len(self.full_names_counters)):
+            self.counterMnemonic[self.full_names_counters[i]] = self.mnemonics_counters[i]
+            
+        #Specical Motors not listed
+        self.specialMnemonic['Time'] = 'time'
+        self.specialMnemonic['Epoch'] = 'epoch'
+        self.specialMnemonic['Measured'] = 'Setpoint'
+        self.specialMnemonic['H'] = 'H' 
+        self.specialMnemonic['K'] = 'K' 
+        self.specialMnemonic['L'] = 'L' 
+        if overwrite:
+            h5_flag = 'w'
+        else:
+            h5_flag = 'w-'
+        with h5py.File(f"{filename}.h5", h5_flag) as f:
+            for i in range(len(self.scanNumbers)):
+                #Create groups for data
+                scanNumber = str(self.scanNumbers[i]).zfill(3)
+                scanGroup = 'SCAN' + '_' + scanNumber
+                dataGroup = scanGroup +'/Data'
+                f.create_group(dataGroup)
+                counterGroup = scanGroup +'/Endstation/Counters'
+                f.create_group(counterGroup)
+                motorGroup = scanGroup +'/Endstation/Motors'
+                f.create_group(motorGroup)
+                if mono != []:
+                    monoGroup = scanGroup +'/Beamline/Monochromator'
+                    f.create_group(monoGroup)
+                if epu != []:
+                    epuGroup = scanGroup +'/Beamline/Source/EPU'
+                    f.create_group(epuGroup)
+                if ring != []:
+                    ringGroup = scanGroup +'/Beamline/Source/Ring'
+                    f.create_group(ringGroup)
+
+
+                
+                #add comments
+                for j in range(len(self.comments[i])):
+                    f[scanGroup].create_dataset("comment_" + str(j+1).zfill(2),data=self.comments[i][j])
+                    commentData = scanGroup + '/' + "comment_" + str(j+1).zfill(2)
+                    f[commentData].attrs['NX_class'] = 'NX_Char'
+                    f[commentData].attrs['Date'] = self.commentsDate[i][j]
+                    
+                #add user, command, date, and profile
+                f[scanGroup].create_dataset('command',data=self.scanHeading[i])
+                scanData = scanGroup + '/' + 'command'
+                f[scanData].attrs['NX_class'] = 'NX_Char'
+                f[scanGroup].create_dataset('status',data=self.statusus[i])
+                scanData = scanGroup + '/' + 'status'
+                f[scanData].attrs['NX_class'] = 'NX_Char'
+                f[scanGroup].create_dataset('date',data=self.scanDate[i])
+                scanData = scanGroup + '/' + 'date'
+                f[scanData].attrs['NX_class'] = 'NX_Char'
+                f[scanGroup].create_dataset('profile',data=self.profile)
+                scanData = scanGroup + '/' + 'profile'
+                f[scanData].attrs['NX_class'] = 'NX_Char'
+                f[scanGroup].create_dataset('user',data=self.user)
+                scanData = scanGroup + '/' + 'user'
+                f[scanData].attrs['NX_class'] = 'NX_Char'
+
+                
+                #add data, check for duplicates
+                unique_names = []
+                for j in range(len(self.datasetNames[i])):
+                    if self.datasetNames[i][j] not in unique_names:
+                        unique_names.append(self.datasetNames[i][j])
+                        if self.datasetNames[i][j] in self.full_names_motors:
+                            if self.motorMnemonic[self.datasetNames[i][j]] in mono:
+                                f[monoGroup].create_dataset(self.motorMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                monoData = monoGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                f[monoData].attrs['NX_class'] = 'NX_Float'
+                                f[monoData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + monoData)
+                            elif self.motorMnemonic[self.datasetNames[i][j]] in epu:
+                                f[epuGroup].create_dataset(self.motorMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                epuData = epuGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                f[epuData].attrs['NX_class'] = 'NX_Float'
+                                f[epuData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + epuData)
+                            elif self.motorMnemonic[self.datasetNames[i][j]] in ring:
+                                f[ringGroup].create_dataset(self.motorMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                ringData = ringGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                f[ringData].attrs['NX_class'] = 'NX_Float'
+                                f[ringData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + ringData)
+                            else:
+                                f[motorGroup].create_dataset(self.motorMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                motorData = motorGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.motorMnemonic[self.datasetNames[i][j]]
+                                f[motorData].attrs['NX_class'] = 'NX_Float'
+                                f[motorData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + motorData)
+                        elif self.datasetNames[i][j] in self.full_names_counters:
+                            if self.counterMnemonic[self.datasetNames[i][j]] in mono:
+                                f[monoGroup].create_dataset(self.counterMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                monoData = monoGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                f[monoData].attrs['NX_class'] = 'NX_Float'
+                                f[monoData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + monoData)
+                            elif self.counterMnemonic[self.datasetNames[i][j]] in epu:
+                                f[epuGroup].create_dataset(self.counterMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                epuData = epuGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                f[epuData].attrs['NX_class'] = 'NX_Float'
+                                f[epuData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + epuData)
+                            elif self.counterMnemonic[self.datasetNames[i][j]] in ring:
+                                f[ringGroup].create_dataset(self.counterMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                ringData = ringGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                f[ringData].attrs['NX_class'] = 'NX_Float'
+                                f[ringData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + ringData)
+                            else:
+                                f[counterGroup].create_dataset(self.counterMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                                counterData = counterGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                linkData = dataGroup + '/' + self.counterMnemonic[self.datasetNames[i][j]]
+                                f[counterData].attrs['NX_class'] = 'NX_Float'
+                                f[counterData].attrs['full_name'] = self.datasetNames[i][j]
+                                f[linkData] = h5py.SoftLink('/' + counterData)
+                        elif self.datasetNames[i][j] in self.specialMnemonic:
+                            f[motorGroup].create_dataset(self.specialMnemonic[self.datasetNames[i][j]],data=np.array(self.datasets[i], dtype='double').transpose()[j])
+                            motorData = motorGroup + '/' + self.specialMnemonic[self.datasetNames[i][j]]
+                            linkData = dataGroup + '/' + self.specialMnemonic[self.datasetNames[i][j]]
+                            f[motorData].attrs['NX_class'] = 'NX_Float'
+                            f[motorData].attrs['full_name'] = self.datasetNames[i][j]
+                            f[linkData] = h5py.SoftLink('/' + motorData)
+
+                #Add other motor data, skip those in datasetNames
+                for j in range(len(self.full_names_motors)):
+                    if self.full_names_motors[j] not in self.datasetNames[i]:
+                        if self.motorMnemonic[self.full_names_motors[j]] in mono:
+                            f[monoGroup].create_dataset(self.motorMnemonic[self.full_names_motors[j]],data=np.array(self.postion_motors[i][j], dtype='double'))
+                            monoData = monoGroup + '/' + self.motorMnemonic[self.full_names_motors[j]]
+                            f[monoData].attrs['NX_class'] = 'NX_Float'
+                            f[monoData].attrs['full_name'] = self.full_names_motors[j]
+                        elif self.motorMnemonic[self.full_names_motors[j]] in epu:
+                            f[epuGroup].create_dataset(self.motorMnemonic[self.full_names_motors[j]],data=np.array(self.postion_motors[i][j], dtype='double'))
+                            epuData = epuGroup + '/' + self.motorMnemonic[self.full_names_motors[j]]
+                            f[epuData].attrs['NX_class'] = 'NX_Float'
+                            f[epuData].attrs['full_name'] = self.full_names_motors[j]
+                        elif self.motorMnemonic[self.full_names_motors[j]] in ring:
+                            f[ringGroup].create_dataset(self.motorMnemonic[self.full_names_motors[j]],data=np.array(self.postion_motors[i][j], dtype='double'))
+                            ringData = ringGroup + '/' + self.motorMnemonic[self.full_names_motors[j]]
+                            f[ringData].attrs['NX_class'] = 'NX_Float'
+                            f[ringData].attrs['full_name'] = self.full_names_motors[j]
+                        else:
+                            f[motorGroup].create_dataset(self.motorMnemonic[self.full_names_motors[j]],data=np.array(self.postion_motors[i][j], dtype='double'))
+                            motorData = motorGroup + '/' + self.motorMnemonic[self.full_names_motors[j]]
+                            f[motorData].attrs['NX_class'] = 'NX_Float'
+                            f[motorData].attrs['full_name'] = self.full_names_motors[j]
+                #add fourc data
+                               
+                if len(self.G0[i]) > 1:
+                    fourcGroup = scanGroup +'/Endstation/FourC'
+                    f.create_group(fourcGroup)
+                    
+                if len(self.G0[i]) > 1:
+                    for j in range(len(self.G0[i])):
+                        f[fourcGroup].create_dataset('G_'+ str(j).zfill(2),data=np.array(self.G0[i][j], dtype='double'))
+                        fourcData = fourcGroup + '/G_'+ str(j).zfill(2)
+                        f[fourcData].attrs['NX_class'] = 'NX_Float'
+                if len(self.G1[i]) > 1:
+                    for j in range(len(self.G1[i])):
+                        f[fourcGroup].create_dataset('U_'+ str(j).zfill(2),data=np.array(self.G1[i][j], dtype='double'))
+                        fourcData = fourcGroup + '/U_'+ str(j).zfill(2)
+                        f[fourcData].attrs['NX_class'] = 'NX_Float'
+                if len(self.G3[i]) > 1:
+                    for j in range(len(self.G3[i])):
+                        f[fourcGroup].create_dataset('UB_'+ str(j).zfill(2),data=np.array(self.G3[i][j], dtype='double'))
+                        fourcData = fourcGroup + '/UB_'+ str(j).zfill(2)
+                        f[fourcData].attrs['NX_class'] = 'NX_Float'
+                if len(self.G4[i]) > 1:
+                    for j in range(len(self.G4[i])):
+                        f[fourcGroup].create_dataset('Q_'+ str(j).zfill(2),data=np.array(self.G4[i][j], dtype='double'))
+                        fourcData = fourcGroup + '/Q_'+ str(j).zfill(2)
+                        f[fourcData].attrs['NX_class'] = 'NX_Float'
+                
+           
+        #Write auxillary data
+        if len(self.profile.split('fourc')) > 1:         
+            self.save_mca(filename, self.sdd_datasets, self.sdd_scales, self.sdd_scanNumbers, '/Endstation/Detectors/SDD', 'sdd_arm_mca', 'sdd_arm_scale')
+        else:
+            self.save_mca(filename, self.sdd_datasets, self.sdd_scales, self.sdd_scanNumbers, '/Endstation/Detectors/SDD', 'sdd_a_mca', 'sdd_a_scale')
+        self.save_mca(filename, self.sddarm_datasets, self.sddarm_scales, self.sddarm_scanNumbers, '/Endstation/Detectors/SDD', 'sdd_arm_mca', 'sdd_arm_scale')
+        self.save_mca(filename, self.sddxrf_datasets, self.sddxrf_scales, self.sddxrf_scanNumbers, '/Endstation/Detectors/SDD', 'sdd_xrf_mca', 'sdd_xrf_scale')
+        self.save_mca(filename, self.xes_datasets, self.xes_scales, self.xes_scanNumbers, '/Endstation/Detectors/XES', 'mcp_xes_mca_norm', 'mcp_xes_scale')        
+        self.save_mca(filename, self.xeol_datasets, self.xeol_scales, self.xeol_scanNumbers, '/Endstation/Detectors/XEOL', 'xeol_a_mca_norm', 'xeol_a_scale')        
+        self.save_img(filename, self.mcpimg_datasets, self.mcpimg_xscale, self.mcpimg_yscale, self.mcpimg_xmotor, self.mcpimg_ymotor, self.mcpimg_scanNumbers, '/Endstation/Detectors/MCP', 'mcp_img')
+        self.save_img(filename, self.mcp_datasets, self.mcp_xscale, self.mcp_yscale, self.mcp_xmotor, self.mcp_ymotor, self.mcp_scanNumbers, '/Endstation/Detectors/MCP', 'mcp_a_img')
+
+    def save_mca(self,filename, mca_datasets, mca_scales, mca_scanNumbers, data_group, data_name, scale_name):
+            with h5py.File(f"{filename}.h5", 'a') as f:
+                for i in range(len(mca_scanNumbers)):
+                    #Create groups for data
+                    scanNumber = str(mca_scanNumbers[i]).zfill(3)
+                    scanGroup = 'SCAN' + '_' + scanNumber
+                    dataGroup = scanGroup +'/Data'
+                    
+                    mcaGroup = scanGroup + data_group
+                    try:
+                        f.create_group(mcaGroup)
+                    except:
+                        pass
+                    
+                    #save data
+                    f[mcaGroup].create_dataset(data_name,data=np.array(mca_datasets[i], dtype='float32'))
+                    f[mcaGroup].create_dataset(scale_name,data=np.array(mca_scales[i], dtype='float32'))
+                    mcaData = mcaGroup + '/' + data_name
+                    linkData = dataGroup + '/' + data_name
+                    f[mcaData].attrs['NX_class'] = 'NX_Float'
+                    f[linkData] = h5py.SoftLink('/' + mcaData)
+                    mcaData = mcaGroup + '/' + scale_name
+                    linkData = dataGroup + '/' + scale_name
+                    f[mcaData].attrs['NX_class'] = 'NX_Float'
+                    f[linkData] = h5py.SoftLink('/' + mcaData)
+
+    def save_img(self,filename, img_datasets, img_xscale, img_yscale, img_xmotor, img_ymotor, img_scanNumbers, data_group, data_name):
+        with h5py.File(f"{filename}.h5", 'a') as f:
+            for i in range(len(img_scanNumbers)):
+                    #Create groups for data
+                    scanNumber = str(img_scanNumbers[i]).zfill(3)
+                    scanGroup = 'SCAN' + '_' + scanNumber
+                    dataGroup = scanGroup +'/Data'
+                    
+                    imgGroup = scanGroup + data_group
+                    try:
+                        f.create_group(imgGroup)
+                    except:
+                        pass
+                    
+                    #save data
+                    f[imgGroup].create_dataset(data_name,data=np.array(img_datasets[i], dtype='float32'))
+                    imgData = imgGroup + '/' + data_name
+                    linkData = dataGroup + '/' + data_name
+                    f[imgData].attrs['NX_class'] = 'NX_Float'
+                    f[linkData] = h5py.SoftLink('/' + imgData)
+
+                    if img_xscale[-1] != [] and img_yscale[-1] != [] :
+                        f[imgGroup].create_dataset('mcp_' + self.motorMnemonic[img_xmotor[i]] +'_scale',data=np.array(img_xscale[i], dtype='float32'))
+                        imgData = imgGroup + '/' + 'mcp_' + self.motorMnemonic[img_xmotor[i]] +'_scale'
+                        linkData = dataGroup + '/' + 'mcp_' + self.motorMnemonic[img_xmotor[i]] +'_scale'
+                        f[imgData].attrs['NX_class'] = 'NX_Float'
+                        f[linkData] = h5py.SoftLink('/' + imgData)
+
+                        f[imgGroup].create_dataset('mcp_' + self.motorMnemonic[img_ymotor[i]] +'_scale',data=np.array(img_yscale[i], dtype='float32'))
+                        imgData = imgGroup + '/' + 'mcp_' + self.motorMnemonic[img_ymotor[i]] +'_scale'
+                        linkData = dataGroup + '/' + 'mcp_' + self.motorMnemonic[img_ymotor[i]] +'_scale'
+                        f[imgData].attrs['NX_class'] = 'NX_Float'
+                        f[linkData] = h5py.SoftLink('/' + imgData)
+
+
+
+class AsciiLoader(SPEC_HDF5):
+    
+    def convert(self,directory, filename,mono=[], epu=[], ring=[], overwrite=False, name=[]):
+        AsciiLoader.load(self, directory, filename)
+        AsciiLoader.write_hdf5(self, mono=mono,epu=epu, ring=ring, overwrite=overwrite, name = name)
+
+        
+
 #RSXS ES Configuration#
 RSXS = h5Config()
 RSXS.sca_folder('Data')
@@ -2309,8 +2963,8 @@ RIXS.mca('SDDB_NOSCALE','Data/sdd_b_mca',None,None)
 RIXS.mca('SDDB_N','Data/sdd_b_mca','Data/sdd_b_scale',norm_by = 'Data/i0')
 RIXS.mca('XEOL','Data/xeol_a_mca_norm','Data/xeol_a_scale',None)
 RIXS.mca('XEOL_N','Data/xeol_a_mca_norm','Data/xeol_a_scale',norm_by = 'Data/i0')
-RIXS.mca('XES','Data/mcp_xes_mca','Data/mcp_xes_scale',None)
-RIXS.mca('XES_N','Data/mcp_xes_mca','Data/mcp_xes_scale',norm_by = 'Data/i0')
+RIXS.mca('XES','Data/mcp_xes_mca_norm','Data/mcp_xes_scale',None)
+RIXS.mca('XES_N','Data/mcp_xes_mca_norm','Data/mcp_xes_scale',norm_by = 'Data/i0')
 
 #IMAGE Detectors
 RIXS.stack('mcpIMG_A','Data/mcp_a_img',None,None,None)
