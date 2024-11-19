@@ -1,7 +1,7 @@
-## Load all standard modules
-from h5analysis.LoadData import *
-from h5analysis.MathData import *
-from h5analysis.config import h5Config
+## Load all standard modules (relative imports)
+from ...h5analysis.LoadData import *
+from ...h5analysis.MathData import *
+from ...h5analysis.config import h5Config
 import h5py
 
 ## Load Bokeh for plotting

@@ -224,12 +224,16 @@ class ScanInfo:
                             except AttributeError:
                                 # some magic to get the stored array entry
                                 entry = f[f'{k}/{key}'][()]
+                                #There are 4 instances, array of size 1, scaler, array of duplicate values, array of unique values
                                 if isinstance(entry, np.ndarray) and len(entry)==1:
+                                    entry = entry[0]
+                                elif len(np.array([entry]))==1 and not isinstance(entry, np.ndarray):
+                                    entry = entry
+                                elif isinstance(entry, np.ndarray) and np.average(entry) == entry.min():
                                     entry = entry[0]
                                 else:
                                     if average == True:
                                         entry = (np.average(entry),entry.min(),entry.max())
-
                                 info_dict[key][skey] = entry
                         except:
                             pass
