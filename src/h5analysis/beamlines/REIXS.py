@@ -21,6 +21,61 @@ def hdf5FileFixer(hdf5_filename):
         hdf5_filename=file_ext[0]+'.h5'
     return hdf5_filename
 
+#Make plots of metadata as a function of scan
+class QALoader(LoadQA):
+    """Load meta data as 1d data stream."""
+    def load(self,config,filename,metadata,**kwargs):
+        """
+        Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        config: dict
+            REIXS beamline endstation configuration
+            Needs dict.key, pathQA and nameQA defined
+        filename: string
+            filename
+        metadata : string
+            Absolute location of metadata to be plotted
+        **kwargs: multiple,optional
+            Options:
+                norm : boolean
+                    Norm the spectra to [0,1].
+                    default: True
+                yoffset : list of tuples
+                    Offset the y-axis by applying a polynomial fit.
+                    default : None 
+                ycoffset : float
+                    Offset y-axis by constant value.
+                    default : None
+                twin_y: boolean
+                    supports a second y-axis on the right-hand side
+        """
+        filename=hdf5FileFixer(filename)
+        LoadQA.load(self,config,filename,'Date_Fract',metadata,**kwargs)
+
+    def plot(self,linewidth=2,xlabel='Date [Absolute]',plot_width=1500,plot_height=600,xprec=7, **kwargs):
+        """
+        Plot all data assosciated with class instance/object.
+
+        Parameters
+        ----------
+        linewidth : int,optional
+        title : string,optional
+        plot_height : int,optional
+        plot_width : int,optional
+        norm: boolean,optional
+            Normalized plot output to [0,1]
+        waterfall: float
+            Normalizes plot output to [0,1] and applies offset specified
+        kwargs
+            all bokeh figure key-word arguments
+        """
+
+        #Need to trim non-aligned points
+        
+        LoadQA.plot(self,linewidth=linewidth,xlabel =xlabel,plot_width=plot_width,plot_height=plot_height,xprec=xprec,**kwargs)
+
 ## REIXS specific log viewer class to truncate or refine the log data
 class LogLoader():
     """Generate spreadsheet with meta data from h5 file."""
@@ -2994,6 +3049,10 @@ class AsciiLoader(SPEC_HDF5):
         AsciiLoader.write_hdf5(self,mono=mono,epu=epu,ring=ring,overwrite=overwrite,name=name)
 
         
+#REIXS QA Configuration#
+REIXS=h5Config()
+REIXS.key("Entry_{entry:03d}",'entry')
+
 
 #RSXS ES Configuration#
 RSXS=h5Config()
