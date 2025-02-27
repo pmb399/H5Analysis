@@ -114,8 +114,8 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
     # Do auto-grid if not specified otherwise
     # Take step-size as smallest delta observed in data array
     if grid_x == [None, None, None]:
-        xmin = x_data.min()
-        xmax = x_data.max()
+        xmin = np.float64(x_data.min())
+        xmax = np.float64(x_data.max())
         x_points = int(
             np.ceil((xmax-xmin)/np.abs(np.diff(x_data)).min())) + 1
 
@@ -126,11 +126,10 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
 
     # Same as above, now for second axis.
     if grid_y == [None, None, None]:
-        ymin = y_data.min()
-        ymax = y_data.max()
+        ymin = np.float64(y_data.min())
+        ymax = np.float64(y_data.max())
         y_points = int(
             np.ceil((ymax-ymin)/np.abs(np.diff(y_data)).min())) + 1
-
     else:
         ymin = grid_y[0]
         ymax = grid_y[1]
@@ -148,8 +147,8 @@ def grid_data2d(x_data, y_data, detector, grid_x=[None, None, None],grid_y=[None
         #y_points = int(y_points/norm)
         warnings.warn(f"Reduced grid size by factor {norm} to maintain memory allocation less than 100MB.")
 
-    new_x = np.linspace(xmin, xmax, x_points, endpoint=True)
-    new_y = np.linspace(ymin, ymax, y_points, endpoint=True)
+    new_x = np.linspace(xmin, xmax, x_points)
+    new_y = np.linspace(ymin, ymax, y_points)
 
     # Evaluate image on evenly-spaced grid and interpolate
     new_z = interp2d(x_data, y_data, detector, new_x, new_y)

@@ -14,6 +14,7 @@ from bokeh.io import push_notebook
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
+from matplotlib.animation import PillowWriter
 
 # Utilities
 import os
@@ -506,7 +507,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, ylabel_right=None, plot_height=450, plot_width=700, norm=False, waterfall=None, **kwargs):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, ylabel_right=None, plot_height=450, plot_width=700, norm=False, waterfall=None, xprec=None,yprec=None, **kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -523,6 +524,10 @@ class Load1d:
             Normalized plot output to [0,1]
         waterfall: float
             Normalizes plot output to [0,1] and applies offset specified
+        xprec : int, optional
+            Specifies the forced floating point X precision of the hover tool
+        yprec : int, optional
+            Specifies the forced floating point Y precision of the hover tool   
         kwargs
             all bokeh figure key-word arguments
         """
@@ -632,6 +637,9 @@ class Load1d:
             mins = [min(x) for x in plot_data['y_stream']]
             maxs = [max(x) for x in plot_data['y_stream']]
             yrange = max(maxs)-min(mins)
+            # If for some reason data set is constant, make range 1%
+            if yrange == 0:
+                yrange = min(mins)*0.01
             ymin = min(mins) - 0.05*yrange
             ymax = max(maxs) + 0.05*yrange
 
@@ -668,6 +676,9 @@ class Load1d:
             mins = [min(x) for x in plot_data_twin['y_stream']]
             maxs = [max(x) for x in plot_data_twin['y_stream']]
             yrange = max(maxs)-min(mins)
+            # If for some reason data set is constant, make range 1%
+            if yrange == 0:
+                yrange = min(mins)*0.01
             ymin = min(mins) - 0.05*yrange
             ymax = max(maxs) + 0.05*yrange
 
@@ -698,11 +709,28 @@ class Load1d:
                      source=source_twin,y_range_name='right',)
 
         # Set up the information for hover box
+        if xprec != None:
+            x_prec = "{0."
+            for i in range(xprec):
+                x_prec = x_prec + "0"
+            x_prec = x_prec + "}"
+        else:
+            x_prec = ""
+
+        if yprec != None:
+            y_prec = "{0."
+            for i in range(yprec):
+                y_prec = y_prec + "0"
+            y_prec = y_prec + "}"
+        else:
+            y_prec = ""
+
+        xy_prec = "($x" + x_prec + ", $y" + y_prec + ")"
         p.add_tools(HoverTool(show_arrow=False, line_policy='next', tooltips=[
             ('Scan', '@scan'),
             ('File', '@filename'),
             ("(x,y)", "(@x_name, @y_name)"),
-            ("(x,y)", "($x, $y)")
+            ("(x,y)", xy_prec)
         ]))
 
         p.toolbar.logo = None
@@ -1455,7 +1483,7 @@ class Load2d:
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
     def plot(self, title=None, kind='Image', xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, 
-            vmin=None, vmax=None, colormap = "linear", norm=False, **kwargs):
+            vmin=None, vmax=None, colormap = "linear", norm=False, xprec=None,yprec=None,**kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -1474,6 +1502,10 @@ class Load2d:
             Use: "linear" or "log"
         norm : boolean
             to normalize the plot to the maximum
+        xprec : int, optional
+            Specifies the forced floating point X precision of the hover tool
+        yprec : int, optional
+            Specifies the forced floating point Y precision of the hover tool  
         kwargs
             all bokeh figure key-word arguments
         """
@@ -1489,7 +1521,25 @@ class Load2d:
                     v.new_z = v.new_z/np.max(v.new_z)
 
                 # Create the figure
-                p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
+                # Set up the information for hover box
+                if xprec != None:
+                    x_prec = "$x{0."
+                    for j in range(xprec):
+                        x_prec = x_prec + "0"
+                    x_prec = x_prec + "}"
+                else:
+                    x_prec = "$x"
+
+                if yprec != None:
+                    y_prec = "$y{0."
+                    for j in range(yprec):
+                        y_prec = y_prec + "0"
+                    y_prec = y_prec + "}"
+                else:
+                    y_prec = "$y"
+
+
+                p = figure(height=plot_height, width=plot_width, tooltips=[("x", x_prec), ("y", y_prec), ("value", "@image")],
                            tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save", **kwargs)
                 p.x_range.range_padding = p.y_range.range_padding = 0
 
@@ -2066,7 +2116,8 @@ class Load3d:
         self._background_3d(bg_stack)
         
 
-    def plot(self, title=None, xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, vmin=None, vmax=None, colormap="linear", norm=False, **kwargs):
+    def plot(self, title=None, xlabel=None, ylabel=None, zlabel=None, plot_height=600, plot_width=600, vmin=None, vmax=None, colormap="linear", 
+             norm=False, xprec=None,yprec=None,**kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -2084,6 +2135,10 @@ class Load3d:
             Use: "linear" or "log"
         norm: boolean
             Normalizes to the maximum z-value across all images in the stack
+        xprec : int, optional
+            Specifies the forced floating point X precision of the hover tool
+        yprec : int, optional
+            Specifies the forced floating point Y precision of the hover tool 
         kwargs
             all bokeh figure key-word arguments
         """
@@ -2108,6 +2163,7 @@ class Load3d:
                 r.data_source.data['image'] = [v.stack[f]/np.max(v.stack)]
             else:
                 r.data_source.data['image'] = [v.stack[f]]
+ 
             r.data_source.data['x'] = [plot_x_corner]
             r.data_source.data['y'] = [plot_y_corner]
             r.data_source.data['dw'] = [plot_dw]
@@ -2124,7 +2180,25 @@ class Load3d:
                 # Let's ensure dimensions are matching
                 check_dimensions2d(v.new_x[0],v.new_y[0],v.stack[0])
 
-                p = figure(height=plot_height, width=plot_width, tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")],
+                # Set up the information for hover box
+                if xprec != None:
+                    x_prec = "$x{0."
+                    for j in range(xprec):
+                        x_prec = x_prec + "0"
+                    x_prec = x_prec + "}"
+                else:
+                    x_prec = "$x"
+
+                if yprec != None:
+                    y_prec = "$y{0."
+                    for j in range(yprec):
+                        y_prec = y_prec + "0"
+                    y_prec = y_prec + "}"
+                else:
+                    y_prec = "$y"
+
+
+                p = figure(height=plot_height, width=plot_width, tooltips=[("x", x_prec), ("y", y_prec), ("value", "@image")],
                            tools="pan,wheel_zoom,box_zoom,reset,hover,crosshair,save",**kwargs)
                 p.x_range.range_padding = p.y_range.range_padding = 0
 
@@ -2200,12 +2274,11 @@ class Load3d:
                 orientation='horizontal',
                 readout=True
             )
-                
                 # Hook-up widget to update function, then display
                 mywidget.observe(update,names='value')
                 display(mywidget)
 
-    def movie(self,filename, interval=500, aspect=1, xlim=None, ylim=None, **kwargs):
+    def movie(self,filename, framerate=20, aspect=1, xlim=None, ylim=None, **kwargs):
         """ Export Stack image as movie
 
             Parameters
@@ -2236,9 +2309,8 @@ class Load3d:
                 for i,img in enumerate(v.stack):
                     frames.append([plt.imshow(img,animated=True,extent=[v.new_x[i].min(),v.new_x[i].max(),v.new_y[i].min(),v.new_y[i].max()],aspect=aspect)])
             
-                ani = animation.ArtistAnimation(fig, frames, interval=interval, blit=True,
-                                repeat_delay=1000)
-                ani.save(filename+'.mp4')
+                ani = animation.ArtistAnimation(fig, frames)
+                ani.save(filename+'.gif', writer=PillowWriter(fps=framerate))
 
     def get_data(self):
         """Make data available in memory as exported to file.
@@ -2475,6 +2547,9 @@ class LoadScatter1d(Load1d):
             mins = [min(x.data['y_stream']) for x in sources]
             maxs = [max(x.data['y_stream']) for x in sources]
             yrange = max(maxs)-min(mins)
+            # If for some reason data set is constant, make range 1%
+            if yrange == 0:
+                yrange = min(mins)*0.01
             ymin = min(mins) - 0.05*yrange
             ymax = max(maxs) + 0.05*yrange
 
@@ -2509,6 +2584,9 @@ class LoadScatter1d(Load1d):
             mins = [min(x.data['y_stream']) for x in sources_twin]
             maxs = [max(x.data['y_stream']) for x in sources_twin]
             yrange = max(maxs)-min(mins)
+            # If for some reason data set is constant, make range 1%
+            if yrange == 0:
+                yrange = min(mins)*0.01
             ymin = min(mins) - 0.05*yrange
             ymax = max(maxs) + 0.05*yrange
 
@@ -2535,7 +2613,7 @@ class LoadScatter1d(Load1d):
             ('Scan', '@scan'),
             ('File', '@filename'),
             ("(x,y)", "(@x_name, @y_name)"),
-            ("(x,y)", "($x, $y)")
+            ("(x,y)", "($x{0.000000}, $y{0.000000})")
         ]))
 
         p.toolbar.logo = None
@@ -3207,12 +3285,6 @@ class LoadBeamline(Load1d):
             norm: boolean
                 Norm the spectra to [0,1].
                 default: True
-            xoffset: list of tuples
-                Offset the x-axis by applying a polynomial fit.
-                default: None
-            xcoffset: float
-                Offset x-axis by constant value.
-                default : None 
             yoffset: list of tuples
                 Offset the y-axis by applying a polynomial fit.
                 default : None 
@@ -3238,6 +3310,90 @@ class LoadBeamline(Load1d):
         raise UserWarning('Undefined')
 
 #########################################################################################
+
+class LoadQA(LoadBeamline):
+    """Load meta data as 1d data stream and plot against independent variable."""
+    def load(self,config,file,var,key,**kwargs):
+        """
+        Load one or multiple specific scan(s) for selected streams.
+
+        Parameters
+        ----------
+        Parameters
+        ----------
+        config: dict
+            h5 data configuration
+        file: string
+            Specify the file name (either ASCII or HDF5).
+        var: string
+            HDF5 independent variable location
+        key: string
+            HDF5 meta data location 
+        **kwargs: multiple, optional
+            average: Boolean
+                determines if array of values or their average is reported
+            norm: boolean
+                Norm the spectra to [0,1].
+                default: True
+            yoffset: list of tuples
+                Offset the y-axis by applying a polynomial fit.
+                default : None 
+            ycoffset: float
+                Offset y-axis by constant value.
+                default: None
+            legend_item: string
+                Name for legend
+            twin_y: boolean
+                supports a second y-axis on the right-hand side
+        """
+        Ind_Var = LoadBeamline()
+        Ind_Var.load(config,file,var,**kwargs)
+        LoadBeamline.load(self,config,file,key,**kwargs)
+        #Determine if it was newly added
+        data_size_diff = len(Ind_Var.data[0][0].x_stream) - len(self.data[len(self.data)-1][0].x_stream)
+        if data_size_diff > 0:
+            #There are scans that do not have data, match the scan numbers and copy those
+            #Assume that all j will accessed
+            j = 0
+            for i in range(len(Ind_Var.data[0][0].x_stream)):
+                if Ind_Var.data[0][0].x_stream[i] == self.data[0][0].x_stream[j]:
+                    self.data[len(self.data)-1][0].x_stream[j] = Ind_Var.data[0][0].y_stream[i]
+                    j+=1
+        else:
+            #Data set sizes match, just copy data
+            self.data[len(self.data)-1][0].x_stream = Ind_Var.data[0][0].y_stream
+
+    def plot(self,xlabel='Independent Variable',ylabel='Value',ylabel_right='Value', **kwargs):
+        """
+        Plot all data assosciated with class instance/object.
+
+        Parameters
+        ----------
+        linewidth : int, optional
+        title : string, optional
+        xlabel : string, optional
+        ylabel : string, optional
+        ylabel_right : string, optional
+        plot_height : int, optional
+        plot_width : int, optional
+        norm: boolean, optional
+            Normalized plot output to [0,1]
+        waterfall: float
+            Normalizes plot output to [0,1] and applies offset specified
+        xprec : int, optional
+            Specifies the forced floating point X precision of the hover tool
+        yprec : int, optional
+            Specifies the forced floating point Y precision of the hover tool   
+        kwargs
+            all bokeh figure key-word arguments
+        """
+
+        #Need to trim non-aligned points
+        
+        LoadBeamline.plot(self,xlabel =xlabel,ylabel=ylabel,ylabel_right=ylabel_right,**kwargs)
+
+
+##########################################################################################
 
 class LoadLog:
     """Generate spreadsheet with meta data from h5 file."""
