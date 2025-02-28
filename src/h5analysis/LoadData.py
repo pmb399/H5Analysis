@@ -11,7 +11,6 @@ from bokeh.models import ColumnDataSource, HoverTool, LinearColorMapper, LogColo
 from bokeh.io import push_notebook
 
 # Video Export
-from matplotlib.animation import PillowWriter
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
@@ -2310,7 +2309,7 @@ class Load3d:
                     frames.append([plt.imshow(img,animated=True,extent=[v.new_x[i].min(),v.new_x[i].max(),v.new_y[i].min(),v.new_y[i].max()],aspect=aspect)])
             
                 ani = animation.ArtistAnimation(fig, frames)
-                ani.save(filename+'.gif', writer=PillowWriter(fps=framerate))
+                ani.save(filename+'.gif', writer=animation.PillowWriter(fps=framerate))
 
     def get_data(self):
         """Make data available in memory as exported to file.
