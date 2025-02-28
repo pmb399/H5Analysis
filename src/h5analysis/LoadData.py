@@ -11,10 +11,10 @@ from bokeh.models import ColumnDataSource, HoverTool, LinearColorMapper, LogColo
 from bokeh.io import push_notebook
 
 # Video Export
+from matplotlib.animation import PillowWriter
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
-from matplotlib.animation import PillowWriter
 
 # Utilities
 import os
