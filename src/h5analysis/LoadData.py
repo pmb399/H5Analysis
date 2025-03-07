@@ -12,7 +12,6 @@ from bokeh.io import push_notebook
 
 # Video Export
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib.animation as animation
 
 # Utilities

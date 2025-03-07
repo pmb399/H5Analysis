@@ -1,11 +1,11 @@
-## Load all standard modules (relative imports)
-from ...h5analysis.LoadData import *
-from ...h5analysis.MathData import *
-from ...h5analysis.config import h5Config
+## Load all standard modules
+from ..LoadData import *
+from ..MathData import *
+from ..config import h5Config
 import h5py
 
 ## Load Bokeh for plotting
-from bokeh.io import show,output_notebook
+from bokeh.io import output_notebook
 output_notebook(hide_banner=True)
 
 ## Set standard plotting options
@@ -1069,7 +1069,7 @@ class XESLoader(Load1d):
         """
         for i in range(len(plot_object.data)):
             XESLoader.loadObj(self,plot_object,i)
-    def plot(self,linewidth=2,xlabel='Emission Energy [eV]',ylabel='Counts', ylabel_right='Counts',plot_width=900,plot_height=600,**kwargs):
+    def plot(self,linewidth=2,xlabel='Emission Energy [eV]',ylabel='Counts', ylabel_right='Counts',plot_width=900,plot_height=600,xprec=3,**kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -1086,14 +1086,18 @@ class XESLoader(Load1d):
             Normalized plot output to [0,1]
         waterfall: float
             Normalizes plot output to [0,1] and applies offset specified
+        xprec : int, optional
+            Specifies the forced floating point X precision of the hover tool
+        yprec : int, optional
+            Specifies the forced floating point Y precision of the hover tool   
         kwargs
             all bokeh figure key-word arguments
         """
-        Load1d.plot(self,linewidth=linewidth,xlabel=xlabel,ylabel=ylabel,ylabel_right=ylabel_right,plot_width=plot_width,plot_height=plot_height,**kwargs)
+        Load1d.plot(self,linewidth=linewidth,xlabel=xlabel,ylabel=ylabel,ylabel_right=ylabel_right,plot_width=plot_width,plot_height=plot_height,xprec=xprec,**kwargs)
         
 class XEOLLoader(XESLoader):
     """ Load and plot X-ray excited optical luminescence scan(s) """
-    def plot(self,linewidth=2,xlabel='Wavelength [nm]',ylabel='Counts',ylabel_right='Counts',plot_width=900,plot_height=600,**kwargs):
+    def plot(self,linewidth=2,xlabel='Wavelength [nm]',ylabel='Counts',ylabel_right='Counts',plot_width=900,plot_height=600,xprec=3,**kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -1110,10 +1114,14 @@ class XEOLLoader(XESLoader):
             Normalized plot output to [0,1]
         waterfall: float
             Normalizes plot output to [0,1] and applies offset specified
+        xprec : int, optional
+            Specifies the forced floating point X precision of the hover tool
+        yprec : int, optional
+            Specifies the forced floating point Y precision of the hover tool   
         kwargs
             all bokeh figure key-word arguments
         """
-        Load1d.plot(self,linewidth=linewidth,xlabel=xlabel,ylabel=ylabel,ylabel_right=ylabel_right,plot_width=plot_width,plot_height=plot_height,**kwargs)
+        Load1d.plot(self,linewidth=linewidth,xlabel=xlabel,ylabel=ylabel,ylabel_right=ylabel_right,plot_width=plot_width,plot_height=plot_height,xprec=xprec,**kwargs)
    
     
 class XASLoader(Load1d):
@@ -1220,7 +1228,7 @@ class XASLoader(Load1d):
         """
         for i in range(len(plot_object.data)):
             XASLoader.loadObj(self,plot_object,i)
-    def plot(self,linewidth=2,xlabel='Excitation Energy [eV]',ylabel='Relative Intensity',ylabel_right= 'Relative Intensity',plot_width=900,plot_height=600,**kwargs):
+    def plot(self,linewidth=2,xlabel='Excitation Energy [eV]',ylabel='Relative Intensity',ylabel_right= 'Relative Intensity',plot_width=900,plot_height=600,xprec=3,**kwargs):
         """
         Plot all data assosciated with class instance/object.
 
