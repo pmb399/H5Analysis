@@ -2282,8 +2282,8 @@ class Load3d:
             Parameters
             ----------
             filename: string
-            interval: int
-                duration of each frame in ms
+            framerate: int
+                number of frames per second
             aspect: float
                 aspect ratio
             xlim: None, tuple

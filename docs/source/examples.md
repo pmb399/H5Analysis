@@ -146,5 +146,3 @@ load3d.movie() # this will export a movie
 - _grid_x_ (Takes a list with three arguments to apply 1d interpolation gridding)
   e.g. grid_x = [Start Energy, Stop Energy, Delta]
 - _norm_by_ (Normalizes to specified stream)
-
-Note, for movie export of a 3d object, the FFMPEG package must be installed.

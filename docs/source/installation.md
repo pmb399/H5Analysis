@@ -31,32 +31,6 @@ Install the package from PyPi with the pip package manager. This is the recommen
 $ pip install h5analysis
 ```
 
-If you wish to also be able to export 3d data stacks to movies, the FFMPEG python package and system binding is required. This is an optional dependency and the python integration can be installed together with h5analysis when triggering this optional dependency as shown below.
-
-```
-$ pip install h5analysis[FFMPEG]
-```
-
-Note, the export to MP4 file format using FFMPEG within python triggers the system's FFMPEG binding which may need to be installed. If you are using an Anaconda python environment, this task will be straight forward. In case you are using a different python eco-system, you will have to get the executable binary from the FFMPEG website.
-
-::::{tab-set}
-
-:::{tab-item} Anaconda3
-Installing FFMPEG with conda is as simple as running 
-
-```
-$ conda install -c conda-forge ffmpeg
-```
-
-in your terminal.
-:::
-
-:::{tab-item} Manual Setup with FFMPEG Binary
-Navigate to the [FFMPEG Website](https://ffmpeg.org/download.html). Download the executable file for your operating system and install FFMPEG. Ensure that the FFMPEG library is in your PATH.
-:::
-
-::::
-
 To utilize the ```xraylarch``` engine for EXAFS data processing, ensure that the larch python package is installed:
 
 ```
