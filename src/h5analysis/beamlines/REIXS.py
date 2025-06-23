@@ -4,9 +4,6 @@ from ..MathData import *
 from ..config import h5Config
 import h5py
 
-from IPython.display import display, HTML
-display(HTML("<style>.container { width:100% !important; }</style>"))
-
 ## Load Bokeh for plotting
 from bokeh.io import output_notebook
 output_notebook(hide_banner=True)

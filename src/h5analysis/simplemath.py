@@ -368,13 +368,16 @@ def apply_savgol(x,y,window,polyorder,deriv):
     x_diff = np.abs(np.diff(x)).min()
     new_x, new_y  = grid_data(x,y,[xmin,xmax,x_diff])
 
+    # Since filter window centre will be between data points, we need to shift the scale 1/2 data spacing
+    if not window%2:
+        new_x += x_diff/2
+
     # Set default parameters as per savgol docs
     if deriv == 0:
         delta = 1
     else:
         delta = x_diff
     smooth_y = savgol_filter(new_y,window,polyorder,deriv,delta)
-
     return new_x,smooth_y
 
 #########################################################################################
