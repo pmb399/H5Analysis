@@ -846,8 +846,16 @@ class Load1d:
         else:
             for i in range(0,int(len(dfT.columns)/2)):
                 j = i+1
-                df2 = dfT[[dfT.columns[2*i],dfT.columns[2*i+1]]]
-                df2.to_csv(f'{filename}_{j}.csv',index=False, lineterminator='\n')
+                with open(f"{filename}_{j}.csv", 'w') as f:
+                    string = '# '
+                    for idx, file in enumerate(files):
+                        file_idx = f"F{idx+1}"
+                        if file_idx in dfT.columns[2*i]:
+                            string += f"F{idx+1} {files[idx]}"
+                            string += '\n'
+                            f.write(string)
+                    df2 = dfT[[dfT.columns[2*i],dfT.columns[2*i+1]]]
+                    df2.to_csv(f,index=False, lineterminator='\n')
 
         print(f"Successfully wrote DataFrame to {filename}.csv")
 
@@ -1643,44 +1651,38 @@ class Load2d:
         series_data = list()
         series_header = list()
         matrix_data = list()
+        matrix_header = list()
 
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 # Gridded scales now calculated directly during the MCA load and only need to be referenced here
-
-                # Start writing string f
-                f.write("========================\n")
-                f.write(
-                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                f.write("========================\n")
-
-                # Start writing string g
-                g.write("========================\n")
-                g.write(
-                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                g.write("========================\n")
-
+                file_header = f"# F1 ~{v.filename}\n"
+                # Start writing string f, scales
+                f.write(file_header)
+                # Start writing string g, matrix
+                g.write(file_header)
                 # Append data to string now.
                 # Append x-stream
                 series_data.append(pd.Series(v.new_x))
-                series_header.append(f"{v.xlabel} Gridded")
+                series_header.append(f"F1_S{v.scan}_{v.xlabel}_Gridded")
 
                 # Append y-stream
                 series_data.append(pd.Series(v.new_y))
-                series_header.append(f"{v.ylabel} Gridded")
+                series_header.append(f"F1_S{v.scan}_{v.ylabel}_Gridded")
 
                 dfT = pd.DataFrame(series_data).transpose(copy=True)
                 dfT.columns = series_header
                 dfT.to_csv(f, index=False, lineterminator='\n')
 
-                g.write(f"=== {v.zlabel} ===\n")
+                matrix_header.append(f"F1_S{v.scan}_{v.zlabel}")
+                g.write(f"F1_S{v.scan}_{v.zlabel}\n")
                 np.savetxt(g, v.new_z, fmt="%.9g")
                 matrix_data.append(v.new_z)
 
             
-        raw_data = [series_data,series_header,matrix_data]
+        raw_data = [series_data,series_header,matrix_data,matrix_header]
 
-        return f, g, raw_data
+        return f, g, raw_data, file_header
 
     def export(self, filename, split_files=False):
         """
@@ -1692,7 +1694,7 @@ class Load2d:
         split_files: Boolean
             Sets whether scans are exported appended to one file (False), or separately (True)
         """
-        f, g, raw_data = self.get_data()
+        f, g, raw_data, file_header = self.get_data()
 
         if split_files == False:
             # Dump both strings in file.
@@ -1710,9 +1712,9 @@ class Load2d:
             # iterate over matrices
             for i,m in enumerate(raw_data[2]):
                 j = i+1
-                np.savetxt(f"{filename}_{j}.txt_matrix", m)
-                np.savetxt(f"{filename}_{j}.txt_scale1", raw_data[0][2*i],header=raw_data[1][2*i])
-                np.savetxt(f"{filename}_{j}.txt_scale2", raw_data[0][2*i+1],header=raw_data[1][2*i+1])
+                np.savetxt(f"{filename}_{j}.txt_matrix", m,header=file_header + raw_data[1][2*i],comments='')
+                np.savetxt(f"{filename}_{j}.txt_scale1", raw_data[0][2*i],header=file_header + raw_data[1][2*i],comments='')
+                np.savetxt(f"{filename}_{j}.txt_scale2", raw_data[0][2*i+1],header=file_header + raw_data[1][2*i+1],comments='')
 
         print(f"Successfully wrote Image data to {filename}.txt")
 
@@ -2338,27 +2340,27 @@ class Load3d:
                 # Gridded scales now calculated directly during the MCA load and only need to be referenced here
 
                 # Start writing string f
-                f.write("========================\n")
+                f.write("#\n")
                 f.write(
                     f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                f.write("========================\n")
+                f.write("#\n")
 
                 # Start writing string g
-                g.write("========================\n")
+                g.write("#\n")
                 g.write(
                     f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                g.write("========================\n")
+                g.write("#\n")
 
                 for idx in range(0,len(v.new_x)):
 
                     # Append data to string now.
                     # Append x-stream
                     series_data.append(pd.Series(v.new_x[idx]))
-                    series_header.append(f"{v.xlabel} Gridded {idx+1}")
+                    series_header.append(f"{v.xlabel}_Gridded {idx+1}")
 
                     # Append y-stream
                     series_data.append(pd.Series(v.new_y[idx]))
-                    series_header.append(f"{v.ylabel} Gridded {idx+1}")
+                    series_header.append(f"{v.ylabel}_Gridded {idx+1}")
 
                     g.write(f"=== {v.zlabel} {idx+1} ===\n")
                     np.savetxt(g, v.stack[idx], fmt="%.9g")
