@@ -2278,7 +2278,7 @@ class Load3d:
                 mywidget.observe(update,names='value')
                 display(mywidget)
 
-    def movie(self,filename, framerate=20, aspect=1, xlim=None, ylim=None, **kwargs):
+    def movie(self,filename, framerate=20, aspect=1, xlim=None, ylim=None, filetype='gif', **kwargs):
         """ Export Stack image as movie
 
             Parameters
@@ -2290,6 +2290,8 @@ class Load3d:
                 aspect ratio
             xlim: None, tuple
             ylim: None, tuple
+            filetype: string
+                Use: "gif" or "mp4"
             kwargs
                 all matplotlib figure key-word arguments
         """
@@ -2310,8 +2312,10 @@ class Load3d:
                     frames.append([plt.imshow(img,animated=True,extent=[v.new_x[i].min(),v.new_x[i].max(),v.new_y[i].min(),v.new_y[i].max()],aspect=aspect)])
             
                 ani = animation.ArtistAnimation(fig, frames)
-                ani.save(filename+'.gif', writer=animation.PillowWriter(fps=framerate))
-
+                if filetype == 'gif':
+                    ani.save(filename+'.gif', writer=animation.PillowWriter(fps=framerate))
+                elif filetype == 'mp4':
+                    ani.save(filename+'.mp4', writer=animation.FFMpegWriter(fps=framerate))
     def get_data(self):
         """Make data available in memory as exported to file.
 
@@ -2338,31 +2342,26 @@ class Load3d:
         for i, val in enumerate(self.data):
             for k, v in val.items():
                 # Gridded scales now calculated directly during the MCA load and only need to be referenced here
+                file_header = f"# F1 ~{v.filename}\n"
 
                 # Start writing string f
-                f.write("#\n")
-                f.write(
-                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                f.write("#\n")
+                f.write(file_header)
 
                 # Start writing string g
-                g.write("#\n")
-                g.write(
-                    f"F~{v.filename}_S{v.scan}_{v.zlabel}_{v.xlabel}_{v.ylabel}\n")
-                g.write("#\n")
+                g.write(file_header)
 
                 for idx in range(0,len(v.new_x)):
 
                     # Append data to string now.
                     # Append x-stream
                     series_data.append(pd.Series(v.new_x[idx]))
-                    series_header.append(f"{v.xlabel}_Gridded {idx+1}")
+                    series_header.append(f"F1_S{v.scan}_{v.xlabel}_Gridded_{idx+1}")
 
                     # Append y-stream
                     series_data.append(pd.Series(v.new_y[idx]))
-                    series_header.append(f"{v.ylabel}_Gridded {idx+1}")
+                    series_header.append(f"F1_S{v.scan}_{v.ylabel}_Gridded_{idx+1}")
 
-                    g.write(f"=== {v.zlabel} {idx+1} ===\n")
+                    g.write(f"F1_S{v.scan}_{v.zlabel}_{idx+1}\n")
                     np.savetxt(g, v.stack[idx], fmt="%.9g")
                     matrix_data.append(v.stack[idx])
 
@@ -2373,7 +2372,7 @@ class Load3d:
             
         raw_data = [series_data,series_header,matrix_data]
 
-        return f, g, raw_data
+        return f, g, raw_data, file_header
 
     def export(self, filename, split_files=False):
         """
@@ -2385,7 +2384,7 @@ class Load3d:
         split_files: Boolean
             Sets whether scans are exported appended to one file (False), or separately (True)
         """
-        f, g, raw_data = self.get_data()
+        f, g, raw_data, file_header = self.get_data()
 
         if split_files == False:
             # Dump both strings in file.
@@ -2403,9 +2402,9 @@ class Load3d:
             # iterate over matrices
             for i,m in enumerate(raw_data[2]):
                 j = i+1
-                np.savetxt(f"{filename}_{j}.txt_matrix", m)
-                np.savetxt(f"{filename}_{j}.txt_scale1", raw_data[0][2*i],header=raw_data[1][2*i])
-                np.savetxt(f"{filename}_{j}.txt_scale2", raw_data[0][2*i+1],header=raw_data[1][2*i+1])
+                np.savetxt(f"{filename}_{j}.txt_matrix", m,header=file_header + raw_data[1][2*i],comments='')
+                np.savetxt(f"{filename}_{j}.txt_scale1", raw_data[0][2*i],header=file_header + raw_data[1][2*i],comments='')
+                np.savetxt(f"{filename}_{j}.txt_scale2", raw_data[0][2*i+1],header=file_header + raw_data[1][2*i+1],comments='')
 
         print(f"Successfully wrote Image data to {filename}.txt")
 

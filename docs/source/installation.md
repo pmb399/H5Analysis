@@ -6,8 +6,8 @@ To use the hdf5analysis package, the [python](https://www.python.org/) framework
 
 ::::{tab-set}
 
-:::{tab-item} Anaconda3
-A one-stop solution to obtaining python together with the jupyter notebook environment is the Anaconda3 distribution, available on the [Anadonda Website](https://www.anaconda.com/download). This python distribution also contains important scientific module that do not need to be installed manually, however, the convenience is paid with a lot of disk space.
+:::{tab-item} Anaconda3/Miniforge
+A one-stop solution to obtaining python together with the jupyter notebook environment is the Anaconda3 distribution, available on the [Anadonda Website](https://www.anaconda.com/download). This python distribution also contains important scientific module that do not need to be installed manually, however, the convenience is paid with a lot of disk space. Alternatively, if your organization can not use Anacoda due to licence requirements Miniforge is an alternative, available on the [Minforge Website](https://https://conda-forge.org/miniforge).
 :::
 
 :::{tab-item} Manual Setup
@@ -29,6 +29,11 @@ Install the package from PyPi with the pip package manager. This is the recommen
 
 ```
 $ pip install h5analysis
+```
+
+You will need to ffmpeg binaries.
+```
+$ conda install ffmpeg
 ```
 
 To utilize the ```xraylarch``` engine for EXAFS data processing, ensure that the larch python package is installed:
