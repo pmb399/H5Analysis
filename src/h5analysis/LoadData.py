@@ -1700,21 +1700,19 @@ class Load2d:
             # Dump both strings in file.
             # Need to rewind memory location of String.IO to move to beginning.
             # Copy string content to file with shutil.
-            with open(f"{filename}_scale.csv", "a") as scales:
+            with open(f"{filename}_scale.csv", "w") as scales:
                 f.seek(0)
                 shutil.copyfileobj(f, scales)
 
-            with open(f"{filename}_matrix.txt", "a") as matrix:
+            with open(f"{filename}_matrix.txt", "w") as matrix:
                 g.seek(0)
                 shutil.copyfileobj(g, matrix)
 
         else:
             # iterate over matrices
-            for i,m in enumerate(raw_data[2]):
-                j = i+1
-                np.savetxt(f"{filename}_{j}_matrix.txt", m,header=file_header + raw_data[1][2*i],comments='')
-                np.savetxt(f"{filename}_{j}_scale1.csv", raw_data[0][2*i],header=file_header + raw_data[1][2*i],comments='')
-                np.savetxt(f"{filename}_{j}_scale2.csv", raw_data[0][2*i+1],header=file_header + raw_data[1][2*i+1],comments='')
+            np.savetxt(f"{filename}_matrix.txt", raw_data[2][0],header=file_header + raw_data[3][0],comments='')
+            np.savetxt(f"{filename}_scale1.csv", raw_data[0][0],header=file_header + raw_data[1][0],comments='')
+            np.savetxt(f"{filename}_scale2.csv", raw_data[0][1],header=file_header + raw_data[1][1],comments='')
 
         print(f"Successfully wrote Image data to {filename}.txt")
 
@@ -2338,6 +2336,7 @@ class Load3d:
         series_data = list()
         series_header = list()
         matrix_data = list()
+        matrix_header = list()
 
         for i, val in enumerate(self.data):
             for k, v in val.items():
@@ -2361,6 +2360,7 @@ class Load3d:
                     series_data.append(pd.Series(v.new_y[idx]))
                     series_header.append(f"F1_S{v.scan}_{v.ylabel}_Gridded_{idx+1}")
 
+                    matrix_header.append(f"F1_S{v.scan}_{v.zlabel}_{idx+1}")
                     g.write(f"F1_S{v.scan}_{v.zlabel}_{idx+1}\n")
                     np.savetxt(g, v.stack[idx], fmt="%.9g")
                     matrix_data.append(v.stack[idx])
@@ -2370,7 +2370,7 @@ class Load3d:
                 dfT.to_csv(f, index=False, lineterminator='\n')
 
             
-        raw_data = [series_data,series_header,matrix_data]
+        raw_data = [series_data,series_header,matrix_data,matrix_header]
 
         return f, g, raw_data, file_header
 
@@ -2390,11 +2390,11 @@ class Load3d:
             # Dump both strings in file.
             # Need to rewind memory location of String.IO to move to beginning.
             # Copy string content to file with shutil.
-            with open(f"{filename}_scale.csv", "a") as scales:
+            with open(f"{filename}_scale.csv", "w") as scales:
                 f.seek(0)
                 shutil.copyfileobj(f, scales)
 
-            with open(f"{filename}_matrix.txt", "a") as matrix:
+            with open(f"{filename}_matrix.txt", "w") as matrix:
                 g.seek(0)
                 shutil.copyfileobj(g, matrix)
 
@@ -2402,7 +2402,7 @@ class Load3d:
             # iterate over matrices
             for i,m in enumerate(raw_data[2]):
                 j = i+1
-                np.savetxt(f"{filename}_{j}_matrix.txt", m,header=file_header + raw_data[1][2*i],comments='')
+                np.savetxt(f"{filename}_{j}_matrix.txt", m,header=file_header + raw_data[3][i],comments='')
                 np.savetxt(f"{filename}_{j}_scale1.csv", raw_data[0][2*i],header=file_header + raw_data[1][2*i],comments='')
                 np.savetxt(f"{filename}_{j}_scale2.csv", raw_data[0][2*i+1],header=file_header + raw_data[1][2*i+1],comments='')
 
