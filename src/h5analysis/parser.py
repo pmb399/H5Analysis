@@ -22,7 +22,7 @@ def parse(formula):
     # Split string for specified pattern
     # https://stackoverflow.com/questions/77808769/use-regex-to-split-string-given-a-set-of-characters-with-exceptions
     constituents = list()
-    pattern = '|'.join(('\+', '(?<![:\[])-', '\*{1,2}', '/', '\(', '\)'))
+    pattern = '|'.join(('\+', '(?<![:{\[])-', '\*{1,2}', '/', '\(', '\)'))
     split_expr = re.split(pattern, formula)
 
     # Check all stripped strings individually and evaluate

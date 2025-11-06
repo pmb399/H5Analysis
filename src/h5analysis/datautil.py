@@ -320,6 +320,9 @@ def check_idx(idx_low, idx_high):
         if idx_low == idx_high:
             idx_high = idx_low+1
 
+        elif idx_high < idx_low:
+            return idx_high, idx_low
+
     return idx_low, idx_high
 
 #########################################################################################
