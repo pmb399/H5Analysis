@@ -326,6 +326,13 @@ def load_2d(config, file, x_stream, detector, *args, norm=False, xoffset=None, x
         data[arg].x_data, data[arg].y_data, data[arg].detector = apply_kwargs_2d(data[arg].x_data, data[arg].y_data, data[arg].detector,norm,xoffset,xcoffset,yoffset,ycoffset,binsize_x,binsize_y)
 
         # Grid data to image
+        #First check there are no duplicate points, these need to be adjusted in the scanned axis if a static variable was scanned
+        unqiue_x, inverse_x, count_x = np.unique(data[arg].x_data, axis=0, return_inverse=True, return_counts=True)
+        dupl_x = np.where(count_x[inverse_x] > 1)[0]
+        dupl_x_mult = 1    
+        for ind_x in dupl_x:
+            data[arg].x_data[ind_x] = (1+dupl_x_mult*0.000000001)*data[arg].x_data[ind_x]
+            dupl_x_mult += 1 
         new_x, new_y, new_z = grid_data2d(data[arg].x_data, data[arg].y_data, data[arg].detector, grid_x=grid_x,grid_y=grid_y)
         data[arg].new_x = new_x
         data[arg].new_y = new_y
