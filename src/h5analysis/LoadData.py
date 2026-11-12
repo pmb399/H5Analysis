@@ -207,6 +207,84 @@ class Load1d:
         bg_y = background.data[0][0].y_stream
 
         self._background(bg_x,bg_y)
+
+    def _normalize(self,nm_x,nm_y):
+        """ Divides all loaded data by the defined data"""
+
+        # Subtract the background from all data objects
+        for i, val in enumerate(self.data):
+            for k, v in val.items():
+
+                # Determine biggest overlap between background and data
+                s = max(v.x_stream.min(),nm_x.min())
+                e = min(v.x_stream.max(),nm_x.max())
+
+                x_stream_int = v.x_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+                y_stream_int = v.y_stream[(v.x_stream>=s) & (v.x_stream<=e)]
+
+                # Interpolate the background onto the x data
+                int_y = interp1d(nm_x,nm_y,x_stream_int)
+
+                # normalize data
+                new_y = np.divide(y_stream_int,int_y)
+
+                # Overwrite streams in object
+                v.x_stream = x_stream_int
+                v.y_stream = new_y
+
+                # Update dictionary with new object
+                val[k] = v
+
+            # Update data list with updated dictionary
+            self.data[i] = val
+
+    def normalize(self,config, file, x_stream, y_stream, *args, tempclass=None, **kwargs):
+            """ Divides all loaded data by the defined data
+    
+            Parameters
+            ----------
+            config: dict
+                h5 configuration
+            file: string
+                file name
+            x_stream: string
+                h5 key or alias of 1d stream
+            y_stream: string
+                h5 key or alias of 1d, 2d, or 3d stream
+            *args: int
+                scans
+            **kwargs
+                norm: boolean
+                    normalizes to [0,1]
+                xoffset: list
+                    fitting offset (x-stream)
+                xcoffset: float
+                    constant offset (x-stream)
+                yoffset: list
+                    fitting offset (y-stream)
+                ycoffset: float
+                    constant offset (y-stream)
+                grid_x: list
+                    grid data evenly with [start,stop,delta]
+                savgol: tuple
+                    (window length, polynomial order, derivative)
+                binsize: int
+                    puts data in bins of specified size
+                legend_items: dict
+                    dict[scan number] = description for legend
+            """
+    
+            # Get the normalization data
+            # Append all scan objects to scan list in temp object.
+            if type(tempclass) == type(None):
+                normalize = self.__class__()
+            else:
+                normalize = tempclass()
+            normalize.add(config, file, x_stream, y_stream, *args, tempclass=tempclass, **kwargs)
+            nm_x = normalize.data[0][0].x_stream
+            nm_y = normalize.data[0][0].y_stream
+    
+            self._normalize(nm_x,nm_y)
         
     def _add(self,tempO,file,legend_item,twin_y,matplotlib_props):
         """Method to evaluate scan addition"""
@@ -505,7 +583,7 @@ class Load1d:
         """
         self.plot_labels.append([pos_x, pos_y, text, kwargs])
 
-    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, ylabel_right=None, plot_height=450, plot_width=700, norm=False, waterfall=None, xprec=None,yprec=None, **kwargs):
+    def plot(self, linewidth=4, title=None, xlabel=None, ylabel=None, ylabel_right=None, plot_height=450, plot_width=700, norm=False, waterfall=None, xprec=None,yprec=None,scatter=False,**kwargs):
         """
         Plot all data assosciated with class instance/object.
 
@@ -623,10 +701,11 @@ class Load1d:
         plot_data['color'] = COLORP[0:numlines]
 
         source = ColumnDataSource(plot_data)
-
+        traces = []
         # Set up the bokeh plot
         p = figure(height=plot_height, width=plot_width,
                    tools="pan,wheel_zoom,box_zoom,reset,crosshair,save", **kwargs)
+        
         
         # If twinning enabled, calculate left linear axis and disable default
         # This is because the default axis always scales to maximum range
@@ -663,11 +742,22 @@ class Load1d:
 
         # Only try to add plot data to left axis if there is any
         if len(plot_data['x_stream']) != 0:
-            p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
+            traces = p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
                         line_width=linewidth, line_color='color', line_alpha=0.6,
                         hover_line_color='color', hover_line_alpha=1.0,
-                        source=source,y_range_name=default_range,)
-        
+                        source=source,y_range_name=default_range)
+            
+            if scatter is True:
+                scatter_data = dict()
+                for i in range(len(plot_data['scan'])):
+                    for j in plot_data:
+                        scatter_data[j] = plot_data[j][i]
+                    scatter_df = pd.DataFrame(scatter_data)
+                    source_scatt = ColumnDataSource(data=scatter_df)
+                    p.scatter(x='x_stream',y='y_stream', size=7,
+                            color='color', line_alpha=0.6,hover_line_color='color', 
+                            hover_line_alpha=1.0,y_range_name=default_range,source = source_scatt)
+                
         # Plot all data associated with the right side y-axis
         if len(plot_data_twin['x_stream']) != 0:
             # Determine the range of the axis and add it to plot
@@ -701,10 +791,21 @@ class Load1d:
             source_twin = ColumnDataSource(plot_data_twin)
             
             # Add to plot
-            p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
+            traces = p.multi_line(xs='x_stream', ys='y_stream', legend_group="legend",
                      line_width=linewidth, line_color='color', line_alpha=0.6,
                      hover_line_color='color', hover_line_alpha=1.0,
                      source=source_twin,y_range_name='right',)
+            
+            if scatter is True:
+                scatter_data = dict()
+                for i in range(len(plot_data_twin['scan'])):
+                    for j in plot_data_twin:
+                        scatter_data[j] = plot_data_twin[j][i]
+                    scatter_df = pd.DataFrame(scatter_data)
+                    source_scatt = ColumnDataSource(data=scatter_df)
+                    p.scatter(x='x_stream',y='y_stream', size=7,
+                            color='color', line_alpha=0.6,hover_line_color='color', 
+                            hover_line_alpha=1.0,y_range_name='right',source = source_scatt)
 
         # Set up the information for hover box
         if xprec != None:
@@ -724,7 +825,7 @@ class Load1d:
             y_prec = ""
 
         xy_prec = "($x" + x_prec + ", $y" + y_prec + ")"
-        p.add_tools(HoverTool(show_arrow=False, line_policy='next', tooltips=[
+        p.add_tools(HoverTool(renderers = [traces], show_arrow=False, line_policy='next',tooltips=[
             ('Scan', '@scan'),
             ('File', '@filename'),
             ("(x,y)", "(@x_name, @y_name)"),
@@ -2904,6 +3005,11 @@ class LoadHistogram1dReduce(Load1d):
             legend_item=f"{legend_index}-S{name}_{x_stream}_{y_stream}"
 
         self._stitch(tempO,file,legend_item,twin_y,matplotlib_props,average,adjust_scale)
+class LoadHistogram1dSum(Load1d):
+
+    def _load(self, config, file, x_stream, y_stream, *args, **kwargs):
+        """Loading helper function"""
+        return load_histogram_1d_sum(config, file, x_stream, y_stream, *args, **kwargs)
 
 class LoadHistogram2d(Load2d):
     """Class to display (x,y,z) scatter data."""

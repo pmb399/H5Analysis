@@ -1217,6 +1217,40 @@ class XASLoader(Load1d):
         """
         filename=hdf5FileFixer(filename)
         Load1d.background(self,config,filename,'Energy',y_stream,*args,grid_x=grid,tempclass=Load1d,**kwargs)
+
+    def normalize(self,config,filename,y_stream,*args,grid=[None,None,None],**kwargs):
+            """ Divides all loaded data by the defined data from all loaded data
+    
+            Parameters
+            ----------
+            config: dict
+                REIXS beamline endstation configuration
+            filename: string
+                file name
+            y_stream: string
+                h5 key or alias of 1d,2d,or 3d stream
+            *args: int
+                scans
+            **kwargs
+                norm: boolean
+                    normalizes to [0,1]
+                xoffset: list
+                    fitting offset (x-stream)
+                xcoffset: float
+                    constant offset (x-stream)
+                yoffset: list
+                    fitting offset (y-stream)
+                ycoffset: float
+                    constant offset (y-stream)
+                grid: list
+                    grid data evenly with [start,stop,delta]
+                savgol: tuple
+                    (window length,polynomial order,derivative)
+                binsize: int
+                    puts data in bins of specified size
+            """
+            filename=hdf5FileFixer(filename)
+            Load1d.normalize(self,config,filename,'Energy',y_stream,*args,grid_x=grid,tempclass=Load1d,**kwargs)
     def compare(self,plot_object):
         """
         Loads data previously specified in a loader
@@ -2182,6 +2216,42 @@ class ELOSSMapper(Object2dTransform):
         Load2d.plot(self,xlabel=xlabel,ylabel=ylabel,plot_width=plot_width,plot_height=plot_height,**kwargs)    
     
     
+class EStackLoader(LoadHistogram1d):
+    def load(self, config, file, x_stream, y_stream, *args, **kwargs):
+        #Determine the size of the grid
+        Simp_Load = SimpleLoader()
+        Simp_Load.load(config,file,x_stream,*args)
+        #Determine the range and spacing of the x-stream
+
+        glob_x_min = 99999
+        glob_x_max = 0
+        glob_x_space = 0
+
+        #Assume all scans have the same point spacing with no overlap
+        for i in args:
+            #Round data the nearest 50 meV
+            Simp_Load.data[0][i].y_stream = np.round(Simp_Load.data[0][i].y_stream/0.050)*0.050
+            #Determine the repeats and exclude them
+            Simp_Load.data[0][i].y_stream = np.unique(Simp_Load.data[0][i].y_stream)
+
+            local_x_space = np.round((Simp_Load.data[0][i].y_stream.max() - Simp_Load.data[0][i].y_stream.min())/ len(Simp_Load.data[0][i].y_stream),2)
+            local_x_min = np.round(Simp_Load.data[0][i].y_stream.min(),2)
+            local_x_max = np.round(Simp_Load.data[0][i].y_stream.max(),2)
+        
+            if local_x_min < glob_x_min:
+                glob_x_min = local_x_min
+            if local_x_max > glob_x_max:
+                glob_x_max = local_x_max
+            if glob_x_space < local_x_space:
+                glob_x_space = local_x_space
+
+        grid = [glob_x_min, glob_x_max, glob_x_space]
+
+        #Set range for new histogram
+        LoadHistogram1d.load(self,config, file, x_stream, y_stream, *args, **kwargs, grid = grid)
+            
+            
+
 class MCPLoader(Load2d):
     def load(self,config,file,detector,arg,**kwargs):
         """
